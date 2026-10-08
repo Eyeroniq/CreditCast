@@ -80,18 +80,18 @@ export default function ThresholdExplorer() {
       <div style={{ marginTop: 16 }}>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={chart} margin={{ left: 0, right: 12, top: 8 }}>
-            <XAxis dataKey="thr" type="number" domain={["dataMin", "dataMax"]} stroke="#5c6b7e"
+            <XAxis dataKey="thr" type="number" domain={["dataMin", "dataMax"]} stroke="var(--muted-2)"
               tickFormatter={(v) => `${v}%`} />
-            <YAxis stroke="#5c6b7e" domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} width={44} />
+            <YAxis stroke="var(--muted-2)" domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} width={44} />
             <Tooltip formatter={(v, n) => [n === "fairness" ? v.toFixed(3) : pct(v, 1), n === "fairness" ? "lowest approval ratio" : "approval rate"]}
               labelFormatter={(l) => `limit ${l}%`} />
             <Legend formatter={(v) => (v === "fairness" ? "lowest approval ratio (fairness)" : "approval rate")} />
-            <ReferenceLine y={data.di_floor} stroke="#fb6f84" strokeDasharray="4 4" />
-            <ReferenceLine x={+(policy.threshold * 100).toFixed(2)} stroke="#8090a3" strokeDasharray="2 4"
-              label={{ value: "policy", fill: "#8090a3", fontSize: 10, position: "top" }} />
-            <ReferenceLine x={+(cur.threshold * 100).toFixed(2)} stroke="#5b9cff" strokeWidth={2} />
-            <Line type="monotone" dataKey="approval" stroke="#5b9cff" dot={false} strokeWidth={2} isAnimationActive={false} />
-            <Line type="monotone" dataKey="fairness" stroke="#36d399" dot={false} strokeWidth={2} isAnimationActive={false} />
+            <ReferenceLine y={data.di_floor} stroke="var(--red)" strokeDasharray="4 4" />
+            <ReferenceLine x={+(policy.threshold * 100).toFixed(2)} stroke="var(--muted)" strokeDasharray="2 4"
+              label={{ value: "policy", fill: "var(--muted)", fontSize: 10, position: "top" }} />
+            <ReferenceLine x={+(cur.threshold * 100).toFixed(2)} stroke="var(--accent)" strokeWidth={2} />
+            <Line type="monotone" dataKey="approval" stroke="var(--accent)" dot={false} strokeWidth={2} isAnimationActive={false} />
+            <Line type="monotone" dataKey="fairness" stroke="var(--green)" dot={false} strokeWidth={2} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
         <p className="small muted" style={{ margin: "6px 0 0" }}>

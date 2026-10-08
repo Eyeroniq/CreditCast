@@ -46,10 +46,10 @@ export default function GovernancePage() {
           <CardTitle info="shap">What drives risk most, across all loans</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={shap} layout="vertical" margin={{ left: 10, right: 12 }}>
-              <XAxis type="number" stroke="#5c6b7e" />
-              <YAxis type="category" dataKey="feature" width={150} stroke="#5c6b7e" tick={{ fontSize: 11 }} />
+              <XAxis type="number" stroke="var(--muted-2)" />
+              <YAxis type="category" dataKey="feature" width={150} stroke="var(--muted-2)" tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => v.toFixed(4)} />
-              <Bar dataKey="imp" fill="#5b9cff" radius={3} />
+              <Bar dataKey="imp" fill="var(--accent)" radius={3} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -57,14 +57,14 @@ export default function GovernancePage() {
           <CardTitle info="disparate_impact">Approval ratio by group (vs {f.privileged_group})</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={groups} margin={{ left: 4, right: 12 }}>
-              <XAxis dataKey="group" stroke="#5c6b7e" />
-              <YAxis stroke="#5c6b7e" domain={[0, 1.2]} />
+              <XAxis dataKey="group" stroke="var(--muted-2)" />
+              <YAxis stroke="var(--muted-2)" domain={[0, 1.2]} />
               <Tooltip formatter={(v) => v.toFixed(3)} />
-              <ReferenceLine y={f.di_ratio_floor} stroke="#fb6f84" strokeDasharray="4 4"
-                label={{ value: "4/5ths floor", fill: "#fb6f84", fontSize: 10, position: "insideTopRight" }} />
+              <ReferenceLine y={f.di_ratio_floor} stroke="var(--red)" strokeDasharray="4 4"
+                label={{ value: "4/5ths floor", fill: "var(--red)", fontSize: 10, position: "insideTopRight" }} />
               <Bar dataKey="disparate_impact" radius={3}>
                 {groups.map((g, i) => (
-                  <Cell key={i} fill={g.disparate_impact >= f.di_ratio_floor ? "#36d399" : "#fb6f84"} />
+                  <Cell key={i} fill={g.disparate_impact >= f.di_ratio_floor ? "var(--green)" : "var(--red)"} />
                 ))}
               </Bar>
             </BarChart>

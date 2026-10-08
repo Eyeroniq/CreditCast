@@ -201,12 +201,12 @@ function Result({ res, busy, whatif, onApply }) {
           <p className="small muted">Red bars raised the default risk; green bars lowered it.</p>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={drivers} layout="vertical" margin={{ left: 10, right: 16 }}>
-              <XAxis type="number" stroke="#5c6b7e" />
-              <YAxis type="category" dataKey="name" width={150} stroke="#5c6b7e" tick={{ fontSize: 11 }} />
+              <XAxis type="number" stroke="var(--muted-2)" />
+              <YAxis type="category" dataKey="name" width={150} stroke="var(--muted-2)" tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => v.toFixed(4)} />
-              <ReferenceLine x={0} stroke="#2b3645" />
+              <ReferenceLine x={0} stroke="var(--border-bright)" />
               <Bar dataKey="shap" radius={3}>
-                {drivers.map((d, i) => <Cell key={i} fill={d.shap > 0 ? "#fb6f84" : "#36d399"} />)}
+                {drivers.map((d, i) => <Cell key={i} fill={d.shap > 0 ? "var(--red)" : "var(--green)"} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>

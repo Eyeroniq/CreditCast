@@ -7,7 +7,7 @@ import { api, pct, money, moneyShort, num } from "@/lib/api";
 import { PageHead, Stat, useFetch, PageSkeleton, ErrorState, CardTitle } from "@/components/ui";
 import LoanTable, { EMPTY_FILTERS } from "@/components/LoanTable";
 
-const BAND_COLOR = { AAA: "#36d399", AA: "#36d399", A: "#5fcf9e", BBB: "#5b9cff", BB: "#fbbf24", B: "#fb6f84" };
+const BAND_COLOR = { AAA: "var(--green)", AA: "var(--green)", A: "var(--green)", BBB: "var(--accent)", BB: "var(--amber)", B: "var(--red)" };
 const SAMPLE = 1000;   // API cap (config api.portfolio_max_rows)
 
 export default function PortfolioPage() {
@@ -50,13 +50,13 @@ export default function PortfolioPage() {
           <CardTitle info="risk_band">Loans per risk grade</CardTitle>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={bandData} margin={{ left: 4, right: 8 }}>
-              <XAxis dataKey="band" stroke="#5c6b7e" />
-              <YAxis stroke="#5c6b7e" />
+              <XAxis dataKey="band" stroke="var(--muted-2)" />
+              <YAxis stroke="var(--muted-2)" />
               <Tooltip formatter={(v) => [num(v), "loans"]} labelFormatter={(l) => `Grade ${l} — click to filter`} />
               <Bar dataKey="count" radius={4} cursor="pointer"
                 onClick={(d) => { pickBand(d.band); scrollToTable(); }}>
                 {bandData.map((d, i) => (
-                  <Cell key={i} fill={BAND_COLOR[d.band] || "#5b9cff"}
+                  <Cell key={i} fill={BAND_COLOR[d.band] || "var(--accent)"}
                     fillOpacity={dim(!filters.band || filters.band === d.band)} />
                 ))}
               </Bar>
@@ -67,13 +67,13 @@ export default function PortfolioPage() {
           <CardTitle info="el">Expected loss per risk grade</CardTitle>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={bandData} margin={{ left: 14, right: 8 }}>
-              <XAxis dataKey="band" stroke="#5c6b7e" />
-              <YAxis stroke="#5c6b7e" tickFormatter={moneyShort} />
+              <XAxis dataKey="band" stroke="var(--muted-2)" />
+              <YAxis stroke="var(--muted-2)" tickFormatter={moneyShort} />
               <Tooltip formatter={(v) => [money(v), "expected loss"]} labelFormatter={(l) => `Grade ${l} — click to filter`} />
               <Bar dataKey="el" radius={4} cursor="pointer"
                 onClick={(d) => { pickBand(d.band); scrollToTable(); }}>
                 {bandData.map((d, i) => (
-                  <Cell key={i} fill={BAND_COLOR[d.band] || "#5b9cff"}
+                  <Cell key={i} fill={BAND_COLOR[d.band] || "var(--accent)"}
                     fillOpacity={dim(!filters.band || filters.band === d.band)} />
                 ))}
               </Bar>
@@ -86,14 +86,14 @@ export default function PortfolioPage() {
         <CardTitle info="pd">How default risk is spread across the book</CardTitle>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={hist} margin={{ left: 4, right: 8 }}>
-            <XAxis dataKey="pd" stroke="#5c6b7e" tickFormatter={(v) => `${v}%`} interval={3} />
-            <YAxis stroke="#5c6b7e" />
+            <XAxis dataKey="pd" stroke="var(--muted-2)" tickFormatter={(v) => `${v}%`} interval={3} />
+            <YAxis stroke="var(--muted-2)" />
             <Tooltip formatter={(v) => [num(v), "loans"]}
               labelFormatter={(l) => `Default risk ≈ ${l}% — click to filter`} />
             <Bar dataKey="count" radius={2} cursor="pointer"
               onClick={(d) => { pickPd(d); scrollToTable(); }}>
               {hist.map((h, i) => (
-                <Cell key={i} fill="#5b9cff"
+                <Cell key={i} fill="var(--accent)"
                   fillOpacity={dim(!filters.pdRange || filters.pdRange[0] === h.lo)} />
               ))}
             </Bar>
