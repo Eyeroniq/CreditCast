@@ -73,7 +73,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 1.7 | Reason codes follow the champion model | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
 | 1.8 | Phase 1 follow-ups (PD floor, threshold stability, generator cures/cutoff) | [x] | 2026-10-08 | Also fixed a censoring bias in 1.3 and switched calibration to sigmoid |
 | 2.1 | GitHub Actions CI | [x] | 2026-10-08 | PR #2; first run green (python 1m48s, web 1m23s) |
-| 2.2 | Scheduled drift workflow | [ ] | | |
+| 2.2 | Scheduled drift workflow | [x] | 2026-10-08 | PR #5; forced test run opened issue #6 (closed) |
 | 2.3 | Expand test suite (≥70% coverage) | [ ] | | |
 | 2.4 | Lock dependencies | [ ] | | MLflow 3.x broke the old file store — fixed in Phase 1 branch; pinning still needed |
 | 2.5 | Model registry & versioning | [ ] | | |
@@ -471,6 +471,14 @@ the same code always produces the same numbers.
   issue labelled `drift-alert` (use `gh issue create`).
 - **Done when:** manual `workflow_dispatch` run works; forcing an alert opens
   an issue.
+- **Result (2026-10-08):** `.github/workflows/monitor.yml` merged (PR #5).
+  Mondays 06:00 UTC + manual runs; the summary table goes to the run page,
+  `monitoring_report.json` is kept 30 days. Manual run with `force_alert`
+  succeeded (all steps green) and opened issue #6, labelled `drift-alert`, with
+  the drift table (score PSI 0.0007, healthy). Closed as a test. On synthetic
+  data the check is always healthy; it becomes meaningful once real batches
+  arrive (Phase 4) — at that point monitor new data instead of rebuilding the
+  seeded test set.
 
 ### 2.3 Expand the test suite
 
