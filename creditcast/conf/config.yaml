@@ -31,11 +31,19 @@ generator:
 target:
   observation_horizon_months: 12   # forward-looking default window
   default_dpd_threshold: 90        # 90+ DPD (or foreclosure/disposition) => default
+  # Freddie zero-balance codes. Default-type exits: 02 third-party sale,
+  # 03 short sale/charge-off, 09 REO disposition, 15 note sale. Clean exit: 01 prepaid.
+  default_zb_codes: ["02", "03", "09", "15"]
+  prepay_zb_codes: ["01"]
+  # Right-censoring: loans not observed for the full window (and not prepaid)
+  # have an untrustworthy "no default" label. drop | keep_flagged
+  censoring: "drop"
   # Out-of-time split: train on older vintages, test on newer. Honest test.
   oot:
     train_vintage_end: "2019-12"   # train: <= this origination month
     test_vintage_start: "2020-01"  # test:  >= this origination month
     calib_fraction: 0.15           # held-out calibration set carved from train
+    valid_fraction: 0.10           # held-out early-stopping set (challenger) carved from train
 
 # ---- Feature sets ------------------------------------------------------------
 features:
@@ -91,8 +99,10 @@ calibration:
 # ---- LGD / EAD ---------------------------------------------------------------
 lgd:
   method: "two_stage"   # cure model (P[loss>0]) x severity regressor
+  workout_window_months: 36   # months after default to observe the final loss (LGD only)
 ead:
   ccf: 1.0              # fully-drawn mortgage: EAD ~= outstanding balance
+  expected_default_month: 6   # months of payments made before default (scheduled balance)
 
 # ---- Validation thresholds (also enforced as CI gates, Part 10.3) -----------
 validation:
@@ -107,6 +117,9 @@ validation:
 
 # ---- Decision / business -----------------------------------------------------
 decision:
+  # Champion PD model: drives Expected Loss, approve/decline and reason codes.
+  # challenger (LightGBM + SHAP reasons) | scorecard (WoE points-lost reasons)
+  champion: "challenger"
   # Threshold from cost of false-negative vs false-positive (made explicit)
   cost_fn: 15.0              # cost of approving a defaulter (loss >> lost margin)
   cost_fp: 1.0               # cost of declining a good borrower (lost margin)

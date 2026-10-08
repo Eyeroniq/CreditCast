@@ -2,7 +2,7 @@
 
 Quantifies the accuracy ceiling and what the interpretable scorecard leaves on
 the table. Native categorical handling, class-imbalance via `scale_pos_weight`
-(not naive oversampling — Part 10.5), early stopping on the held-out calibration
+(not naive oversampling — Part 10.5), early stopping on the held-out **valid**
 vintages. Raw probabilities here are *uncalibrated*; calibration is Part 3.2.
 """
 from __future__ import annotations
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     from creditcast.pipeline.split import make_split
 
     split = make_split()
-    model = fit_challenger(split.train, split.calib)
+    model = fit_challenger(split.train, split.valid)
     save(model)
     pd_hat = predict_pd(model, split.test)
     gini = 2 * roc_auc_score(split.test["default_12m"], pd_hat) - 1

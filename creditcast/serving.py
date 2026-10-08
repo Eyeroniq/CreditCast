@@ -1,9 +1,11 @@
 """Serving bundle — load every artifact once and score one applicant end-to-end.
 
 Encapsulates the production scoring path: build the leakage-safe features from
-raw inputs, run scorecard + challenger, calibrate, scale to a credit score and
-risk band, predict LGD/EAD, compute Expected Loss, apply the cost-based decision,
-and attach SHAP-driven adverse-action reason codes. Used by the FastAPI service.
+raw inputs (the same `creditcast.features.engineer` the pipeline uses), run
+scorecard + challenger, calibrate, pick the configured champion, scale to a
+credit score and risk band, predict LGD/EAD, compute Expected Loss, apply the
+cost-based decision, and attach champion-consistent adverse-action reason
+codes. Used by the FastAPI service.
 """
 from __future__ import annotations
 
@@ -16,7 +18,8 @@ import pandas as pd
 from creditcast.config import Config, load_config
 from creditcast.dataset import (categorical_columns, feature_columns,
                                  numeric_columns)
-from creditcast.governance import decision, reason_codes, shap_explain
+from creditcast.features import engineer
+from creditcast.governance import decision, explain, reason_codes, shap_explain
 from creditcast.models import calibration, challenger, ead as ead_mod
 from creditcast.models import el as el_mod, lgd as lgd_mod, scorecard
 
@@ -57,23 +60,16 @@ class ModelBundle:
         return float(gov["decision"]["threshold"])
 
     @cached_property
-    def _vintage_rate(self) -> dict:
-        """Per-vintage mean note rate (for the rate_spread feature) + global mean."""
-        gold = pd.read_parquet(self.cfg.path("gold") / "feature_matrix.parquet")
-        means = gold.groupby("vintage")["orig_interest_rate"].mean().to_dict()
-        means["_global"] = float(gold["orig_interest_rate"].mean())
-        return means
+    def rate_benchmark(self) -> pd.DataFrame:
+        """Point-in-time rate benchmark table persisted by the Gold build."""
+        return pd.read_parquet(self.cfg.path("gold") / "rate_benchmark.parquet")
 
-    # ---- feature engineering (mirrors pipeline.gold._engineer) ---------------
+    # ---- feature engineering: the SAME function the Gold pipeline uses --------
     def _build_features(self, raw: dict) -> pd.DataFrame:
         r = dict(raw)
-        vint = r.get("vintage", "_global")
-        vint_mean = self._vintage_rate.get(vint, self._vintage_rate["_global"])
-        r["ltv_dti"] = round(r["ltv"] * r["dti"] / 100.0, 2)
-        r["rate_spread"] = round(r["orig_interest_rate"] - vint_mean, 3)
-        r["high_ltv"] = int(r["ltv"] > 80)
-        row = {c: r[c] for c in feature_columns()}
-        df = pd.DataFrame([row])
+        r.setdefault("vintage", None)
+        df = engineer(pd.DataFrame([r]), self.rate_benchmark)
+        df = df[feature_columns()].copy()
         for c in categorical_columns():
             df[c] = df[c].astype("category")
         for c in numeric_columns():
@@ -88,19 +84,25 @@ class ModelBundle:
         credit_score = float(self.scorecard.score(X)[0])
         band = str(decision.assign_band(credit_score, self.cfg))
 
-        lgd_hat = float(self.lgd.predict(X)[0])
-        ead = float(ead_mod.estimate_ead(
-            pd.DataFrame([{"orig_upb": raw["orig_upb"]}]), self.cfg)[0])
-        el = float(el_mod.expected_loss(pd_ch, lgd_hat, ead))
+        # The champion drives EL, the decision AND the reasons (consistency).
+        champion = str(self.cfg.decision.champion)
+        pd_champ = pd_sc if champion == "scorecard" else pd_ch
 
-        dec = str(decision.decide(pd_ch, self.threshold))
-        local = shap_explain.local_attribution(self.explainer, X)
+        lgd_hat = float(self.lgd.predict(X)[0])
+        ead = float(ead_mod.estimate_ead(X, self.cfg)[0])
+        el = float(el_mod.expected_loss(pd_champ, lgd_hat, ead))
+
+        dec = str(decision.decide(pd_champ, self.threshold))
+        local = explain.local_drivers(
+            X, self.cfg, scorecard=self.scorecard,
+            explainer=self.explainer if champion == "challenger" else None)
         codes = reason_codes.reason_codes(local, top_n=4)
 
         return {
             "pd_scorecard": pd_sc,
             "pd_challenger": pd_ch,
-            "pd": pd_ch,
+            "pd": pd_champ,
+            "champion": champion,
             "credit_score": round(credit_score, 1),
             "risk_band": band,
             "lgd": round(lgd_hat, 4),
