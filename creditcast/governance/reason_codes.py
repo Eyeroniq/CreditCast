@@ -18,7 +18,7 @@ REASON_TEMPLATES = {
     "ltv_dti": "Combined leverage (high LTV and DTI together) is elevated",
     "high_ltv": "Loan-to-value exceeds the 80% threshold",
     "orig_interest_rate": "Note rate ({value}%) reflects higher pricing risk",
-    "rate_spread": "Rate is priced above comparable loans of this vintage",
+    "rate_spread": "Rate is priced above the recent market average",
     "orig_upb": "Loan amount ({value}) is large relative to the book",
     "orig_loan_term": "Loan term ({value} months) carries higher term risk",
     "occupancy_status": "Occupancy type ({value}) carries higher risk (e.g. investment)",

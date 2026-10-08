@@ -3,7 +3,8 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, ReferenceLine,
 } from "recharts";
 import { api, pct } from "@/lib/api";
-import { PageHead, Stat, Pill, Band, useFetch, Loading, ApiError } from "@/components/ui";
+import { PageHead, Stat, Pill, Band, useFetch, Loading, ApiError, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { featureLabel } from "@/lib/labels";
 
 export default function GovernancePage() {
   const { data, error, loading } = useFetch(() => api.governance(), []);
@@ -11,7 +12,7 @@ export default function GovernancePage() {
   if (error) return (<><Head /><ApiError error={error} /></>);
 
   const f = data.fairness;
-  const shap = data.shap_global.slice(0, 8).map((s) => ({ feature: s.feature, imp: s.mean_abs_shap }));
+  const shap = data.shap_global.slice(0, 8).map((s) => ({ feature: featureLabel(s.feature), imp: s.mean_abs_shap }));
   const groups = [...f.groups].sort((a, b) => b.disparate_impact - a.disparate_impact);
   const ex = data.adverse_action_example;
 
@@ -22,12 +23,12 @@ export default function GovernancePage() {
         <Stat label="Champion model"
           value={(data.champion_model || "challenger").split(" ")[0].replace(/^./, (c) => c.toUpperCase())}
           sub={(data.champion_model || "").replace(/^\S+\s*\(?|\)$/g, "") || "LightGBM · calibrated"} />
-        <Stat label="Approval rate" value={pct(data.decision.approval_rate, 1)}
+        <Stat label="Approval rate" info="threshold" value={pct(data.decision.approval_rate, 1)}
           sub={`PD threshold ${pct(data.decision.threshold)}${data.decision.threshold_source ? " · set on calibration data" : ""}`} />
-        <Stat label="Min disparate-impact ratio" value={f.di_ratio_min_observed.toFixed(3)}
+        <Stat label="Lowest approval ratio" info="disparate_impact" value={f.di_ratio_min_observed.toFixed(3)}
           tone={f.passes_four_fifths ? "ok" : "bad"} sub={`4/5ths floor ${f.di_ratio_floor}`} />
         <div className="card stat">
-          <div className="label">Fairness (4/5ths rule)</div>
+          <div className="label">Fairness (4/5ths rule)<InfoTip k="disparate_impact" /></div>
           <div style={{ marginTop: 10 }}>
             <Pill status={f.passes_four_fifths ? "PASS" : "REVIEW"}>
               {f.passes_four_fifths ? "pass" : "review"}
@@ -39,18 +40,18 @@ export default function GovernancePage() {
 
       <div className="grid cols-2" style={{ marginBottom: 16 }}>
         <div className="card">
-          <h3>Global drivers — mean |SHAP|</h3>
+          <CardTitle info="shap">What drives risk most, across all loans</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={shap} layout="vertical" margin={{ left: 30, right: 12 }}>
+            <BarChart data={shap} layout="vertical" margin={{ left: 10, right: 12 }}>
               <XAxis type="number" stroke="#5c6b7e" />
-              <YAxis type="category" dataKey="feature" width={120} stroke="#5c6b7e" />
+              <YAxis type="category" dataKey="feature" width={150} stroke="#5c6b7e" tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => v.toFixed(4)} />
               <Bar dataKey="imp" fill="#5b9cff" radius={3} />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="card">
-          <h3>Disparate impact by group (ratio vs {f.privileged_group})</h3>
+          <CardTitle info="disparate_impact">Approval ratio by group (vs {f.privileged_group})</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={groups} margin={{ left: 4, right: 12 }}>
               <XAxis dataKey="group" stroke="#5c6b7e" />
@@ -69,12 +70,13 @@ export default function GovernancePage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3>Fairness group metrics</h3>
+        <CardTitle info="equal_opportunity">Fairness by group</CardTitle>
+        <TableWrap>
         <table>
           <thead><tr>
             <th>Group</th><th className="num">N</th><th className="num">Approval</th>
             <th className="num">Default rate</th><th className="num">Disparate impact</th>
-            <th className="num">Equal-opp. diff</th>
+            <th className="num">Equal-opportunity gap</th>
           </tr></thead>
           <tbody>
             {groups.map((g) => (
@@ -89,6 +91,7 @@ export default function GovernancePage() {
             ))}
           </tbody>
         </table>
+        </TableWrap>
         <p className="small muted" style={{ marginTop: 10 }}>
           The model excludes race, yet neutral features (credit score, DTI) proxy historical disparity, producing
           disparate impact. Mitigation: feature review, fairness-constrained training, monitoring — not group-specific
@@ -98,8 +101,8 @@ export default function GovernancePage() {
 
       {ex && (
         <div className="card">
-          <h3>Worked adverse-action example</h3>
-          <div style={{ display: "flex", gap: 24, alignItems: "center", marginBottom: 12 }}>
+          <CardTitle info="reason_codes">Example letter to a declined applicant</CardTitle>
+          <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
             <span className="mono small muted">loan {ex.loan_id}</span>
             <span>PD <b className="mono">{pct(ex.pd)}</b></span>
             <span>score <b className="mono">{ex.credit_score.toFixed(0)}</b></span>
@@ -114,6 +117,6 @@ export default function GovernancePage() {
 }
 
 const Head = () => (
-  <PageHead title="Governance"
-    subtitle="Explainability, fairness, and accountability — global SHAP drivers, disparate-impact testing, and the model card in one place." />
+  <PageHead title="Fairness & explanations"
+    subtitle="Why the model decides what it does, whether outcomes are fair across groups, and what declined applicants are told." />
 );

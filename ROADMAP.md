@@ -95,13 +95,13 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 5.5 | Basel IRB regulatory capital | [ ] | | |
 | 5.6 | Fairness mitigation analysis | [ ] | | |
 | 5.7 | Copilot evaluation suite | [ ] | | |
-| 6.0 | UI foundation (Tailwind/shadcn, tokens, layout) | [ ] | | Do first in Phase 6 |
-| 6.1.1 | Plain-language labels | [ ] | | Quick win |
-| 6.1.2 | Tooltips + Glossary page | [ ] | | Quick win |
+| 6.0 | UI foundation (Tailwind/shadcn, tokens, layout) | [~] | 2026-10-08 | Shared components + responsive shell done on the existing CSS; Tailwind/shadcn migration deferred (see 6.0 result) |
+| 6.1.1 | Plain-language labels | [x] | 2026-10-08 | |
+| 6.1.2 | Tooltips + Glossary page | [x] | 2026-10-08 | 25 terms |
 | 6.1.3 | Page verdict summaries | [ ] | | |
 | 6.1.4 | Guided tour | [ ] | | |
-| 6.1.5 | Human-friendly decision card | [ ] | | |
-| 6.2.1 | Live scoring with sliders | [ ] | | Quick win |
+| 6.1.5 | Human-friendly decision card | [x] | 2026-10-08 | Done with 6.2.1 |
+| 6.2.1 | Live scoring with sliders | [x] | 2026-10-08 | |
 | 6.2.2 | What-if / counterfactual panel | [ ] | | Needs backend endpoint |
 | 6.2.3 | Compare applicants | [ ] | | |
 | 6.2.4 | Clickable drill-down charts | [ ] | | |
@@ -109,10 +109,10 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.2.6 | Searchable loan table + CSV | [ ] | | |
 | 6.2.7 | Stress-test playground | [ ] | | Depends on 5.2 |
 | 6.2.8 | Better Copilot chat | [ ] | | |
-| 6.3.1 | Responsive / mobile layout | [ ] | | Quick win |
+| 6.3.1 | Responsive / mobile layout | [x] | 2026-10-08 | No sideways scroll at 375 px on all 7 pages |
 | 6.3.2 | Light / dark theme toggle | [ ] | | |
 | 6.3.3 | Loading, empty & error states | [ ] | | |
-| 6.3.4 | Accessibility (WCAG AA) | [ ] | | |
+| 6.3.4 | Accessibility (WCAG AA) | [~] | 2026-10-08 | Focus rings, ARIA on tooltips/sliders/nav, ✓/✗ icons, reduced motion; Lighthouse audit still to do |
 | 6.3.5 | Component library migration | [ ] | | Part of 6.0 |
 | 6.3.6 | PDF downloads | [ ] | | |
 | 6.3.7 | Frontend tests (Vitest + Playwright) | [ ] | | |
@@ -783,6 +783,14 @@ API client `lib/api.js`.
      `lib/glossary.js` — term → short + long explanation (6.1.2).
   5. Replace inline styles page by page as each page is touched.
 - **Done when:** app builds with the new shell; visual parity with today.
+- **Result (2026-10-08, partial):** the quick wins were built on the existing
+  CSS instead of migrating to Tailwind/shadcn first. The CSS was already tidy,
+  token-based (`:root` variables) and small, and a framework migration would
+  have restyled every page in one risky change. Added: `lib/labels.js`,
+  `lib/glossary.js`, and shared `InfoTip`, `CardTitle`, `TableWrap`,
+  `SliderField` in `components/ui.jsx`; a responsive shell with a mobile menu.
+  Remaining: decide on Tailwind/shadcn when 6.3.2 (light theme) / 6.3.5 need
+  it, and remove the remaining inline styles.
 
 ### 6.1 Make it understandable
 
@@ -796,6 +804,12 @@ API client `lib/api.js`.
   `orig_upb` → "Loan amount", `ltv_dti` → "Combined leverage", …).
 - Use it in dropdowns, SHAP chart axis labels, tables and Copilot charts.
 - **Done when:** no raw code or snake_case feature name visible anywhere.
+- **Result (2026-10-08):** dropdowns, SHAP charts (score + governance), CSI
+  table, drift alerts and the portfolio table use plain labels; navigation and
+  page titles reworded ("Model quality", "Fairness & explanations", …). The
+  backend reason for `rate_spread` now says "above the recent market average"
+  (it no longer compares within a vintage since 1.5). Copilot charts still
+  show backend labels (6.2.8).
 
 #### 6.1.2 Tooltips + Glossary page *(quick win)*
 - `InfoTip` component (ⓘ icon → Radix Tooltip on hover, Popover on tap).
@@ -808,6 +822,12 @@ API client `lib/api.js`.
 - New `/glossary` page, searchable, grouped (Loss maths · Model quality ·
   Stability · Fairness · Explainability).
 - **Done when:** every metric label has an ⓘ; glossary has ≥ 20 terms.
+- **Result (2026-10-08):** 25 terms in `lib/glossary.js`; ⓘ on every stat card,
+  card heading and validation-table metric. Hover / keyboard focus / tap to
+  open; on phones the explanation shows as a panel pinned to the bottom of the
+  screen. Closed tooltips use `display:none` (a hidden-but-laid-out tooltip
+  was found to widen pages on mobile). `/glossary` page with search, grouped by
+  topic, anchor per term; added to the navigation.
 
 #### 6.1.3 Page verdict summaries
 - A `VerdictBanner` at the top of each page built from the report JSON
@@ -853,6 +873,16 @@ API client `lib/api.js`.
   indicator. Keep presets as one-click chips.
 - **Done when:** moving a slider updates decision and PD within ~0.5 s with no
   flicker.
+- **Result (2026-10-08):** sliders + exact number boxes for credit score, DTI,
+  LTV, rate and loan amount, with green/amber/red risk zones; term and
+  categories as plain-language selects. Re-scores 0.4 s after the last change;
+  `AbortController` cancels superseded requests; the last result stays on
+  screen with "updating…"; API errors (e.g. rate limit) show without losing
+  it. Verified in the browser: Marginal preset declined at PD 6.89%; typing
+  credit score 780 re-scored automatically to Approved (3.18%). The decision
+  card (6.1.5) shows ✓/✗ verdict + one-line why, a risk meter with the approval
+  limit, the AAA→B grade scale, stats with ⓘ, plain reasons, and SHAP folded
+  under "Show detailed breakdown".
 
 #### 6.2.2 What-if / counterfactual panel
 - **Backend:** `POST /api/whatif` in `app/api/main.py` →
@@ -926,6 +956,10 @@ API client `lib/api.js`.
   only; 16 px side gutters.
 - **Done when:** usable at 375 px wide with no horizontal page scroll (check
   every page).
+- **Result (2026-10-08):** below 900 px the sidebar becomes a top bar with a
+  ☰ Menu (closes after navigating); grids collapse (4 → 2 → 1 columns); tables
+  scroll inside their card; 16 px side gutters. Measured `scrollWidth` = 375
+  on all 7 pages at 375 px.
 
 #### 6.3.2 Light / dark theme toggle
 - Tokens for both palettes (6.0); toggle in sidebar; respects
