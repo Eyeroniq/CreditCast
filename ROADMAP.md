@@ -110,7 +110,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.2.7 | Stress-test playground | [ ] | | Depends on 5.2 |
 | 6.2.8 | Better Copilot chat | [ ] | | |
 | 6.3.1 | Responsive / mobile layout | [x] | 2026-10-08 | No sideways scroll at 375 px on all 7 pages |
-| 6.3.2 | Light / dark theme toggle | [ ] | | |
+| 6.3.2 | Light / dark theme toggle | [x] | 2026-10-09 | System/Light/Dark; all text ≥ 4.5:1; fixed a dark-theme contrast failure |
 | 6.3.3 | Loading, empty & error states | [x] | 2026-10-09 | Skeletons, typed friendly errors, Retry |
 | 6.3.4 | Accessibility (WCAG AA) | [~] | 2026-10-08 | Focus rings, ARIA on tooltips/sliders/nav, ✓/✗ icons, reduced motion; Lighthouse audit still to do |
 | 6.3.5 | Component library migration | [ ] | | Part of 6.0 |
@@ -1104,6 +1104,20 @@ API client `lib/api.js`.
   `prefers-color-scheme` by default; choice stored in `localStorage`
   (try/catch); Recharts colours read from CSS variables.
 - **Done when:** both themes pass WCAG AA contrast.
+- **Result (2026-10-09):** light palette added as CSS tokens, applied with
+  `html[data-theme="light"]` or by the OS preference when the user hasn't
+  chosen dark; `color-scheme` set so native form controls match. All ~65
+  hard-coded chart hex colours across 7 components became theme variables
+  (SVG attributes accept `var(--…)`), so Recharts follows the theme. The last
+  CSS literals (button text, active nav, tinted pills/bands via
+  `color-mix`, shadows) were tokenised. `components/ThemeToggle.jsx` in the
+  sidebar cycles System → Light → Dark and saves the choice in `localStorage`
+  (try/catch); an inline head script applies it before first paint (no
+  flash). **Contrast computed** for every text token on bg/panel/panel-2:
+  light theme worst case 4.73:1. This also found a **dark-theme failure**: the
+  existing `--muted-2` (hints and sub-text) was 3.33:1, so it was raised to
+  `#748396` (4.69:1). Verified in the browser: the cycle, persistence across a
+  reload, and charts and pages rendering in light colours.
 
 #### 6.3.3 Loading, empty & error states
 - Skeleton components for cards/charts/tables; empty states with guidance

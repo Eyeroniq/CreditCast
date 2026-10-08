@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const NAV = [
   { href: "/", label: "Score an applicant" },
@@ -44,6 +45,7 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        <ThemeToggle />
       </nav>
       <div className="sidebar-foot small muted">
         Tested on loans it never saw<br />(out-of-time validation)
