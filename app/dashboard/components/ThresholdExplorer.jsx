@@ -7,14 +7,14 @@ import {
   LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine, Legend,
 } from "recharts";
 import { api, pct, moneyShort } from "@/lib/api";
-import { useFetch, CardTitle, InfoTip, Pill } from "@/components/ui";
+import { useFetch, CardTitle, InfoTip, Pill, Skeleton, ErrorState } from "@/components/ui";
 
 const nearest = (points, thr) =>
   points.reduce((best, p, i) =>
     Math.abs(p.threshold - thr) < Math.abs(points[best].threshold - thr) ? i : best, 0);
 
 export default function ThresholdExplorer() {
-  const { data, error, loading } = useFetch(() => api.thresholdCurve(), []);
+  const { data, error, loading, retry } = useFetch(() => api.thresholdCurve(), []);
   const [idx, setIdx] = useState(null);
 
   const chart = useMemo(() => (data?.points || []).map((p) => ({
@@ -22,8 +22,12 @@ export default function ThresholdExplorer() {
     approval: p.approval_rate, fairness: p.di_min,
   })), [data]);
 
-  if (loading) return <div className="card"><p className="muted small">Loading approval-limit explorer…</p></div>;
-  if (error) return null;           // the rest of the page still works
+  if (loading) return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <Skeleton width="40%" height={11} /><Skeleton height={180} style={{ marginTop: 16 }} />
+    </div>);
+  // The rest of the page still works without the explorer.
+  if (error) return <div style={{ marginBottom: 16 }}><ErrorState error={error} onRetry={retry} /></div>;
 
   const pts = data.points;
   const policyIdx = nearest(pts, data.policy_threshold);

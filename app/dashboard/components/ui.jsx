@@ -95,34 +95,105 @@ export function PageHead({ title, subtitle }) {
   );
 }
 
-// data-fetching hook with loading / error states
+// data-fetching hook with loading / error states and a retry (6.3.3)
 export function useFetch(fn, deps = []) {
   const [state, setState] = useState({ data: null, error: null, loading: true });
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
     setState({ data: null, error: null, loading: true });
     fn()
       .then((data) => alive && setState({ data, error: null, loading: false }))
-      .catch((error) => alive && setState({ data: null, error: error.message, loading: false }));
+      .catch((error) => alive && setState({ data: null, error, loading: false }));
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  return state;
+  }, [...deps, attempt]);
+  return { ...state, retry: () => setAttempt((a) => a + 1) };
 }
 
-export function Loading({ what = "data" }) {
-  return <div className="loading">loading {what}…</div>;
+/** Grey placeholder blocks shaped like the page that is loading. */
+export function Skeleton({ height = 14, width = "100%", style }) {
+  return <div className="skeleton" style={{ height, width, ...style }} aria-hidden="true" />;
 }
 
-export function ApiError({ error }) {
+export function PageSkeleton({ stats = 4, charts = 2, table = false, label = "Loading" }) {
   return (
-    <div className="card" style={{ borderColor: "var(--red)" }}>
-      <h3 className="bad">Cannot reach scoring API</h3>
-      <p className="small muted">{error}</p>
-      <p className="small mono">
-        Start it with:&nbsp; uvicorn app.api.main:app --port 8001
-        <br />(after running: python -m creditcast.cli all)
-      </p>
+    <div role="status" aria-live="polite" aria-label={label}>
+      <span className="sr-only">{label}…</span>
+      <div className={`grid cols-${Math.min(stats, 4)}`} style={{ marginBottom: 16 }}>
+        {Array.from({ length: stats }, (_, i) => (
+          <div key={i} className="card">
+            <Skeleton width="55%" height={11} />
+            <Skeleton width="40%" height={26} style={{ marginTop: 12 }} />
+          </div>
+        ))}
+      </div>
+      {charts > 0 && (
+        <div className={`grid cols-${Math.min(charts, 2)}`} style={{ marginBottom: 16 }}>
+          {Array.from({ length: charts }, (_, i) => (
+            <div key={i} className="card">
+              <Skeleton width="45%" height={11} />
+              <Skeleton height={200} style={{ marginTop: 16 }} />
+            </div>
+          ))}
+        </div>
+      )}
+      {table && (
+        <div className="card">
+          <Skeleton width="35%" height={11} />
+          {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} height={18} style={{ marginTop: 12 }} />)}
+        </div>
+      )}
     </div>
   );
 }
+
+// Kept for small inline waits.
+export function Loading({ what = "data" }) {
+  return <div className="loading" role="status">Loading {what}…</div>;
+}
+
+const ERROR_TITLES = {
+  offline: "Can't reach CreditCast",
+  missing: "Not available yet",
+  busy: "Slow down a moment",
+  server: "Something went wrong on our side",
+  unavailable: "Not switched on",
+  auth: "Access key needed",
+  invalid: "Some values aren't valid",
+};
+
+/** Friendly error card with a Retry button (6.3.3). Accepts an ApiError, an
+ *  Error, or a string. Technical details stay folded away. */
+export function ErrorState({ error, onRetry }) {
+  const kind = error?.kind || "error";
+  const message = typeof error === "string" ? error : error?.message;
+  const tech = [error?.status ? `HTTP ${error.status}` : null, error?.requestId && `request ${error.requestId}`,
+                error?.detail && error.detail !== message ? error.detail : null].filter(Boolean);
+  return (
+    <div className="card error-state" role="alert">
+      <h3 className={kind === "busy" || kind === "missing" ? "warn" : "bad"}>
+        {ERROR_TITLES[kind] || "Couldn't load this page"}
+      </h3>
+      <p style={{ margin: "0 0 12px" }}>{message || "Something went wrong."}</p>
+      {kind === "missing" && (
+        <p className="small muted" style={{ marginTop: -4 }}>
+          The model reports are produced by the training pipeline; once it has run, this page fills in.
+        </p>
+      )}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        {onRetry && <button type="button" className="primary" onClick={onRetry}>Try again</button>}
+        <a href="/" className="small muted">Go to the start page</a>
+      </div>
+      {tech.length > 0 && (
+        <details className="more">
+          <summary>Technical details</summary>
+          <p className="small mono muted" style={{ whiteSpace: "pre-wrap" }}>{tech.join(" · ")}</p>
+        </details>
+      )}
+    </div>
+  );
+}
+
+// Backwards-compatible name used by older pages.
+export const ApiError = ErrorState;
