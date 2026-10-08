@@ -1,9 +1,11 @@
 """Training orchestrator — fit + calibrate both PD models, score the OOT test set.
 
 Produces the central artifact `artifacts/test_scored.parquet` consumed by the
-validation suite, governance, serving, and the dashboard. Calibration is fit on
-the held-out calibration vintages; everything reported downstream is on the
-strictly out-of-time test vintages.
+validation suite, governance, serving, and the dashboard. The challenger
+early-stops on the `valid` slice; calibration is fit on the separate `calib`
+slice; everything reported downstream is on the strictly out-of-time test
+vintages. `artifacts/calib_scored.parquet` holds cross-fitted calibrated PDs
+for the calib slice — the only data the decision threshold is chosen on.
 """
 from __future__ import annotations
 
@@ -18,6 +20,11 @@ from creditcast.dataset import feature_columns
 from creditcast.models import calibration, challenger, ead as ead_mod, el as el_mod
 from creditcast.models import lgd as lgd_mod, scorecard
 from creditcast.pipeline.split import Split, make_split
+
+
+def champion_col(cfg: Config) -> str:
+    """Column holding the champion model's calibrated PD."""
+    return f"pd_{cfg.decision.champion}"
 
 
 def _gini(y, p) -> float:
@@ -37,7 +44,7 @@ def train_all(cfg: Config | None = None, split: Split | None = None) -> Path:
               for k in ("calib", "test")}
 
     # ---- PD model B: ML challenger ---------------------------------------
-    ch = challenger.fit_challenger(split.train, split.calib, cfg)
+    ch = challenger.fit_challenger(split.train, split.valid, cfg)
     challenger.save(ch, cfg)
     ch_raw = {k: challenger.predict_pd(ch, getattr(split, k)) for k in ("calib", "test")}
 
@@ -51,9 +58,22 @@ def train_all(cfg: Config | None = None, split: Split | None = None) -> Path:
     lgd_model = lgd_mod.fit_lgd(split.train, cfg)
     lgd_mod.save(lgd_model, cfg)
 
+    # ---- Calib slice: cross-fitted calibrated PDs (for the threshold) -------
+    y_calib = split.calib["default_12m"].astype(int).to_numpy()
+    calib_scored = pd.DataFrame({
+        "loan_id": split.calib["loan_id"].to_numpy(),
+        "default_12m": y_calib,
+        "pd_scorecard": calibration.cross_fit_transform(sc_raw["calib"], y_calib, cfg),
+        "pd_challenger": calibration.cross_fit_transform(ch_raw["calib"], y_calib, cfg),
+    })
+    calib_scored["pd_champion"] = calib_scored[champion_col(cfg)]
+    calib_scored.to_parquet(cfg.path("artifacts") / "calib_scored.parquet", index=False)
+
     # ---- Score the out-of-time test set ----------------------------------
     test = split.test
-    pd_cal = ch_cal.transform(ch_raw["test"])          # challenger is champion for EL
+    pd_by_model = {"scorecard": sc_cal.transform(sc_raw["test"]),
+                   "challenger": ch_cal.transform(ch_raw["test"])}
+    pd_cal = pd_by_model[str(cfg.decision.champion)]   # champion drives EL
     lgd_hat = lgd_model.predict(test)
     ead_hat = ead_mod.estimate_ead(test, cfg)
     scored = pd.DataFrame({
@@ -64,9 +84,10 @@ def train_all(cfg: Config | None = None, split: Split | None = None) -> Path:
         "ead_realized": test["ead"].to_numpy(),
         "lgd_realized": test["lgd"].to_numpy(),
         "pd_scorecard_raw": sc_raw["test"],
-        "pd_scorecard": sc_cal.transform(sc_raw["test"]),
+        "pd_scorecard": pd_by_model["scorecard"],
         "pd_challenger_raw": ch_raw["test"],
-        "pd_challenger": pd_cal,
+        "pd_challenger": pd_by_model["challenger"],
+        "pd_champion": pd_cal,
         "credit_score": sc.score(test[feats]),
         "lgd_hat": lgd_hat,
         "ead": ead_hat,
@@ -87,12 +108,17 @@ def train_all(cfg: Config | None = None, split: Split | None = None) -> Path:
             "scorecard": _gini(scored["default_12m"], scored["pd_scorecard"]),
             "challenger": _gini(scored["default_12m"], scored["pd_challenger"]),
         },
+        "champion": str(cfg.decision.champion),
         "best_iteration_challenger": int(ch.best_iteration_ or ch.n_estimators),
+        "lgd_population": {
+            "train_defaults": int(split.train["default_12m"].sum()),
+            "train_resolved_defaults": int(split.train["lgd"].notna().sum()),
+        },
         "expected_loss": {
             "portfolio_el": float(scored["expected_loss"].sum()),
             "total_ead": float(scored["ead"].sum()),
             "el_rate_bps": float(scored["expected_loss"].sum() / scored["ead"].sum() * 1e4),
-            "mean_pd": float(scored["pd_challenger"].mean()),
+            "mean_pd": float(scored["pd_champion"].mean()),
             "mean_lgd_hat": float(scored["lgd_hat"].mean()),
         },
     }

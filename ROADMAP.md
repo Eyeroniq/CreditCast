@@ -64,17 +64,18 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | ID | Task | Status | Date | Notes |
 |----|------|--------|------|-------|
 | 0 | Rename CreditForge → CreditCast (code) | [x] | 2026-10-08 | Manual steps 0.M1–0.M4 still open |
-| 1.1 | Threshold chosen on calib, not test | [ ] | | |
-| 1.2 | Separate valid (early stop) and calib slices | [ ] | | |
-| 1.3 | Right-censoring in default label | [ ] | | |
-| 1.4 | LGD only on resolved defaults | [ ] | | |
-| 1.5 | Remove `rate_spread` train/serve skew | [ ] | | |
-| 1.6 | Amortized-balance EAD | [ ] | | |
-| 1.7 | Reason codes follow the champion model | [ ] | | |
+| 1.1 | Threshold chosen on calib, not test | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
+| 1.2 | Separate valid (early stop) and calib slices | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
+| 1.3 | Right-censoring in default label | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
+| 1.4 | LGD only on resolved defaults | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
+| 1.5 | Remove `rate_spread` train/serve skew | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
+| 1.6 | Amortized-balance EAD | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
+| 1.7 | Reason codes follow the champion model | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
+| 1.8 | Phase 1 follow-ups (PD floor, threshold stability, generator cures/cutoff) | [ ] | | Found while doing Phase 1 |
 | 2.1 | GitHub Actions CI | [ ] | | |
 | 2.2 | Scheduled drift workflow | [ ] | | |
 | 2.3 | Expand test suite (≥70% coverage) | [ ] | | |
-| 2.4 | Lock dependencies | [ ] | | |
+| 2.4 | Lock dependencies | [ ] | | MLflow 3.x broke the old file store — fixed in Phase 1 branch; pinning still needed |
 | 2.5 | Model registry & versioning | [ ] | | |
 | 2.6 | Lint / format / types + pre-commit | [ ] | | |
 | 3.1 | Rate-limit Copilot | [ ] | | |
@@ -177,7 +178,14 @@ reason in the model card.
   `build_governance` on a tiny fixture, and asserts the `y_true` passed in
   equals the calib labels, never the test labels.
 - **Done when:** `threshold_source == "calib"`; test passes; `cli all` passes.
-- **Result:** _(before → after threshold, approval rate, DI ratio)_
+- **Result (2026-10-08):** threshold 0.0620 *(chosen on test — leak)* → **0.0344
+  (chosen on cross-fitted calib PDs)**. Approval 74.7% → 63.0%; approved-loan
+  default rate 2.82% → 2.39%; min DI ratio 0.749 → 0.677 (fairness REVIEW).
+  Note: on the test set 0.0344 and 0.0625 give the *same* approval (63.0%) —
+  the isotonic PDs have no values in between — so the approval change comes
+  from the retrained/recalibrated model, not the threshold method. Cross-fitting
+  (`calibration.cross_fit_transform`) was added so the calib PDs used to pick
+  the threshold are out-of-fold. See 1.8 for stability follow-up.
 
 ### 1.2 Separate early-stopping data from calibration data
 
@@ -199,6 +207,10 @@ reason in the model card.
 - **Tests:** extend `test_leakage.py` — overlapping loan IDs between
   valid/calib must raise; valid vintages ≥ boundary must raise.
 - **Done when:** four disjoint slices; tests pass; summary prints four rows.
+- **Result (2026-10-08):** split 36,458 / 6,434 / 17,108 → **train 32,169 /
+  valid 4,289 / calib 6,434 / test 17,108**. Challenger best iteration 43 → 82.
+  OOT Gini challenger 0.4354 → 0.4327, scorecard 0.4498 → 0.4483 (within noise;
+  smaller train set). Calibration max band error 0.0184 → 0.0169.
 
 ### 1.3 Handle right-censoring in the default label
 
@@ -225,6 +237,12 @@ reason in the model card.
   complete; (d) prepaid at month 6 → label 0, complete; (e) 90+ DPD at month
   13 → label 0 (outside window).
 - **Done when:** all five cases pass; Silver log shows the censored count.
+- **Result (2026-10-08):** implemented with configurable Freddie codes
+  (`target.default_zb_codes`, `prepay_zb_codes`, `RA` status). 7 hand-built
+  loan histories in `tests/test_silver_label.py` pass. Synthetic data: **0
+  loans censored** (the generator always emits ≥ 12 months or a prepay) — the
+  logic will matter for real Freddie data (Phase 4). See 1.8 for adding a data
+  cutoff to the generator so censoring is exercised.
 
 ### 1.4 Fit LGD only on resolved defaults
 
@@ -247,6 +265,14 @@ reason in the model card.
      synthetic data contains resolutions.
 - **Done when:** mean predicted vs realized LGD on resolved OOT defaults
   within ±0.05; model card states the population.
+- **Result (2026-10-08):** resolved defaults 1,880 → **2,706 / 2,706** (defaults
+  disposed after month 12 were previously dropped and their loss treated as
+  0%). OOT LGD mean predicted vs realized **0.271 vs 0.382 (bias −0.11) →
+  0.387 vs 0.377 (+0.01)**; LGD MAE 0.135 → 0.095. Mean LGD 24.8% → 35.8%;
+  portfolio EL 116 → **167 bps**. Finding: every synthetic default ends in a
+  loss, so the "cure" stage has one class — `LGDModel` now falls back to a
+  constant P(loss) (the old model's cure stage was only learning the window
+  artefact). See 1.8.
 
 ### 1.5 Remove train/serve skew in `rate_spread`
 
@@ -270,6 +296,11 @@ reason in the model card.
 - **Tests:** feed the same raw row through the pipeline path and the serving
   path → identical feature vector.
 - **Done when:** parity test passes; no feature code duplicated.
+- **Result (2026-10-08):** `creditcast/features.py` (`rate_benchmark`,
+  `engineer`) used by Gold and serving; benchmark persisted to
+  `data/gold/rate_benchmark.parquet` (trailing 3 months, strictly prior).
+  `tests/test_feature_parity.py` (4 tests) pass. Gini essentially unchanged.
+  (The optional `benchmark_month` field in the API response was not added.)
 
 ### 1.6 Use amortized balance for EAD
 
@@ -287,6 +318,9 @@ reason in the model card.
      vs `ead_realized` on OOT defaults.
 - **Tests:** zero-rate loan, k = 0 (= P), k = n (= 0), known textbook example.
 - **Done when:** tests pass; EAD error shown in validation report.
+- **Result (2026-10-08):** OOT EAD mean abs. % error vs realized **1.38% →
+  0.46%**; total EAD 4.135bn → 4.083bn. `validation_report.json` now has a
+  `loss_components` block (EAD MAPE/bias, LGD MAE/means).
 
 ### 1.7 Reason codes follow the champion model
 
@@ -305,6 +339,46 @@ reason in the model card.
   3. `serving.score()` selects the reason method by champion.
 - **Done when:** switching `champion` in config changes PD, decision *and*
   reasons consistently; test covers both.
+- **Result (2026-10-08):** `decision.champion` config; `pd_champion` column in
+  `test_scored` / `calib_scored`; API, Copilot tools, gates, governance and
+  dashboard use it. `creditcast/governance/explain.py` gives SHAP (challenger)
+  or points-lost (scorecard) reasons; verified points-lost sum reconciles to
+  the score. Default remains `challenger`.
+
+### 1.8 Phase 1 follow-ups (found while implementing)
+
+- **PD floor:** isotonic calibration returns PD = 0.0000 for the best
+  applicants (e.g. the "Prime" preset). Add `calibration.pd_floor: 0.0003`
+  (Basel 3 bp floor) applied after calibration in train + serving.
+- **Threshold stability:** the empirical cost curve on calib is flat/noisy
+  (cost 3,306–3,511 across PD 0.034–0.08). Consider the closed-form cut-off for
+  calibrated PDs, `cost_fp / (cost_fp + cost_fn)` = 1/16 = 0.0625, or bootstrap
+  the empirical minimum; report both.
+- **Generator realism:** add cures (defaults that return to current / prepay
+  with 0 loss) so the LGD cure stage is meaningful, and a data cutoff date so
+  recent vintages are genuinely right-censored (exercises 1.3).
+- **Fairness:** min DI fell to 0.677 at the honest threshold — feeds 5.6.
+- **Dependencies:** MLflow 3.x refuses the legacy `./mlruns` file store and
+  crashed training; `tracking.py` now uses SQLite (`mlflow.db`) and is truly
+  best-effort. Pin versions in 2.4.
+
+### Phase 1 summary (synthetic data, seed 42)
+
+| Metric | Before | After |
+|---|---|---|
+| Split train / valid / calib / test | 36,458 / – / 6,434 / 17,108 | 32,169 / 4,289 / 6,434 / 17,108 |
+| OOT Gini scorecard / challenger | 0.4498 / 0.4354 | 0.4483 / 0.4327 |
+| KS challenger | 0.3244 | 0.3209 |
+| Calibration max band error (challenger) | 0.0184 | 0.0169 |
+| Threshold (source) | 0.0620 (test — leak) | 0.0344 (calib, cross-fitted) |
+| Approval rate | 74.7% | 63.0% |
+| Approved-loan default rate | 2.82% | 2.39% |
+| Min disparate-impact ratio | 0.749 | 0.677 |
+| LGD: OOT mean predicted vs realized | 0.271 vs 0.382 | 0.387 vs 0.377 |
+| LGD MAE (OOT resolved defaults) | 0.135 | 0.095 |
+| EAD mean abs. % error | 1.38% | 0.46% |
+| Portfolio EL rate | 116 bps | 167 bps |
+| Tests | 24 | 52 (all pass) |
 
 ---
 
