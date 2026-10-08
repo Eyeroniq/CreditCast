@@ -1,22 +1,34 @@
 "use client";
+import { useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from "recharts";
 import { api, pct, money, moneyShort, num } from "@/lib/api";
-import { PageHead, Stat, Band, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap } from "@/components/ui";
-import { DECISION_LABELS } from "@/lib/labels";
+import { PageHead, Stat, useFetch, PageSkeleton, ErrorState, CardTitle } from "@/components/ui";
+import LoanTable, { EMPTY_FILTERS } from "@/components/LoanTable";
 
 const BAND_COLOR = { AAA: "#36d399", AA: "#36d399", A: "#5fcf9e", BBB: "#5b9cff", BB: "#fbbf24", B: "#fb6f84" };
+const SAMPLE = 1000;   // API cap (config api.portfolio_max_rows)
 
 export default function PortfolioPage() {
-  const { data, error, loading, retry } = useFetch(() => api.portfolio(300), []);
+  const { data, error, loading, retry } = useFetch(() => api.portfolio(SAMPLE), []);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   if (loading) return (<><Head /><PageSkeleton stats={4} charts={2} table label="Loading portfolio" /></>);
   if (error) return (<><Head /><ErrorState error={error} onRetry={retry} /></>);
 
   const bandData = Object.entries(data.band_distribution).map(([k, v]) => ({
     band: k, count: v, el: data.el_by_band[k] || 0,
   }));
-  const hist = data.pd_histogram.map((h) => ({ pd: (h.x * 100).toFixed(1), count: h.count }));
+  const step = data.pd_histogram.length > 1 ? data.pd_histogram[1].x - data.pd_histogram[0].x : 0.01;
+  const hist = data.pd_histogram.map((h) => ({ pd: (h.x * 100).toFixed(1), lo: h.x, hi: h.x + step, count: h.count }));
+
+  // Clicking a chart filters the table below (6.2.4); clicking again clears it.
+  const pickBand = (band) => setFilters((f) => ({ ...f, band: f.band === band ? "" : band }));
+  const pickPd = (bin) => setFilters((f) => ({
+    ...f, pdRange: f.pdRange && f.pdRange[0] === bin.lo ? null : [bin.lo, bin.hi],
+  }));
+  const dim = (on) => (on ? 1 : 0.35);
+  const scrollToTable = () => document.getElementById("loan-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
     <>
@@ -30,6 +42,9 @@ export default function PortfolioPage() {
           sub={`average default risk ${pct(data.mean_pd)}`} />
       </div>
 
+      <p className="small muted" style={{ margin: "0 0 10px" }}>
+        Tip: click a bar to filter the loan table below; click it again to clear.
+      </p>
       <div className="grid cols-2" style={{ marginBottom: 16 }}>
         <div className="card">
           <CardTitle info="risk_band">Loans per risk grade</CardTitle>
@@ -37,9 +52,13 @@ export default function PortfolioPage() {
             <BarChart data={bandData} margin={{ left: 4, right: 8 }}>
               <XAxis dataKey="band" stroke="#5c6b7e" />
               <YAxis stroke="#5c6b7e" />
-              <Tooltip formatter={(v) => num(v)} />
-              <Bar dataKey="count" radius={4}>
-                {bandData.map((d, i) => <Cell key={i} fill={BAND_COLOR[d.band] || "#5b9cff"} />)}
+              <Tooltip formatter={(v) => [num(v), "loans"]} labelFormatter={(l) => `Grade ${l} — click to filter`} />
+              <Bar dataKey="count" radius={4} cursor="pointer"
+                onClick={(d) => { pickBand(d.band); scrollToTable(); }}>
+                {bandData.map((d, i) => (
+                  <Cell key={i} fill={BAND_COLOR[d.band] || "#5b9cff"}
+                    fillOpacity={dim(!filters.band || filters.band === d.band)} />
+                ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -50,9 +69,13 @@ export default function PortfolioPage() {
             <BarChart data={bandData} margin={{ left: 14, right: 8 }}>
               <XAxis dataKey="band" stroke="#5c6b7e" />
               <YAxis stroke="#5c6b7e" tickFormatter={moneyShort} />
-              <Tooltip formatter={(v) => money(v)} />
-              <Bar dataKey="el" radius={4}>
-                {bandData.map((d, i) => <Cell key={i} fill={BAND_COLOR[d.band] || "#5b9cff"} />)}
+              <Tooltip formatter={(v) => [money(v), "expected loss"]} labelFormatter={(l) => `Grade ${l} — click to filter`} />
+              <Bar dataKey="el" radius={4} cursor="pointer"
+                onClick={(d) => { pickBand(d.band); scrollToTable(); }}>
+                {bandData.map((d, i) => (
+                  <Cell key={i} fill={BAND_COLOR[d.band] || "#5b9cff"}
+                    fillOpacity={dim(!filters.band || filters.band === d.band)} />
+                ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -63,43 +86,28 @@ export default function PortfolioPage() {
         <CardTitle info="pd">How default risk is spread across the book</CardTitle>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={hist} margin={{ left: 4, right: 8 }}>
-            <XAxis dataKey="pd" stroke="#5c6b7e" tickFormatter={(v) => `${v}%`}
-              interval={3} />
+            <XAxis dataKey="pd" stroke="#5c6b7e" tickFormatter={(v) => `${v}%`} interval={3} />
             <YAxis stroke="#5c6b7e" />
-            <Tooltip formatter={(v) => num(v)} labelFormatter={(l) => `PD ≈ ${l}%`} />
-            <Bar dataKey="count" fill="#5b9cff" radius={2} />
+            <Tooltip formatter={(v) => [num(v), "loans"]}
+              labelFormatter={(l) => `Default risk ≈ ${l}% — click to filter`} />
+            <Bar dataKey="count" radius={2} cursor="pointer"
+              onClick={(d) => { pickPd(d); scrollToTable(); }}>
+              {hist.map((h, i) => (
+                <Cell key={i} fill="#5b9cff"
+                  fillOpacity={dim(!filters.pdRange || filters.pdRange[0] === h.lo)} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="card">
+      <div className="card" id="loan-table">
         <CardTitle info="el">Loans with the highest expected loss</CardTitle>
-        <TableWrap>
-        <table>
-          <thead><tr>
-            <th>Loan</th><th>Originated</th><th className="num">Default risk</th><th className="num">Score</th>
-            <th>Grade</th><th className="num">Loss if default</th><th className="num">Owed</th>
-            <th className="num">Expected loss</th><th>Decision</th>
-          </tr></thead>
-          <tbody>
-            {data.sample.slice(0, 18).map((r) => (
-              <tr key={r.loan_id}>
-                <td className="mono">{r.loan_id}</td>
-                <td className="mono">{r.vintage}</td>
-                <td className="num">{pct(r.pd_champion)}</td>
-                <td className="num">{r.credit_score.toFixed(0)}</td>
-                <td><Band grade={r.risk_band} /></td>
-                <td className="num">{pct(r.lgd_hat)}</td>
-                <td className="num">{moneyShort(r.ead)}</td>
-                <td className="num">{money(r.expected_loss)}</td>
-                <td className={r.decision === "approve" ? "ok small" : "bad small"}>
-                  {r.decision === "approve" ? "✓ " : "✗ "}{DECISION_LABELS[r.decision] || r.decision}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </TableWrap>
+        <p className="small muted" style={{ marginTop: -6 }}>
+          The {num(data.sample.length)} loans with the largest expected loss in the book of {num(data.n_loans)}.
+          Search, sort any column, filter, and export what you see.
+        </p>
+        <LoanTable rows={data.sample} filters={filters} onFilters={setFilters} />
       </div>
     </>
   );
