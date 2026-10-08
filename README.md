@@ -1,8 +1,8 @@
-# CreditCast · `BONITAS`
+# CreditCast
 
 [![CI](https://github.com/Eyeroniq/CreditCast/actions/workflows/ci.yml/badge.svg)](https://github.com/Eyeroniq/CreditCast/actions/workflows/ci.yml)
 
-**🌐 Live demo: https://huggingface.co/spaces/sidnov6/CreditForge**
+**🌐 Live: [dhyyraj.in](https://dhyyraj.in)** *(launching soon)*
 
 **🗺️ Improvement plan: see [ROADMAP.md](ROADMAP.md)**
 
@@ -33,6 +33,9 @@ python -m creditcast.cli validate       # Gini/KS/calibration/PSI -> report
 python -m creditcast.cli all            # the whole lifecycle end-to-end
 ```
 
+Run the tests with `python -m pytest`. CI runs the tests, the full lifecycle
+with its performance gates, and the dashboard build on every push and PR.
+
 ## Deploy (single container)
 
 The whole app ships as one Docker image: FastAPI serves the API under `/api` and
@@ -41,11 +44,17 @@ trained and baked at build time, so the runtime image only serves.
 
 ```bash
 docker build -t creditcast .
-docker run -p 7860:7860 creditcast        # open http://localhost:7860
+docker run -p 8000:8000 creditcast        # open http://localhost:8000
 ```
 
-Deployed free on Hugging Face Spaces (Docker SDK) — see
-[`deploy/push_to_hf.py`](deploy/push_to_hf.py). Live: the link at the top.
+**Production:** self-hosted at **[dhyyraj.in](https://dhyyraj.in)** with Docker
+Compose and Caddy (automatic HTTPS):
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build
+```
+
+Server, DNS and secret setup: [`deploy/README.md`](deploy/README.md).
 
 ## Architecture (lifecycle, not an agent graph)
 
@@ -79,8 +88,9 @@ come from the models, never the LLM.
   rate-limit), specialists, orchestrator. Endpoints: `/api/agent/team`, `/api/agent/chat`.
 - Frontend: the **Risk Copilot** screen — chat, the visible team (lights up which
   specialists fired), live charts, and the agent/tool trace.
-- Free LLM backend via **Groq**. Set `GROQ_API_KEY` (env locally, Space secret in
-  prod). Everything else runs without it.
+- Free LLM backend via **Groq**. Set `GROQ_API_KEY` (an environment variable
+  locally; the server's `.env` file in production, see `deploy/README.md`).
+  Everything else runs without it.
 
 ## Why this is bank-credible, not a Kaggle notebook
 The model is ~20% of the work. The 80% that proves maturity is the scaffolding:
@@ -99,9 +109,12 @@ creditcast/
   monitoring/           # scheduled PSI drift
   eval/                 # CI performance gates (Gini/cal/PSI thresholds)
   agents/               # Risk Copilot: tools, Groq loop, specialists, orchestrator
+  features.py           # engineered features shared by pipeline + serving
 app/api/                # FastAPI scoring service (+ /api/agent/*)
 app/dashboard/          # Next.js Risk Cockpit (6 screens, incl. Risk Copilot)
-tests/                  # transform + EL-math + leakage + agent-tool tests
+deploy/                 # docker-compose + Caddy for dhyyraj.in
+tests/                  # labels, leakage, features, EAD, threshold, explain, agents
+.github/workflows/      # CI
 ```
 
 The leakage discipline is the keystone: features use only information available

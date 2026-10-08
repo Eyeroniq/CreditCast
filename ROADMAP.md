@@ -63,7 +63,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 
 | ID | Task | Status | Date | Notes |
 |----|------|--------|------|-------|
-| 0 | Rename CreditForge → CreditCast (code) | [x] | 2026-10-08 | Manual steps 0.M1–0.M4 still open |
+| 0 | Rename CreditForge → CreditCast (code) | [x] | 2026-10-08 | Open: 0.M2 host at dhyyraj.in, 0.M3 optional folder rename |
 | 1.1 | Threshold chosen on calib, not test | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
 | 1.2 | Separate valid (early stop) and calib slices | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
 | 1.3 | Right-censoring in default label | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
@@ -128,17 +128,19 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 - Dashboard: `package.json` name `creditcast-cockpit`, sidebar brand, page
   title; API title "CreditCast Scoring API"; model card; validation report
   HTML; MLflow experiment `creditcast`; Copilot agent prompts.
-- `deploy/push_to_hf.py` now defaults to Space name `CreditCast`.
-- The tag `BONITAS` was kept as a sub-brand.
+- The `BONITAS` sub-brand was removed everywhere (2026-10-08).
+- Hosting moved from Hugging Face Spaces to **self-hosting at https://dhyyraj.in**:
+  HF deploy files removed; `deploy/docker-compose.yml` + `deploy/Caddyfile`
+  (automatic HTTPS) + `deploy/README.md` added; container port 7860 → 8000.
 
 **Manual steps (outside the code):**
 
 | ID | Step | Command / action |
 |----|------|------------------|
-| 0.M1 | Rename GitHub repo | GitHub → Settings → rename `CreditForge` → `CreditCast`; then `git remote set-url origin https://github.com/sidnov6/CreditCast.git` |
-| 0.M2 | New HF Space | `python deploy/push_to_hf.py` → creates `sidnov6/CreditCast`; then update the live-demo link in `README.md` and the repo link in `deploy/hf/README.md` (both still point at the old names on purpose) |
+| 0.M1 | New GitHub repo | ✅ Done — https://github.com/Eyeroniq/CreditCast (private), remote `eyeroniq`; the old `origin` (sidnov6/CreditForge) is left untouched |
+| 0.M2 | Host at dhyyraj.in | Point DNS (A records for `@` and `www`) at a Docker server, add `.env` with `GROQ_API_KEY`, run `docker compose -f deploy/docker-compose.yml up -d --build` (steps in `deploy/README.md`); then drop "launching soon" from the README |
 | 0.M3 | Rename local folder | `CreditCast/CreditForge/` → `CreditCast/CreditCast/` (optional) |
-| 0.M4 | Refresh lockfile | `cd app/dashboard && npm install` |
+| 0.M4 | Refresh lockfile | ✅ Done — `npm ci` + build pass locally and in CI |
 
 ---
 
@@ -902,7 +904,7 @@ Phase 0 (done)
 
 | Phase | Effort | Impact | Notes |
 |-------|--------|--------|-------|
-| 0 Rename | done | branding | manual steps 0.M1–0.M4 left |
+| 0 Rename | done | branding | 0.M2 (host at dhyyraj.in) and optional 0.M3 left |
 | 1 Methodology | ~1 week | ★★★★★ | metrics become honest |
 | 2 Tests / CI | ~1 week | ★★★★ | 2.1 can start right away |
 | 3 API hardening | 2–3 days | ★★★ | needed before sharing the demo widely |

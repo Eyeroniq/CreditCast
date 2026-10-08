@@ -16,7 +16,7 @@ import json
 
 import typer
 
-app = typer.Typer(add_completion=False, help="CreditCast / BONITAS lifecycle CLI")
+app = typer.Typer(add_completion=False, help="CreditCast lifecycle CLI")
 
 
 @app.command()
