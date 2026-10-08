@@ -3,9 +3,20 @@
 // NEXT_PUBLIC_API_URL=http://localhost:8001 and it becomes that host + "/api".
 export const API = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
 
+// Prefer the API's own message (`detail`): rate limits (429), validation
+// errors (422) and request IDs on 500s are written for people to read.
+async function errorFrom(r, label) {
+  const body = await r.json().catch(() => ({}));
+  const d = body.detail;
+  const msg = Array.isArray(d)                    // pydantic 422 list
+    ? d.map((e) => `${(e.loc || []).slice(-1)[0]}: ${e.msg}`).join("; ")
+    : d;
+  return new Error(msg || `${label} -> HTTP ${r.status}`);
+}
+
 async function get(path) {
   const r = await fetch(`${API}${path}`, { cache: "no-store" });
-  if (!r.ok) throw new Error(`${path} -> HTTP ${r.status}`);
+  if (!r.ok) throw await errorFrom(r, path);
   return r.json();
 }
 
@@ -23,9 +34,8 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ question }),
     });
-    const body = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(body.detail || `agent -> HTTP ${r.status}`);
-    return body;
+    if (!r.ok) throw await errorFrom(r, "agent");
+    return r.json();
   },
   score: async (applicant) => {
     const r = await fetch(`${API}/score`, {
@@ -33,7 +43,7 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(applicant),
     });
-    if (!r.ok) throw new Error(`score -> HTTP ${r.status}`);
+    if (!r.ok) throw await errorFrom(r, "score");
     return r.json();
   },
 };
