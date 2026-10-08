@@ -53,5 +53,9 @@ ENV PYTHONPATH=/app \
     PORT=8000
 EXPOSE 8000
 
+# Healthy = every model artifact exists and loads (GET /api/ready).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/api/ready' % os.environ.get('PORT', '8000'), timeout=8)" || exit 1
+
 # Serves API + cockpit on one port; put a TLS reverse proxy in front (see deploy/).
 CMD ["sh", "-c", "uvicorn app.api.main:app --host 0.0.0.0 --port ${PORT}"]

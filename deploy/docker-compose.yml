@@ -20,6 +20,11 @@ services:
       # Trust X-Forwarded-For from the proxy so rate limits are per real
       # client IP (the app port is only reachable by caddy, never public).
       FORWARDED_ALLOW_IPS: "*"
+      CC_LOG_DIR: /app/logs      # decision audit trail (decisions.jsonl)
+      # CC_API_KEY: set in ../.env only for an API-only deployment (it would
+      # also block the public cockpit's scoring + Copilot).
+    volumes:
+      - decision_logs:/app/logs  # keep the audit trail across rebuilds
     expose:
       - "8000"                   # only reachable by caddy, not the internet
 
@@ -27,7 +32,8 @@ services:
     image: caddy:2.8
     restart: unless-stopped
     depends_on:
-      - app
+      app:
+        condition: service_healthy   # wait for /api/ready (models loaded)
     ports:
       - "80:80"
       - "443:443"
@@ -38,5 +44,6 @@ services:
       - caddy_config:/config
 
 volumes:
+  decision_logs:
   caddy_data:
   caddy_config:
