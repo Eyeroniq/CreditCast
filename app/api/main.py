@@ -228,6 +228,12 @@ def governance():
     return _artifact("governance_report.json")
 
 
+@router.get("/threshold-curve")
+def threshold_curve():
+    """Approval rate / expected loss / fairness at every candidate cut-off."""
+    return _artifact("threshold_curve.json")
+
+
 @router.get("/monitoring")
 def monitoring():
     return _artifact("monitoring_report.json")
