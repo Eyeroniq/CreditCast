@@ -72,3 +72,44 @@ def test_champion_column_matches_config():
     test = pd.read_parquet(ART / "test_scored.parquet")
     champ = f"pd_{cfg.decision.champion}"
     np.testing.assert_allclose(test["pd_champion"], test[champ])
+
+
+# ---- 6.2.5 approval-limit curve ---------------------------------------------------
+def _toy_book():
+    rng = np.random.default_rng(3)
+    n = 4000
+    pd_ = rng.beta(1.2, 20, n)
+    return pd.DataFrame({
+        "pd_champion": pd_,
+        "default_12m": (rng.random(n) < pd_).astype(int),
+        "expected_loss": pd_ * 0.3 * 200_000,
+        "ead": np.full(n, 200_000.0),
+        "borrower_race": rng.choice(["White", "Black", "Asian"], n),
+    })
+
+
+def test_threshold_curve_is_monotone_and_consistent():
+    from creditcast.governance.decision import decision_summary, threshold_curve
+    cfg = load_config()
+    book = _toy_book()
+    curve = threshold_curve(book, "pd_champion", cfg, grid=[0.02, 0.05, 0.1, 0.2])
+    appr = [p["approval_rate"] for p in curve]
+    el = [p["expected_loss_approved"] for p in curve]
+    assert appr == sorted(appr) and el == sorted(el)       # looser limit: more approvals, more loss
+    for p in curve:
+        assert 0 <= p["di_min"] <= 1 + 1e-9
+        assert set(p["group_approval"]) == {"White", "Black", "Asian"}
+        a = book["pd_champion"] <= p["threshold"]
+        assert p["approval_rate"] == pytest.approx(a.mean())
+        assert p["expected_loss_approved"] == pytest.approx(book.loc[a, "expected_loss"].sum())
+
+
+@needs_artifacts
+def test_curve_artifact_matches_governance_at_policy_threshold():
+    gov = json.loads((ART / "governance_report.json").read_text())
+    curve = json.loads((ART / "threshold_curve.json").read_text())
+    assert curve["policy_threshold"] == pytest.approx(gov["decision"]["threshold"])
+    at = min(curve["points"], key=lambda p: abs(p["threshold"] - curve["policy_threshold"]))
+    if abs(at["threshold"] - curve["policy_threshold"]) < 1e-9:
+        assert at["approval_rate"] == pytest.approx(gov["decision"]["approval_rate"])
+        assert at["di_min"] == pytest.approx(gov["fairness"]["di_ratio_min_observed"])

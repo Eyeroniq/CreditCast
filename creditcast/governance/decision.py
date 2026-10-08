@@ -93,3 +93,46 @@ def decision_summary(scored: pd.DataFrame, pd_col: str, threshold: float,
         "declined_default_rate": float(scored.loc[~approve, "default_12m"].mean()),
         "band_distribution": {k: int(v) for k, v in band_counts.items()},
     }
+
+
+def threshold_curve(scored: pd.DataFrame, pd_col: str, cfg: Config | None = None,
+                    grid=None) -> list[dict]:
+    """What-if over the approval cut-off (ROADMAP 6.2.5), for the cockpit slider.
+
+    For each candidate threshold: approval rate, default rate among approved
+    loans, share of all defaults that would be approved, expected loss of the
+    approved book (money and bps of its exposure), and fairness — approval rate
+    per protected group and the minimum disparate-impact ratio vs the
+    privileged group. Descriptive only: the policy threshold is still chosen on
+    the calibration slice, never on these outcomes.
+    """
+    cfg = cfg or load_config()
+    grid = np.round(np.arange(0.005, 0.2501, 0.0025), 4) if grid is None else np.asarray(grid)
+    p = scored[pd_col].to_numpy(float)
+    y = scored["default_12m"].to_numpy(int)
+    el = scored["expected_loss"].to_numpy(float)
+    ead = scored["ead"].to_numpy(float)
+    attr = str(cfg.fairness.protected_attribute)
+    groups = scored[attr].astype(str).to_numpy()
+    names = sorted(set(groups))
+    priv = str(cfg.fairness.privileged_group)
+    n_def = max(int(y.sum()), 1)
+
+    out = []
+    for thr in grid:
+        a = p <= thr
+        n_a = int(a.sum())
+        by_group = {g: float(a[groups == g].mean()) for g in names}
+        ref = by_group.get(priv) or max(by_group.values()) or 1.0
+        di = {g: (r / ref if ref else 0.0) for g, r in by_group.items()}
+        out.append({
+            "threshold": float(thr),
+            "approval_rate": float(a.mean()),
+            "approved_default_rate": float(y[a].mean()) if n_a else 0.0,
+            "defaults_approved_share": float(y[a].sum() / n_def),
+            "expected_loss_approved": float(el[a].sum()),
+            "el_bps_approved": float(el[a].sum() / ead[a].sum() * 1e4) if n_a else 0.0,
+            "di_min": float(min(di.values())),
+            "group_approval": by_group,
+        })
+    return out

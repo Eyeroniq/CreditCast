@@ -79,6 +79,14 @@ def build_governance(cfg: Config | None = None) -> dict:
         "adverse_action_example": example,
     }
     (art / "governance_report.json").write_text(json.dumps(report, indent=2, default=float))
+
+    # Approval-limit what-if curve for the cockpit slider (6.2.5)
+    curve = {"policy_threshold": float(thr),
+             "alternatives": thr_alternatives,
+             "di_floor": float(cfg.fairness.di_ratio_min),
+             "privileged_group": str(cfg.fairness.privileged_group),
+             "points": decision.threshold_curve(scored, CHAMPION_PD, cfg)}
+    (art / "threshold_curve.json").write_text(json.dumps(curve, default=float))
     _write_model_card(report, train_metrics, validation, cfg)
     return report
 
