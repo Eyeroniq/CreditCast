@@ -18,8 +18,8 @@ const fmt = (v, kind) => {
   return typeof v === "number" ? (Number.isInteger(v) ? v.toLocaleString() : v.toFixed(4)) : v;
 };
 
-const AXIS = "#5c6b7e";
-const GREEN = "#36d399", RED = "#fb6f84", ACCENT = "#5b9cff";
+const AXIS = "var(--muted-2)";
+const GREEN = "var(--green)", RED = "var(--red)", ACCENT = "var(--accent)";
 
 export default function AgentChart({ spec }) {
   if (!spec) return null;
@@ -37,7 +37,7 @@ export default function AgentChart({ spec }) {
     return (
       <Frame>
         <BarChart data={spec.data} margin={{ left: 10, right: 12, top: 6 }}>
-          <CartesianGrid stroke="#1d2530" vertical={false} />
+          <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis dataKey={spec.x} stroke={AXIS} tick={{ fontSize: 11 }} />
           <YAxis stroke={AXIS} tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v, vf)} width={64} />
           <Tooltip formatter={(v) => fmt(v, vf)} />
@@ -63,7 +63,7 @@ export default function AgentChart({ spec }) {
           <XAxis type="number" stroke={AXIS} tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v, vf)} />
           <YAxis type="category" dataKey="name" width={130} stroke={AXIS} tick={{ fontSize: 11 }} />
           <Tooltip formatter={(v) => fmt(v, vf)} />
-          {spec.diverging && <ReferenceLine x={0} stroke="#2b3645" />}
+          {spec.diverging && <ReferenceLine x={0} stroke="var(--border-bright)" />}
           <Bar dataKey="value" radius={3}>
             {spec.data.map((d, i) => (
               <Cell key={i} fill={spec.diverging ? (d.value > 0 ? RED : GREEN) : ACCENT} />
@@ -78,7 +78,7 @@ export default function AgentChart({ spec }) {
     return (
       <Frame>
         <LineChart data={spec.data} margin={{ left: 10, right: 12, top: 6 }}>
-          <CartesianGrid stroke="#1d2530" />
+          <CartesianGrid stroke="var(--border)" />
           <XAxis dataKey={spec.x} stroke={AXIS} tick={{ fontSize: 11 }} />
           <YAxis stroke={AXIS} tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v, vf)} width={64} />
           <Tooltip formatter={(v) => fmt(v, vf)} />
@@ -100,7 +100,7 @@ export default function AgentChart({ spec }) {
     return (
       <Frame>
         <ScatterChart margin={{ left: 10, right: 12, top: 6 }}>
-          <CartesianGrid stroke="#1d2530" />
+          <CartesianGrid stroke="var(--border)" />
           <XAxis type="number" dataKey="x" stroke={AXIS} domain={d}
             tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v, vf)} name={spec.xLabel} />
           <YAxis type="number" dataKey="y" stroke={AXIS} domain={d}
@@ -108,7 +108,7 @@ export default function AgentChart({ spec }) {
           <Tooltip formatter={(v) => fmt(v, vf)} />
           {spec.diagonal && (
             <ReferenceLine segment={[{ x: d[0], y: d[0] }, { x: d[1], y: d[1] }]}
-              stroke="#2b3645" strokeDasharray="4 4" />
+              stroke="var(--border-bright)" strokeDasharray="4 4" />
           )}
           <Scatter data={spec.data} fill={ACCENT} />
         </ScatterChart>

@@ -86,14 +86,14 @@ export default function ValidationPage() {
           <CardTitle info="calibration">Predicted vs actual default rate</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
             <ScatterChart margin={{ left: 8, right: 12, top: 8 }}>
-              <CartesianGrid stroke="#1d2530" />
-              <XAxis type="number" dataKey="predicted" name="predicted" stroke="#5c6b7e"
+              <CartesianGrid stroke="var(--border)" />
+              <XAxis type="number" dataKey="predicted" name="predicted" stroke="var(--muted-2)"
                 domain={[0, maxRel]} tickFormatter={(v) => pct(v, 0)} />
-              <YAxis type="number" dataKey="observed" name="observed" stroke="#5c6b7e"
+              <YAxis type="number" dataKey="observed" name="observed" stroke="var(--muted-2)"
                 domain={[0, maxRel]} tickFormatter={(v) => pct(v, 0)} />
               <Tooltip formatter={(v) => pct(v)} />
-              <ReferenceLine segment={[{ x: 0, y: 0 }, { x: maxRel, y: maxRel }]} stroke="#2b3645" strokeDasharray="4 4" />
-              <Scatter data={rel} fill="#5b9cff" />
+              <ReferenceLine segment={[{ x: 0, y: 0 }, { x: maxRel, y: maxRel }]} stroke="var(--border-bright)" strokeDasharray="4 4" />
+              <Scatter data={rel} fill="var(--accent)" />
             </ScatterChart>
           </ResponsiveContainer>
         </div>
@@ -101,11 +101,11 @@ export default function ValidationPage() {
           <CardTitle info="gains">Defaults caught, riskiest loans first</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={gains} margin={{ left: 8, right: 12, top: 8 }}>
-              <CartesianGrid stroke="#1d2530" />
-              <XAxis dataKey="band" stroke="#5c6b7e" label={{ value: "risk decile", position: "insideBottom", offset: -2, fill: "#5c6b7e", fontSize: 11 }} />
-              <YAxis stroke="#5c6b7e" tickFormatter={(v) => pct(v, 0)} />
+              <CartesianGrid stroke="var(--border)" />
+              <XAxis dataKey="band" stroke="var(--muted-2)" label={{ value: "risk decile", position: "insideBottom", offset: -2, fill: "var(--muted-2)", fontSize: 11 }} />
+              <YAxis stroke="var(--muted-2)" tickFormatter={(v) => pct(v, 0)} />
               <Tooltip formatter={(v) => pct(v)} />
-              <Line type="monotone" dataKey="capture" stroke="#36d399" strokeWidth={2} dot={false}
+              <Line type="monotone" dataKey="capture" stroke="var(--green)" strokeWidth={2} dot={false}
                 name="cumulative defaults captured" />
             </LineChart>
           </ResponsiveContainer>

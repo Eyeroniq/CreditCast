@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { PageHead, Stat, Pill, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
 import { featureLabel } from "@/lib/labels";
 
-const psiColor = (s) => (s === "stable" ? "#36d399" : s === "watch" ? "#fbbf24" : "#fb6f84");
+const psiColor = (s) => (s === "stable" ? "var(--green)" : s === "watch" ? "var(--amber)" : "var(--red)");
 
 export default function MonitoringPage() {
   const v = useFetch(() => api.validation(), []);
@@ -47,11 +47,11 @@ export default function MonitoringPage() {
         <CardTitle info="psi">Score shift by origination month</CardTitle>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={psiByVintage} margin={{ left: 4, right: 8 }}>
-            <XAxis dataKey="vintage" stroke="#5c6b7e" interval={2} angle={-30} textAnchor="end" height={50} />
-            <YAxis stroke="#5c6b7e" />
+            <XAxis dataKey="vintage" stroke="var(--muted-2)" interval={2} angle={-30} textAnchor="end" height={50} />
+            <YAxis stroke="var(--muted-2)" />
             <Tooltip formatter={(val) => val.toFixed(4)} />
-            <ReferenceLine y={t.psi_watch} stroke="#fbbf24" strokeDasharray="4 4" label={{ value: "watch", fill: "#fbbf24", fontSize: 10, position: "right" }} />
-            <ReferenceLine y={t.psi_unstable} stroke="#fb6f84" strokeDasharray="4 4" label={{ value: "unstable", fill: "#fb6f84", fontSize: 10, position: "right" }} />
+            <ReferenceLine y={t.psi_watch} stroke="var(--amber)" strokeDasharray="4 4" label={{ value: "watch", fill: "var(--amber)", fontSize: 10, position: "right" }} />
+            <ReferenceLine y={t.psi_unstable} stroke="var(--red)" strokeDasharray="4 4" label={{ value: "unstable", fill: "var(--red)", fontSize: 10, position: "right" }} />
             <Bar dataKey="psi" radius={3}>
               {psiByVintage.map((d, i) => <Cell key={i} fill={psiColor(d.status)} />)}
             </Bar>
