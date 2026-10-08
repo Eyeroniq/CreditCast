@@ -199,6 +199,23 @@ details.more summary { cursor: pointer; color: var(--muted); font-size: 12px; ma
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
+/* ---- loan table (6.2.6) ---------------------------------------------------- */
+.table-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.table-tools input[type="search"] { flex: 1 1 180px; font-family: var(--sans); }
+.table-tools select { flex: 0 1 auto; }
+.th-sort {
+  background: none; border: none; color: inherit; font: inherit; text-transform: inherit;
+  letter-spacing: inherit; padding: 0; cursor: pointer;
+}
+.th-sort:hover { color: var(--text); }
+th[aria-sort="ascending"] .th-sort, th[aria-sort="descending"] .th-sort { color: var(--text); }
+.loan-table tbody tr:hover { background: var(--panel-2); }
+.loan-table th, .loan-table td { white-space: nowrap; }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+         flex-wrap: wrap; margin-top: 12px; }
+.pager select { padding: 4px 8px; margin-left: 6px; }
+button.chip:disabled { opacity: .45; cursor: default; }
+
 /* ---- glossary -------------------------------------------------------------- */
 .glossary-group { margin-bottom: 22px; }
 .glossary-group h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin: 0 0 10px; }
