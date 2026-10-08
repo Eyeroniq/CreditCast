@@ -1,18 +1,26 @@
 """Silver layer — cleaning + the leakage-safe point-in-time default flag.
 
-This is the keystone of the whole platform. Two disciplines are enforced here:
+This is the keystone of the whole platform. Disciplines enforced here:
 
 1. **Point-in-time, forward-looking target.** The observation date is loan
    origination. The 12-month default flag looks at performance rows strictly
    inside the forward window (origination, origination + 12 months]. A loan
-   defaults if it hits 90+ DPD (>= 3 months delinquent) or an REO disposition
-   in that window. Nothing after the window can influence the label, and no
-   performance information enters the feature set at all.
+   defaults if it hits 90+ DPD (>= 3 months delinquent), is REO-acquired, or
+   exits via a default-type zero-balance code in that window. Nothing after
+   the window can influence the label, and no performance information enters
+   the feature set at all.
 
-2. **Data-quality gates.** Malformed/implausible origination rows are rejected
+2. **Right-censoring.** A "no default" label is only trusted when the loan was
+   actually watched for the whole window, or left the book cleanly (prepaid),
+   which means it can no longer default. Loans whose history simply runs out
+   early are censored (dropped, or kept with `label_complete = 0`).
+
+3. **Resolved-loss LGD.** Realized loss is taken from the loan's terminal
+   disposition within a longer *workout* window after default. Defaults that
+   are not yet resolved get `resolved = 0` and no LGD (never a fake 0% loss).
+
+4. **Data-quality gates.** Malformed/implausible origination rows are rejected
    before they can poison training (Part 10.6).
-
-The realized loss + exposure-at-default are also carried through for LGD.
 DuckDB does the heavy lifting straight off the Bronze parquet (no server).
 """
 from __future__ import annotations
@@ -43,6 +51,9 @@ def build_silver(cfg: Config | None = None) -> Path:
 
     horizon = int(cfg.target.observation_horizon_months)
     dpd_months = int(cfg.target.default_dpd_threshold) // 30  # 90 days -> 3 months
+    workout = int(cfg.lgd.workout_window_months)
+    default_codes = _sql_list(cfg.target.default_zb_codes)
+    prepay_codes = _sql_list(cfg.target.prepay_zb_codes)
 
     orig_glob = str(bronze / "origination" / "*.parquet")
     perf_glob = str(bronze / "performance" / "*.parquet")
@@ -62,6 +73,7 @@ def build_silver(cfg: Config | None = None) -> Path:
             p.monthly_reporting_period,
             midx(p.monthly_reporting_period)              AS rep_idx,
             TRY_CAST(p.current_loan_delinquency_status AS INT) AS dpd_months,
+            (p.current_loan_delinquency_status = 'RA')    AS reo_acquired,
             p.zero_balance_code,
             p.current_upb,
             p.net_loss
@@ -74,44 +86,83 @@ def build_silver(cfg: Config | None = None) -> Path:
         FROM read_parquet('{orig_glob}');
     """)
 
-    # For each loan: did a default event occur in (obs, obs+horizon]? when? loss?
+    # The forward window (obs, obs+horizon]: default events and clean exits.
+    con.execute(f"""
+        CREATE TEMP TABLE win AS
+        SELECT e.loan_id, e.rep_idx, e.zero_balance_code, e.current_upb,
+               (e.dpd_months >= {dpd_months}
+                OR e.reo_acquired
+                OR e.zero_balance_code IN ({default_codes})) AS is_def_event,
+               (e.zero_balance_code IN ({prepay_codes}))    AS is_clean_exit
+        FROM perf_events e
+        JOIN orig o ON e.loan_id = o.loan_id
+        WHERE e.rep_idx > o.vint_idx
+          AND e.rep_idx <= o.vint_idx + {horizon};
+    """)
+    # Per loan: months observed, clean exit?, first default month.
+    con.execute("""
+        CREATE TEMP TABLE obs AS
+        SELECT loan_id,
+               COUNT(DISTINCT rep_idx)                                AS months_observed,
+               BOOL_OR(COALESCE(is_clean_exit, FALSE))                AS exited_clean,
+               MIN(CASE WHEN COALESCE(is_def_event, FALSE) THEN rep_idx END) AS def_idx
+        FROM win GROUP BY loan_id;
+    """)
+    # Exposure at default = current balance at the first default month.
+    # Loss = net loss on the first terminal disposition inside the workout
+    # window [def_idx, def_idx + workout]; a prepay after default is a cure (0).
     con.execute(f"""
         CREATE TEMP TABLE dflt AS
-        WITH win AS (
-            SELECT e.loan_id, e.rep_idx, e.zero_balance_code,
-                   e.current_upb, e.net_loss,
-                   (e.dpd_months >= {dpd_months} OR e.zero_balance_code = '09') AS is_def_event
-            FROM perf_events e
-            JOIN orig o ON e.loan_id = o.loan_id
-            WHERE e.rep_idx > o.vint_idx
-              AND e.rep_idx <= o.vint_idx + {horizon}
+        WITH ead AS (
+            SELECT w.loan_id, ANY_VALUE(w.current_upb) AS ead
+            FROM win w JOIN obs b ON w.loan_id = b.loan_id AND w.rep_idx = b.def_idx
+            GROUP BY w.loan_id
         ),
-        first_def AS (
-            SELECT loan_id, MIN(rep_idx) AS def_idx
-            FROM win WHERE is_def_event GROUP BY loan_id
+        resolution AS (
+            SELECT e.loan_id,
+                   ARG_MIN(CASE WHEN e.zero_balance_code IN ({prepay_codes})
+                                THEN 0.0 ELSE COALESCE(e.net_loss, 0.0) END,
+                           e.rep_idx) AS net_loss
+            FROM perf_events e JOIN obs b ON e.loan_id = b.loan_id
+            WHERE b.def_idx IS NOT NULL
+              AND e.rep_idx >= b.def_idx
+              AND e.rep_idx <= b.def_idx + {workout}
+              AND (e.zero_balance_code IN ({default_codes})
+                   OR e.zero_balance_code IN ({prepay_codes}))
+            GROUP BY e.loan_id
         )
-        SELECT
-            f.loan_id,
-            f.def_idx,
-            -- exposure at default = current balance at the first default month
-            (SELECT w.current_upb FROM win w
-              WHERE w.loan_id = f.loan_id AND w.rep_idx = f.def_idx LIMIT 1) AS ead,
-            -- realized loss from the REO disposition row, if any, within window
-            (SELECT MAX(w.net_loss) FROM win w WHERE w.loan_id = f.loan_id) AS net_loss
-        FROM first_def f;
+        SELECT b.loan_id, b.def_idx, ead.ead, r.net_loss,
+               (r.loan_id IS NOT NULL) AS resolved
+        FROM obs b
+        LEFT JOIN ead ON b.loan_id = ead.loan_id
+        LEFT JOIN resolution r ON b.loan_id = r.loan_id
+        WHERE b.def_idx IS NOT NULL;
     """)
 
-    silver_df = con.execute("""
+    silver_df = con.execute(f"""
         SELECT
             o.* EXCLUDE (vint_idx),
             CASE WHEN d.loan_id IS NOT NULL THEN 1 ELSE 0 END AS default_12m,
+            COALESCE(b.months_observed, 0)                    AS months_observed,
+            CASE WHEN d.loan_id IS NOT NULL
+                   OR COALESCE(b.months_observed, 0) >= {horizon}
+                   OR COALESCE(b.exited_clean, FALSE)
+                 THEN 1 ELSE 0 END                            AS label_complete,
             d.ead,
-            d.net_loss
+            d.net_loss,
+            CASE WHEN d.resolved THEN 1 ELSE 0 END            AS resolved
         FROM orig o
+        LEFT JOIN obs b  ON o.loan_id = b.loan_id
         LEFT JOIN dflt d ON o.loan_id = d.loan_id
         ORDER BY o.loan_id;
     """).df()
     con.close()
+
+    # ---- right-censoring: only trust labels from a complete window -----------
+    n_in = len(silver_df)
+    n_censored = int((silver_df["label_complete"] == 0).sum())
+    if str(cfg.target.censoring) == "drop":
+        silver_df = silver_df[silver_df["label_complete"] == 1].reset_index(drop=True)
 
     # ---- data-quality gate: reject implausible rows before they poison training
     before = len(silver_df)
@@ -125,9 +176,19 @@ def build_silver(cfg: Config | None = None) -> Path:
     silver_df.to_parquet(out, index=False)
 
     rate = silver_df["default_12m"].mean()
-    print(f"[silver] {before:,} loans in, {rejected:,} rejected by quality gate, "
-          f"{len(silver_df):,} out | 12m default rate {rate:.2%}")
+    n_def = int(silver_df["default_12m"].sum())
+    n_res = int(silver_df["resolved"].sum())
+    print(f"[silver] {n_in:,} loans in, {n_censored:,} censored (incomplete "
+          f"{horizon}m window, policy={cfg.target.censoring}), {rejected:,} rejected "
+          f"by quality gate, {len(silver_df):,} out | 12m default rate {rate:.2%}")
+    print(f"[silver] {n_res:,}/{n_def:,} defaults resolved within the "
+          f"{workout}m workout window (LGD population)")
     return out
+
+
+def _sql_list(codes) -> str:
+    """Render config codes as a SQL string list, e.g. '02', '09'."""
+    return ", ".join(f"'{c}'" for c in codes)
 
 
 if __name__ == "__main__":

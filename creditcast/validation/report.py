@@ -64,7 +64,9 @@ def build_report(cfg: Config | None = None) -> dict:
         "stamp": run_stamp(),
         "n_oot": int(len(scored)),
         "oot_default_rate": float(y.mean()),
+        "champion": str(cfg.decision.champion),
         "models": models,
+        "loss_components": loss_component_accuracy(scored),
         "benchmark": benchmark,
         "stability": stability,
         "thresholds": {
@@ -79,6 +81,26 @@ def build_report(cfg: Config | None = None) -> dict:
     out_json.write_text(json.dumps(report, indent=2, default=float))
     _write_html(report, cfg.path("reports") / "validation_report.html")
     return report
+
+
+def loss_component_accuracy(scored: pd.DataFrame) -> dict:
+    """LGD and EAD accuracy on OOT defaults (realized values are observed only
+    there; LGD only on *resolved* defaults)."""
+    d = scored[scored["default_12m"] == 1]
+    e = d[d["ead_realized"].fillna(0) > 0]
+    l = d[d["lgd_realized"].notna()]
+    out = {"n_defaults": int(len(d)), "n_ead_observed": int(len(e)),
+           "n_lgd_resolved": int(len(l))}
+    if len(e):
+        ape = (e["ead"] - e["ead_realized"]).abs() / e["ead_realized"]
+        out.update(ead_mape=float(ape.mean()),
+                   ead_bias=float((e["ead"].sum() - e["ead_realized"].sum())
+                                  / e["ead_realized"].sum()))
+    if len(l):
+        out.update(lgd_mae=float((l["lgd_hat"] - l["lgd_realized"]).abs().mean()),
+                   lgd_mean_pred=float(l["lgd_hat"].mean()),
+                   lgd_mean_realized=float(l["lgd_realized"].mean()))
+    return out
 
 
 def _benchmark_verdict(g_sc: float, g_ch: float) -> str:
@@ -153,7 +175,7 @@ def _write_html(r: dict, path: Path) -> None:
 <p class="muted">Thresholds: Gini ≥ {t['gini_min']}, KS ≥ {t['ks_min']},
   max band error ≤ {t['calibration_max_band_error']}, PSI watch {t['psi_watch']} / unstable {t['psi_unstable']}.</p>
 </body></html>"""
-    path.write_text(html)
+    path.write_text(html, encoding="utf-8")
 
 
 if __name__ == "__main__":

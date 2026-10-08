@@ -19,9 +19,11 @@ export default function GovernancePage() {
     <>
       <Head />
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
-        <Stat label="Champion model" value="Challenger" sub="LightGBM · isotonic-calibrated" />
+        <Stat label="Champion model"
+          value={(data.champion_model || "challenger").split(" ")[0].replace(/^./, (c) => c.toUpperCase())}
+          sub={(data.champion_model || "").replace(/^\S+\s*\(?|\)$/g, "") || "LightGBM · isotonic-calibrated"} />
         <Stat label="Approval rate" value={pct(data.decision.approval_rate, 1)}
-          sub={`PD threshold ${pct(data.decision.threshold)}`} />
+          sub={`PD threshold ${pct(data.decision.threshold)}${data.decision.threshold_source ? " · set on calibration data" : ""}`} />
         <Stat label="Min disparate-impact ratio" value={f.di_ratio_min_observed.toFixed(3)}
           tone={f.passes_four_fifths ? "ok" : "bad"} sub={`4/5ths floor ${f.di_ratio_floor}`} />
         <div className="card stat">

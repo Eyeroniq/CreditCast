@@ -15,6 +15,7 @@ import joblib
 import numpy as np
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold
 
 from creditcast.config import Config, load_config, run_stamp
 
@@ -55,6 +56,27 @@ def fit_calibrator(raw_p: np.ndarray, y: np.ndarray,
                    cfg: Config | None = None) -> Calibrator:
     cfg = cfg or load_config()
     return Calibrator(method=str(cfg.calibration.method)).fit(raw_p, y)
+
+
+def cross_fit_transform(raw_p: np.ndarray, y: np.ndarray,
+                        cfg: Config | None = None, n_splits: int = 5) -> np.ndarray:
+    """Out-of-fold calibrated PDs for the calibration slice itself.
+
+    The final calibrator is fit on the whole calib slice, so its in-sample
+    output on that slice is optimistic. Anything *decided* on calib data (the
+    approve/decline threshold) uses these cross-fitted PDs instead: each fold
+    is calibrated by a calibrator that never saw it.
+    """
+    cfg = cfg or load_config()
+    raw_p = np.asarray(raw_p, float)
+    y = np.asarray(y, int)
+    folds = StratifiedKFold(n_splits=n_splits, shuffle=True,
+                            random_state=int(cfg.run.seed))
+    out = np.empty(len(raw_p), dtype=float)
+    for fit_idx, oof_idx in folds.split(raw_p.reshape(-1, 1), y):
+        cal = Calibrator(method=str(cfg.calibration.method)).fit(raw_p[fit_idx], y[fit_idx])
+        out[oof_idx] = cal.transform(raw_p[oof_idx])
+    return out
 
 
 def save(calibrator: Calibrator, name: str, cfg: Config | None = None) -> Path:

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from creditcast.pipeline.gold import _engineer
+from creditcast.features import engineer, rate_benchmark
 from creditcast.pipeline.silver import QUALITY_RANGES
 from creditcast.validation.stability import psi, psi_status, csi
 
@@ -13,11 +13,11 @@ def test_engineered_features():
         "vintage": ["2020-01", "2020-01"],
         "ltv": [80, 90], "dti": [40, 50], "orig_interest_rate": [4.0, 5.0],
     })
-    out = _engineer(df)
+    bench = pd.DataFrame({"vintage": ["2020-01"], "rate_benchmark": [4.25]})
+    out = engineer(df, bench)
     assert out["ltv_dti"].tolist() == [32.0, 45.0]            # ltv*dti/100
     assert out["high_ltv"].tolist() == [0, 1]                  # >80 threshold
-    # rate_spread is centred within the vintage -> sums to ~0 for the cohort
-    assert out["rate_spread"].sum() == pytest.approx(0.0, abs=1e-9)
+    assert out["rate_spread"].tolist() == [-0.25, 0.75]        # rate - benchmark
 
 
 def test_quality_ranges_are_sane():
