@@ -3,14 +3,14 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, ReferenceLine,
 } from "recharts";
 import { api, pct } from "@/lib/api";
-import { PageHead, Stat, Pill, Band, useFetch, Loading, ApiError, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { PageHead, Stat, Pill, Band, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
 import { featureLabel } from "@/lib/labels";
 import ThresholdExplorer from "@/components/ThresholdExplorer";
 
 export default function GovernancePage() {
-  const { data, error, loading } = useFetch(() => api.governance(), []);
-  if (loading) return (<><Head /><Loading what="governance report" /></>);
-  if (error) return (<><Head /><ApiError error={error} /></>);
+  const { data, error, loading, retry } = useFetch(() => api.governance(), []);
+  if (loading) return (<><Head /><PageSkeleton stats={4} charts={2} table label="Loading fairness report" /></>);
+  if (error) return (<><Head /><ErrorState error={error} onRetry={retry} /></>);
 
   const f = data.fairness;
   const shap = data.shap_global.slice(0, 8).map((s) => ({ feature: featureLabel(s.feature), imp: s.mean_abs_shap }));

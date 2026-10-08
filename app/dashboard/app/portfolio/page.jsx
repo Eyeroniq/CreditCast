@@ -3,15 +3,15 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from "recharts";
 import { api, pct, money, moneyShort, num } from "@/lib/api";
-import { PageHead, Stat, Band, useFetch, Loading, ApiError, CardTitle, TableWrap } from "@/components/ui";
+import { PageHead, Stat, Band, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap } from "@/components/ui";
 import { DECISION_LABELS } from "@/lib/labels";
 
 const BAND_COLOR = { AAA: "#36d399", AA: "#36d399", A: "#5fcf9e", BBB: "#5b9cff", BB: "#fbbf24", B: "#fb6f84" };
 
 export default function PortfolioPage() {
-  const { data, error, loading } = useFetch(() => api.portfolio(300), []);
-  if (loading) return (<><Head /><Loading what="portfolio" /></>);
-  if (error) return (<><Head /><ApiError error={error} /></>);
+  const { data, error, loading, retry } = useFetch(() => api.portfolio(300), []);
+  if (loading) return (<><Head /><PageSkeleton stats={4} charts={2} table label="Loading portfolio" /></>);
+  if (error) return (<><Head /><ErrorState error={error} onRetry={retry} /></>);
 
   const bandData = Object.entries(data.band_distribution).map(([k, v]) => ({
     band: k, count: v, el: data.el_by_band[k] || 0,

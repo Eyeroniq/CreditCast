@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, ReferenceLine,
 } from "recharts";
 import { api } from "@/lib/api";
-import { PageHead, Stat, Pill, useFetch, Loading, ApiError, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { PageHead, Stat, Pill, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
 import { featureLabel } from "@/lib/labels";
 
 const psiColor = (s) => (s === "stable" ? "#36d399" : s === "watch" ? "#fbbf24" : "#fb6f84");
@@ -11,9 +11,9 @@ const psiColor = (s) => (s === "stable" ? "#36d399" : s === "watch" ? "#fbbf24" 
 export default function MonitoringPage() {
   const v = useFetch(() => api.validation(), []);
   const m = useFetch(() => api.monitoring(), []);
-  if (v.loading || m.loading) return (<><Head /><Loading what="stability metrics" /></>);
-  if (v.error) return (<><Head /><ApiError error={v.error} /></>);
-  if (m.error) return (<><Head /><ApiError error={m.error} /></>);
+  if (v.loading || m.loading) return (<><Head /><PageSkeleton stats={4} charts={1} table label="Loading stability metrics" /></>);
+  if (v.error) return (<><Head /><ErrorState error={v.error} onRetry={v.retry} /></>);
+  if (m.error) return (<><Head /><ErrorState error={m.error} onRetry={m.retry} /></>);
 
   const t = v.data.thresholds;
   const psiByVintage = v.data.stability.score_psi_by_vintage.map((r) => ({
