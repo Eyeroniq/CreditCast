@@ -36,7 +36,10 @@ class Config(dict):
 
 @lru_cache(maxsize=4)
 def load_config(path: str | os.PathLike | None = None) -> Config:
-    cfg_path = Path(path) if path else DEFAULT_CONFIG_PATH
+    """Load the config. `CREDITCAST_CONFIG` (a path) overrides the default file —
+    used by the end-to-end test to run the whole lifecycle in a temp folder."""
+    env_path = os.environ.get("CREDITCAST_CONFIG")
+    cfg_path = Path(path) if path else Path(env_path) if env_path else DEFAULT_CONFIG_PATH
     with open(cfg_path, "r") as fh:
         raw = yaml.safe_load(fh)
     return Config(raw)
