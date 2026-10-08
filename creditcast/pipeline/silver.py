@@ -10,14 +10,19 @@ This is the keystone of the whole platform. Disciplines enforced here:
    the window can influence the label, and no performance information enters
    the feature set at all.
 
-2. **Right-censoring.** A "no default" label is only trusted when the loan was
-   actually watched for the whole window, or left the book cleanly (prepaid),
-   which means it can no longer default. Loans whose history simply runs out
-   early are censored (dropped, or kept with `label_complete = 0`).
+2. **Right-censoring.** A label is only trusted when the loan's whole 12m
+   window ends on or before the data cutoff (the last reporting month in the
+   panel) — for defaulters *and* non-defaulters alike; keeping early defaults
+   from recent vintages while dropping their non-defaulting peers would inflate
+   recent default rates. Within complete windows, a "no default" label also
+   needs the loan to have been watched all 12 months or to have left cleanly
+   (prepaid). Censored loans are dropped (or kept with `label_complete = 0`).
 
 3. **Resolved-loss LGD.** Realized loss is taken from the loan's terminal
-   disposition within a longer *workout* window after default. Defaults that
-   are not yet resolved get `resolved = 0` and no LGD (never a fake 0% loss).
+   disposition within a longer *workout* window after default; a default that
+   returns to current for `lgd.cure_months` (or prepays) is a cure with zero
+   loss. Defaults that are not yet resolved get `resolved = 0` and no LGD
+   (never a fake 0% loss).
 
 4. **Data-quality gates.** Malformed/implausible origination rows are rejected
    before they can poison training (Part 10.6).
@@ -52,6 +57,7 @@ def build_silver(cfg: Config | None = None) -> Path:
     horizon = int(cfg.target.observation_horizon_months)
     dpd_months = int(cfg.target.default_dpd_threshold) // 30  # 90 days -> 3 months
     workout = int(cfg.lgd.workout_window_months)
+    cure_months = int(cfg.lgd.cure_months)
     default_codes = _sql_list(cfg.target.default_zb_codes)
     prepay_codes = _sql_list(cfg.target.prepay_zb_codes)
 
@@ -79,6 +85,9 @@ def build_silver(cfg: Config | None = None) -> Path:
             p.net_loss
         FROM read_parquet('{perf_glob}') p;
     """)
+
+    # Data cutoff = last reporting month present in the performance panel.
+    cutoff_idx = con.execute("SELECT MAX(rep_idx) FROM perf_events").fetchone()[0]
 
     con.execute(f"""
         CREATE TEMP TABLE orig AS
@@ -118,7 +127,7 @@ def build_silver(cfg: Config | None = None) -> Path:
             FROM win w JOIN obs b ON w.loan_id = b.loan_id AND w.rep_idx = b.def_idx
             GROUP BY w.loan_id
         ),
-        resolution AS (
+        terminal AS (
             SELECT e.loan_id,
                    ARG_MIN(CASE WHEN e.zero_balance_code IN ({prepay_codes})
                                 THEN 0.0 ELSE COALESCE(e.net_loss, 0.0) END,
@@ -130,12 +139,26 @@ def build_silver(cfg: Config | None = None) -> Path:
               AND (e.zero_balance_code IN ({default_codes})
                    OR e.zero_balance_code IN ({prepay_codes}))
             GROUP BY e.loan_id
+        ),
+        cure AS (
+            SELECT e.loan_id
+            FROM perf_events e JOIN obs b ON e.loan_id = b.loan_id
+            WHERE b.def_idx IS NOT NULL
+              AND e.rep_idx > b.def_idx
+              AND e.rep_idx <= b.def_idx + {workout}
+              AND e.dpd_months = 0
+            GROUP BY e.loan_id
+            HAVING COUNT(*) >= {cure_months}
         )
-        SELECT b.loan_id, b.def_idx, ead.ead, r.net_loss,
-               (r.loan_id IS NOT NULL) AS resolved
+        -- a terminal disposition wins over an earlier cure (re-default -> loss)
+        SELECT b.loan_id, b.def_idx, ead.ead,
+               CASE WHEN t.loan_id IS NOT NULL THEN t.net_loss
+                    WHEN c.loan_id IS NOT NULL THEN 0.0 END AS net_loss,
+               (t.loan_id IS NOT NULL OR c.loan_id IS NOT NULL) AS resolved
         FROM obs b
         LEFT JOIN ead ON b.loan_id = ead.loan_id
-        LEFT JOIN resolution r ON b.loan_id = r.loan_id
+        LEFT JOIN terminal t ON b.loan_id = t.loan_id
+        LEFT JOIN cure c ON b.loan_id = c.loan_id
         WHERE b.def_idx IS NOT NULL;
     """)
 
@@ -144,9 +167,10 @@ def build_silver(cfg: Config | None = None) -> Path:
             o.* EXCLUDE (vint_idx),
             CASE WHEN d.loan_id IS NOT NULL THEN 1 ELSE 0 END AS default_12m,
             COALESCE(b.months_observed, 0)                    AS months_observed,
-            CASE WHEN d.loan_id IS NOT NULL
-                   OR COALESCE(b.months_observed, 0) >= {horizon}
-                   OR COALESCE(b.exited_clean, FALSE)
+            CASE WHEN o.vint_idx + {horizon} <= {cutoff_idx}
+                   AND (d.loan_id IS NOT NULL
+                        OR COALESCE(b.months_observed, 0) >= {horizon}
+                        OR COALESCE(b.exited_clean, FALSE))
                  THEN 1 ELSE 0 END                            AS label_complete,
             d.ead,
             d.net_loss,
