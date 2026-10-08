@@ -105,16 +105,26 @@ class ModelBundle:
         return pd.read_parquet(self.cfg.path("gold") / "rate_benchmark.parquet")
 
     # ---- feature engineering: the SAME function the Gold pipeline uses --------
-    def _build_features(self, raw: dict) -> pd.DataFrame:
-        r = dict(raw)
-        r.setdefault("vintage", None)
-        df = engineer(pd.DataFrame([r]), self.rate_benchmark)
+    def _build_features(self, raw: dict | list[dict]) -> pd.DataFrame:
+        rows = [dict(r) for r in (raw if isinstance(raw, list) else [raw])]
+        for r in rows:
+            r.setdefault("vintage", None)
+        df = engineer(pd.DataFrame(rows), self.rate_benchmark)
         df = df[feature_columns()].copy()
         for c in categorical_columns():
             df[c] = df[c].astype("category")
         for c in numeric_columns():
             df[c] = pd.to_numeric(df[c])
         return df
+
+    def pd_batch(self, rows: list[dict]) -> np.ndarray:
+        """Champion calibrated PDs for many applicants at once (no SHAP) —
+        the fast path used by the what-if search."""
+        X = self._build_features(rows)
+        if str(self.cfg.decision.champion) == "scorecard":
+            raw = self.scorecard.predict_proba(X)[:, 1]
+            return self.cal_sc.transform(raw)
+        return self.cal_ch.transform(challenger.predict_pd(self.challenger, X))
 
     def score(self, raw: dict) -> dict:
         X = self._build_features(raw)

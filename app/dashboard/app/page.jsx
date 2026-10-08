@@ -44,6 +44,7 @@ export default function ScorePage() {
   const [preset, setPreset] = useState("Marginal borrower");
   const [form, setForm] = useState(PRESETS["Marginal borrower"]);
   const [res, setRes] = useState(null);
+  const [whatif, setWhatif] = useState(null);   // paths to approval (6.2.2)
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const inflight = useRef(null);
@@ -65,6 +66,11 @@ export default function ScorePage() {
         const r = await api.score(payload, { signal: ctrl.signal });
         setRes(r);
         setErr(null);
+        // For a decline, also ask: what single change would get it approved?
+        setWhatif(r.decision === "decline"
+          ? await api.whatif(payload, { signal: ctrl.signal }).catch((e) =>
+              e.name === "AbortError" ? null : { error: e.message })
+          : null);
       } catch (e) {
         if (e.name !== "AbortError") setErr(e.message);
       } finally {
@@ -131,7 +137,8 @@ export default function ScorePage() {
           {!res ? (
             <div className="card"><p className="muted">{busy ? "Scoring…" : "Adjust the applicant to see a decision."}</p></div>
           ) : (
-            <Result res={res} busy={busy} />
+            <Result res={res} busy={busy} whatif={whatif}
+              onApply={(app) => { setPreset(null); setForm({ ...form, ...app }); }} />
           )}
         </div>
       </div>
@@ -139,7 +146,7 @@ export default function ScorePage() {
   );
 }
 
-function Result({ res, busy }) {
+function Result({ res, busy, whatif, onApply }) {
   const approved = res.decision === "approve";
   const reasons = res.reason_codes || [];
   const why = approved
@@ -168,6 +175,8 @@ function Result({ res, busy }) {
         </div>
         <RiskMeter pd={res.pd} threshold={res.threshold} />
       </div>
+
+      {!approved && <WhatIf data={whatif} onApply={onApply} />}
 
       <div className="grid cols-3">
         <Stat label="Probability of default" info="pd" value={pct(res.pd)}
@@ -204,6 +213,41 @@ function Result({ res, busy }) {
         </details>
       </div>
     </>
+  );
+}
+
+/** Smallest single changes that would turn this decline into an approval. */
+function WhatIf({ data, onApply }) {
+  return (
+    <div className="card whatif">
+      <h3>How this applicant could be approved</h3>
+      {!data ? (
+        <p className="small muted" style={{ margin: 0 }}>Looking for changes…</p>
+      ) : data.error ? (
+        <p className="small warn" style={{ margin: 0 }}>{data.error}</p>
+      ) : data.options.length === 0 ? (
+        <p className="small muted" style={{ margin: 0 }}>{data.message}</p>
+      ) : (
+        <>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Any <b>one</b> of these changes alone would bring default risk under the {pct(data.threshold)} limit:
+          </p>
+          <ul className="whatif-list">
+            {data.options.map((o) => (
+              <li key={o.feature}>
+                <div>
+                  <div className="whatif-lever">{o.lever}</div>
+                  <div className="small">{o.text}</div>
+                  <div className="small muted">default risk would be {pct(o.pd_after)}</div>
+                </div>
+                <button type="button" className="chip" onClick={() => onApply(o.applicant)}
+                  aria-label={`Apply: ${o.text}`}>Apply</button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }
 

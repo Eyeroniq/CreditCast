@@ -38,6 +38,16 @@ export const api = {
     return r.json();
   },
   // `signal` lets live scoring cancel a request that a newer slider move replaced.
+  whatif: async (applicant, { signal } = {}) => {
+    const r = await fetch(`${API}/whatif`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(applicant),
+      signal,
+    });
+    if (!r.ok) throw await errorFrom(r, "whatif");
+    return r.json();
+  },
   score: async (applicant, { signal } = {}) => {
     const r = await fetch(`${API}/score`, {
       method: "POST",
