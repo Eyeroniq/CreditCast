@@ -55,8 +55,35 @@ Open https://dhyyraj.in. Health check: https://dhyyraj.in/api/health
 
 ```bash
 git pull
-docker compose -f deploy/docker-compose.yml up -d --build
+GIT_SHA=$(git rev-parse --short HEAD) docker compose -f deploy/docker-compose.yml up -d --build
 ```
+
+The image trains the models during the build and registers them as a model
+version (see "Model versions" below).
+
+## Model versions and rollback
+
+Each Docker build trains the models from scratch and registers them as that
+image's model version. `/api/health` shows the live version and the git
+commit it was built from; `/api/ready` adds the model fingerprint (a hash of
+the model files).
+
+**Rolling back the live site** = redeploying an earlier commit. Builds are
+reproducible (seeded data and training, locked library versions): retraining
+the same commit on the same platform produces byte-identical model files, and
+the fingerprint lets you confirm it (on a different CPU/OS the metrics match
+but floating-point details can differ):
+
+```bash
+git checkout checkpoint/2.6-lint        # or any earlier commit/tag
+GIT_SHA=$(git rev-parse --short HEAD) docker compose -f deploy/docker-compose.yml up -d --build
+curl -s https://dhyyraj.in/api/ready    # compare "fingerprint" with the version you expect
+```
+
+The registry's multi-version rollback (`python -m creditcast.cli models list` /
+`models use v0002`, or `serving.pinned_version` in the config) is for wherever
+the registry persists between runs: a development or training machine. A fresh
+image only contains its own version.
 
 ## Settings (`.env`, all optional)
 

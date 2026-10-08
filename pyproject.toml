@@ -34,6 +34,7 @@ files = [
     "creditcast/serving.py",
     "creditcast/features.py",
     "creditcast/config.py",
+    "creditcast/registry.py",
 ]
 
 [tool.pytest.ini_options]
