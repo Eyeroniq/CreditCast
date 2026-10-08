@@ -153,3 +153,33 @@ def test_cli_split_prints_four_slices(tiny):
     r = CliRunner().invoke(tiny["cli"].app, ["split"])
     assert r.exit_code == 0
     assert set(json.loads(r.output)) == {"train", "valid", "calib", "test"}
+
+
+def test_passing_run_is_registered_and_listed(tiny):
+    from creditcast.registry import active_version, list_versions
+
+    versions = list_versions(tiny["cfg"])
+    if tiny["result"].exit_code == 0:  # gates passed -> exactly one version
+        assert [v["version"] for v in versions] == ["v0001"]
+        assert versions[0]["gates_passed"] is True
+        assert active_version(tiny["cfg"]) == "v0001"
+        out = CliRunner().invoke(tiny["cli"].app, ["models", "list"])
+        assert out.exit_code == 0 and "* v0001" in out.output
+        use = CliRunner().invoke(tiny["cli"].app, ["models", "use", "v0001"])
+        assert use.exit_code == 0 and "now serving v0001" in use.output
+    else:  # gates failed -> nothing registered
+        assert versions == [] and "not registering" in tiny["result"].output
+    bad = CliRunner().invoke(tiny["cli"].app, ["models", "use", "v0042"])
+    assert bad.exit_code == 1
+
+
+def test_retraining_reproduces_identical_model_files(tiny):
+    """Same data + seed + locked libraries -> byte-identical models, so a model
+    fingerprint identifies the model rather than the moment it was trained."""
+    from creditcast.registry import fingerprint
+
+    art = tiny["cfg"].path("artifacts")
+    before = fingerprint(art)
+    r = CliRunner().invoke(tiny["cli"].app, ["train"])
+    assert r.exit_code == 0, r.output
+    assert fingerprint(art) == before

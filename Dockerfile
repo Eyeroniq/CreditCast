@@ -17,6 +17,10 @@ RUN npm run build
 # ---- Stage 2: train models + generate artifacts (full deps) -----------------
 FROM python:3.11-slim AS trainer
 WORKDIR /app
+# Commit of the code being built (.git isn't in the build context); recorded in
+# every run stamp and in the model registry's manifest.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 # Pinned + hash-checked lock (generated from requirements.in by scripts/lock-deps.sh)
@@ -34,6 +38,8 @@ RUN python -m creditcast.cli all
 # ---- Stage 3: slim runtime image -------------------------------------------
 FROM python:3.11-slim AS runtime
 WORKDIR /app
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 # Serve lock is constrained by the training lock: the runtime unpickles the
