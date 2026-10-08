@@ -1,0 +1,11 @@
+# Caddy obtains and renews HTTPS certificates for these names automatically.
+# DNS: point A/AAAA records for dhyyraj.in and www.dhyyraj.in at the server.
+
+dhyyraj.in {
+	encode zstd gzip
+	reverse_proxy app:8000
+}
+
+www.dhyyraj.in {
+	redir https://dhyyraj.in{uri} permanent
+}

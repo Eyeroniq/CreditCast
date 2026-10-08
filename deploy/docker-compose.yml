@@ -1,0 +1,39 @@
+# CreditCast production stack for https://dhyyraj.in
+#
+#   app   : the single CreditCast container (API under /api + Risk Cockpit at /)
+#   caddy : reverse proxy with automatic HTTPS (Let's Encrypt) for the domain
+#
+# Run on the server from the repo root:
+#   docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: creditcast:latest
+    restart: unless-stopped
+    env_file:
+      - path: ../.env            # GROQ_API_KEY=... (optional: enables Risk Copilot)
+        required: false
+    environment:
+      PORT: "8000"
+    expose:
+      - "8000"                   # only reachable by caddy, not the internet
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"            # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data         # TLS certificates (keep across restarts)
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
