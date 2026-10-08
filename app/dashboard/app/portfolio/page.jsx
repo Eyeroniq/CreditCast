@@ -3,7 +3,8 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from "recharts";
 import { api, pct, money, moneyShort, num } from "@/lib/api";
-import { PageHead, Stat, Band, useFetch, Loading, ApiError } from "@/components/ui";
+import { PageHead, Stat, Band, useFetch, Loading, ApiError, CardTitle, TableWrap } from "@/components/ui";
+import { DECISION_LABELS } from "@/lib/labels";
 
 const BAND_COLOR = { AAA: "#36d399", AA: "#36d399", A: "#5fcf9e", BBB: "#5b9cff", BB: "#fbbf24", B: "#fb6f84" };
 
@@ -21,17 +22,17 @@ export default function PortfolioPage() {
     <>
       <Head />
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
-        <Stat label="Loans (out-of-time book)" value={num(data.n_loans)} />
-        <Stat label="Portfolio Expected Loss" value={moneyShort(data.portfolio_el)}
-          sub={`${data.el_rate_bps.toFixed(0)} bps of EAD`} tone="warn" />
-        <Stat label="Total EAD" value={moneyShort(data.total_ead)} />
-        <Stat label="Approval rate" value={pct(data.approval_rate, 1)}
-          sub={`mean PD ${pct(data.mean_pd)}`} />
+        <Stat label="Loans in the test book" info="oot" value={num(data.n_loans)} />
+        <Stat label="Expected loss" info="el" value={moneyShort(data.portfolio_el)}
+          sub={`${data.el_rate_bps.toFixed(0)} bps of the amount owed`} tone="warn" />
+        <Stat label="Amount owed (EAD)" info="ead" value={moneyShort(data.total_ead)} />
+        <Stat label="Approval rate" info="threshold" value={pct(data.approval_rate, 1)}
+          sub={`average default risk ${pct(data.mean_pd)}`} />
       </div>
 
       <div className="grid cols-2" style={{ marginBottom: 16 }}>
         <div className="card">
-          <h3>Risk-band concentration</h3>
+          <CardTitle info="risk_band">Loans per risk grade</CardTitle>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={bandData} margin={{ left: 4, right: 8 }}>
               <XAxis dataKey="band" stroke="#5c6b7e" />
@@ -44,7 +45,7 @@ export default function PortfolioPage() {
           </ResponsiveContainer>
         </div>
         <div className="card">
-          <h3>Expected Loss by band</h3>
+          <CardTitle info="el">Expected loss per risk grade</CardTitle>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={bandData} margin={{ left: 14, right: 8 }}>
               <XAxis dataKey="band" stroke="#5c6b7e" />
@@ -59,7 +60,7 @@ export default function PortfolioPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3>PD distribution across the book</h3>
+        <CardTitle info="pd">How default risk is spread across the book</CardTitle>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={hist} margin={{ left: 4, right: 8 }}>
             <XAxis dataKey="pd" stroke="#5c6b7e" tickFormatter={(v) => `${v}%`}
@@ -72,12 +73,13 @@ export default function PortfolioPage() {
       </div>
 
       <div className="card">
-        <h3>Highest Expected-Loss exposures</h3>
+        <CardTitle info="el">Loans with the highest expected loss</CardTitle>
+        <TableWrap>
         <table>
           <thead><tr>
-            <th>Loan</th><th>Vintage</th><th className="num">PD</th><th className="num">Score</th>
-            <th>Band</th><th className="num">LGD</th><th className="num">EAD</th>
-            <th className="num">Expected Loss</th><th>Decision</th>
+            <th>Loan</th><th>Originated</th><th className="num">Default risk</th><th className="num">Score</th>
+            <th>Grade</th><th className="num">Loss if default</th><th className="num">Owed</th>
+            <th className="num">Expected loss</th><th>Decision</th>
           </tr></thead>
           <tbody>
             {data.sample.slice(0, 18).map((r) => (
@@ -90,17 +92,20 @@ export default function PortfolioPage() {
                 <td className="num">{pct(r.lgd_hat)}</td>
                 <td className="num">{moneyShort(r.ead)}</td>
                 <td className="num">{money(r.expected_loss)}</td>
-                <td className={r.decision === "approve" ? "ok small" : "bad small"}>{r.decision}</td>
+                <td className={r.decision === "approve" ? "ok small" : "bad small"}>
+                  {r.decision === "approve" ? "✓ " : "✗ "}{DECISION_LABELS[r.decision] || r.decision}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </TableWrap>
       </div>
     </>
   );
 }
 
 const Head = () => (
-  <PageHead title="Portfolio Risk"
-    subtitle="What the book looks like — Expected Loss totals, risk-band concentration, and the PD distribution on the out-of-time portfolio." />
+  <PageHead title="Portfolio risk"
+    subtitle="The whole book at a glance: how much loss to expect, which risk grades it sits in, and which loans matter most." />
 );
