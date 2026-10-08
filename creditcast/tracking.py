@@ -15,6 +15,9 @@ from creditcast.config import REPO_ROOT, Config, load_config, run_stamp
 @contextmanager
 def log_run(run_name: str, cfg: Config | None = None):
     cfg = cfg or load_config()
+    if not cfg.get("tracking", {}).get("enabled", True):
+        yield None
+        return
     try:
         import mlflow
     except ImportError:

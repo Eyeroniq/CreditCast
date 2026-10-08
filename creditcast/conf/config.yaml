@@ -15,6 +15,10 @@ paths:
   gold:   "creditcast/data/gold"
   artifacts: "creditcast/artifacts"
   reports:   "creditcast/reports"
+  model_card: "creditcast/governance/model_card.md"   # committed; copied into the image
+
+tracking:
+  enabled: true                 # MLflow run logging (best-effort; off in tests)
 
 # ---- Synthetic GSE-schema generator -----------------------------------------
 # Mimics Freddie Mac Single-Family loan-level + monthly performance schema so
