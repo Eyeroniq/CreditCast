@@ -5,7 +5,7 @@ export default function GlobalError({ error, reset }) {
   return (
     <html lang="en">
       <body style={{ background: "#0a0d12", color: "#dfe6f0", fontFamily: "system-ui, sans-serif", padding: "40px 16px", maxWidth: 560, margin: "0 auto" }}>
-        <h2 style={{ marginBottom: 8 }}>CreditCast couldn't load</h2>
+        <h2 style={{ marginBottom: 8 }}>CreditCast couldn&apos;t load</h2>
         <p style={{ color: "#8090a3", lineHeight: 1.5 }}>
           Something went wrong while starting the app. Please reload the page; if it keeps happening,
           try again in a few minutes.

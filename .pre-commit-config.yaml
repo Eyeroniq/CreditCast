@@ -1,0 +1,17 @@
+# Optional local hooks: `pip install pre-commit && pre-commit install`.
+# CI runs the same checks (ruff, ruff format, mypy, ESLint) on every push and PR.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10                 # keep in step with requirements.in
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (typed core)
+        entry: python -m mypy
+        language: system
+        types: [python]
+        pass_filenames: false     # uses the file list in pyproject.toml
