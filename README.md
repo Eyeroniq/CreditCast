@@ -45,6 +45,23 @@ CC_ALLOWED_ORIGINS=http://localhost:3000 uvicorn app.api.main:app --reload --por
 cd app/dashboard && NEXT_PUBLIC_API_URL=http://localhost:8001 npm run dev
 ```
 
+## Dependencies
+
+Library versions are **locked**. Edit the loose lists `requirements.in` /
+`requirements-serve.in`, then regenerate the pinned, hash-checked lock files
+(`requirements.txt` / `requirements-serve.txt`) with
+[uv](https://docs.astral.sh/uv/):
+
+```bash
+pip install "uv==0.12.23"
+sh scripts/lock-deps.sh              # after adding/removing a package
+sh scripts/lock-deps.sh --upgrade    # move to the latest allowed versions
+```
+
+Commit the `.in` and `.txt` files together. CI fails if they are out of sync.
+After an `--upgrade`, check the metrics in the CI job summary before merging:
+an upgrade can change results.
+
 ## Deploy (single container)
 
 The whole app ships as one Docker image: FastAPI serves the API under `/api` and
