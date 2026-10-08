@@ -36,6 +36,15 @@ python -m creditcast.cli all            # the whole lifecycle end-to-end
 Run the tests with `python -m pytest`. CI runs the tests, the full lifecycle
 with its performance gates, and the dashboard build on every push and PR.
 
+For dashboard development with hot reload, run the API and the Next.js dev
+server separately and allow the dev origin (the API is same-origin only by
+default):
+
+```bash
+CC_ALLOWED_ORIGINS=http://localhost:3000 uvicorn app.api.main:app --reload --port 8001
+cd app/dashboard && NEXT_PUBLIC_API_URL=http://localhost:8001 npm run dev
+```
+
 ## Deploy (single container)
 
 The whole app ships as one Docker image: FastAPI serves the API under `/api` and

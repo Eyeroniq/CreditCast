@@ -80,10 +80,10 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 2.6 | Lint / format / types + pre-commit | [ ] | | |
 | 3.1 | Rate-limit Copilot | [x] | 2026-10-08 | Also /score and /portfolio; per real client IP behind Caddy |
 | 3.2 | Bound & validate API inputs | [x] | 2026-10-08 | 16 bad-input cases → 422 |
-| 3.3 | Tighten CORS, optional API key | [ ] | | |
-| 3.4 | Structured logs + decision audit trail | [ ] | | |
-| 3.5 | Health/readiness + Docker HEALTHCHECK | [ ] | | |
-| 3.6 | Fix `lru_cache` staleness | [ ] | | |
+| 3.3 | Tighten CORS, optional API key | [x] | 2026-10-08 | Same-origin by default |
+| 3.4 | Structured logs + decision audit trail | [x] | 2026-10-08 | `decisions.jsonl`, no raw inputs |
+| 3.5 | Health/readiness + Docker HEALTHCHECK | [x] | 2026-10-08 | Caddy waits for healthy app |
+| 3.6 | Fix `lru_cache` staleness | [x] | 2026-10-08 | |
 | 4.1 | Freddie Mac loader | [ ] | | |
 | 4.2 | Data-quality report | [ ] | | |
 | 4.3 | Re-tune thresholds on real data | [ ] | | |
@@ -578,6 +578,13 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   `X-API-Key` checked against env `CC_API_KEY` for `/api/score` when set
   (demo stays open if unset).
 - **Done when:** cross-origin browser call blocked; key works when configured.
+- **Result (2026-10-08):** CORS is off unless `CC_ALLOWED_ORIGINS` is set
+  (verified live: a request from another origin gets no
+  `Access-Control-Allow-Origin`). `CC_API_KEY` (constant-time compare) guards
+  `/api/score` and `/api/agent/chat` when set → 401 without the right
+  `X-API-Key`. Documented that the public cockpit needs it **unset** (a browser
+  can't keep a secret); rate limits protect the public site instead. README
+  shows the split-dev setting.
 
 ### 3.4 Structured logs + decision audit trail
 
@@ -586,6 +593,13 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   input_hash (SHA-256 of normalized inputs, no raw PII), pd, decision,
   reason_feature_list, latency_ms`; append to `logs/decisions.jsonl` (rotated).
 - **Done when:** any decision can be traced to model version + inputs hash.
+- **Result (2026-10-08):** `app/api/audit.py`: JSON logs to stdout, and every
+  `/api/score` decision appended to `decisions.jsonl` (10 MB × 10 rotation,
+  `CC_LOG_DIR`, Docker volume `decision_logs`). Record: request_id, model
+  version (run stamp + champion + 12-char SHA-256 fingerprint of the model
+  files), input SHA-256, PD, decision, band, threshold, reason features,
+  latency. No raw inputs (tested). The score response also returns
+  `request_id` and `model_fingerprint`. Verified live.
 
 ### 3.5 Health and readiness
 
@@ -595,6 +609,14 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   warm up the bundle at startup (`lifespan` event) so the first user isn't
   slow.
 - **Done when:** removing an artifact makes the container unhealthy.
+- **Result (2026-10-08):** `/api/ready` checks every required file
+  (`serving.REQUIRED_ARTIFACTS`) on each call, then loads them; 503 lists what
+  is missing (tested with an empty artifacts dir). The app warms the bundle
+  at startup (FastAPI lifespan). Dockerfile `HEALTHCHECK` calls `/api/ready`
+  with Python (no curl in the slim image); compose makes Caddy wait for
+  `service_healthy`. The healthcheck command was verified against a live
+  server; the Docker daemon wasn't running locally, so the container
+  healthcheck itself is exercised by the `docker` CI job on `main`.
 
 ### 3.6 Fix cache staleness
 
@@ -605,6 +627,9 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   the end of `build_gold()` and in the test fixture.
 - **Done when:** a test that rebuilds Gold with different features sees the
   new manifest.
+- **Result (2026-10-08):** `config.reload()` and `dataset.reload()`;
+  `build_gold` calls `dataset.reload()` after writing the manifest.
+  `tests/test_cache_reload.py` covers both. Tests 80 → 89.
 
 ---
 

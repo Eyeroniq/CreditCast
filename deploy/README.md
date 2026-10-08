@@ -58,6 +58,34 @@ git pull
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
+## Settings (`.env`, all optional)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `GROQ_API_KEY` | unset | Enables the Risk Copilot (AI chat) |
+| `CC_ALLOWED_ORIGINS` | unset (same-origin only) | Extra websites allowed to call the API from a browser, comma-separated |
+| `CC_API_KEY` | unset | Require header `X-API-Key` on `/api/score` and `/api/agent/chat`. **Leave unset for the public site**: the cockpit can't hold a secret, so setting it disables scoring and the Copilot in the browser. Use it for API-only deployments. |
+
+Rate limits per visitor (in `creditcast/conf/config.yaml` → `api`):
+Copilot 10/min + 100/day, scoring 60/min, portfolio 30/min.
+
+## Health and audit trail
+
+- `https://dhyyraj.in/api/health`: the process is up.
+- `https://dhyyraj.in/api/ready`: every model file is present and loads, and
+  it returns the model version fingerprint. Docker's `HEALTHCHECK` uses it, and
+  Caddy only starts once the app is healthy.
+- Every scoring decision is appended to `decisions.jsonl` in the
+  `decision_logs` volume. Each line holds the request ID, model version and
+  fingerprint, a SHA-256 hash of the inputs (never the raw inputs), the PD,
+  the decision, the reason features and the latency. Files rotate at 10 MB
+  (10 kept).
+
+```bash
+docker compose -f deploy/docker-compose.yml exec app tail -n 5 /app/logs/decisions.jsonl
+docker compose -f deploy/docker-compose.yml ps        # shows (healthy)
+```
+
 ## Useful commands
 
 ```bash

@@ -21,6 +21,13 @@ def feature_manifest() -> dict:
     return json.loads(path.read_text())
 
 
+def reload() -> None:
+    """Forget the cached feature manifest. Called by `build_gold` after it
+    writes a new manifest, so a retrain in the same process (tests, notebooks)
+    never keeps using the old feature list."""
+    feature_manifest.cache_clear()
+
+
 def feature_columns() -> list[str]:
     m = feature_manifest()
     return list(m["numeric"]) + list(m["categorical"])

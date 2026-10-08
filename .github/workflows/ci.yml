@@ -121,3 +121,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build image (trainer stage runs the lifecycle + gates)
         run: docker build -t creditcast:ci .
+
+      - name: Run container and wait for HEALTHCHECK (/api/ready)
+        run: |
+          docker run -d --name cc -p 8000:8000 creditcast:ci
+          for i in $(seq 1 40); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' cc)
+            echo "health: $status"
+            [ "$status" = "healthy" ] && break
+            [ "$status" = "unhealthy" ] && { docker logs cc; exit 1; }
+            sleep 5
+          done
+          [ "$status" = "healthy" ] || { docker logs cc; exit 1; }
+          curl -fsS http://localhost:8000/api/ready
+          curl -fsS -o /dev/null -w "cockpit: %{http_code}\n" http://localhost:8000/
+          curl -fsS -H 'content-type: application/json' \
+            -d '{"fico":690,"dti":38,"ltv":82,"orig_interest_rate":4.3,"orig_upb":300000,"orig_loan_term":360,"occupancy_status":"P","loan_purpose":"N","property_type":"CO","first_time_homebuyer":"Y"}' \
+            http://localhost:8000/api/score
+          docker exec cc sh -c 'wc -l /app/logs/decisions.jsonl'
+
+      - name: Container goes unhealthy when a model artifact is missing
+        run: |
+          docker exec cc rm /app/creditcast/artifacts/lgd.joblib
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/ready)
+          echo "/api/ready after removing lgd.joblib -> $code"
+          [ "$code" = "503" ]

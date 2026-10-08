@@ -19,6 +19,7 @@ creditcast/artifacts/*
 creditcast/reports/*.html
 mlruns/
 mlflow.db
+logs/
 
 # Node / Next.js
 node_modules/

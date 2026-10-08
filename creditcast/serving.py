@@ -9,13 +9,14 @@ codes. Used by the FastAPI service.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from functools import cached_property
 
 import numpy as np
 import pandas as pd
 
-from creditcast.config import Config, load_config
+from creditcast.config import Config, load_config, run_stamp
 from creditcast.dataset import (categorical_columns, feature_columns,
                                  numeric_columns)
 from creditcast.features import engineer
@@ -24,11 +25,50 @@ from creditcast.models import calibration, challenger, ead as ead_mod
 from creditcast.models import el as el_mod, lgd as lgd_mod, scorecard
 
 
+# Files the scoring service needs: (config path key, file name).
+REQUIRED_ARTIFACTS = [
+    ("artifacts", "scorecard.joblib"),
+    ("artifacts", "challenger.joblib"),
+    ("artifacts", "calibrator_scorecard.joblib"),
+    ("artifacts", "calibrator_challenger.joblib"),
+    ("artifacts", "lgd.joblib"),
+    ("artifacts", "governance_report.json"),
+    ("artifacts", "test_scored.parquet"),
+    ("gold", "feature_manifest.json"),
+    ("gold", "rate_benchmark.parquet"),
+]
+# The model files whose bytes define "which model made this decision".
+_FINGERPRINTED = ["scorecard.joblib", "challenger.joblib", "calibrator_scorecard.joblib",
+                  "calibrator_challenger.joblib", "lgd.joblib"]
+
+
 class ModelBundle:
     """Lazily loads all trained artifacts and serves single-applicant scoring."""
 
     def __init__(self, cfg: Config | None = None):
         self.cfg = cfg or load_config()
+
+    # ---- readiness ----------------------------------------------------------
+    def missing_artifacts(self) -> list[str]:
+        """Required files that are not on disk (checked on every call)."""
+        return [f"{key}/{name}" for key, name in REQUIRED_ARTIFACTS
+                if not (self.cfg.path(key) / name).exists()]
+
+    def warm(self) -> None:
+        """Load every artifact now, so the first real request isn't slow and a
+        broken artifact fails readiness instead of a user's request."""
+        for prop in ("scorecard", "challenger", "cal_sc", "cal_ch", "lgd",
+                     "explainer", "threshold", "rate_benchmark", "model_version"):
+            getattr(self, prop)
+
+    @cached_property
+    def model_version(self) -> dict:
+        """Run stamp + champion + a fingerprint of the model files' bytes."""
+        h = hashlib.sha256()
+        for name in _FINGERPRINTED:
+            h.update((self.cfg.path("artifacts") / name).read_bytes())
+        return {**run_stamp(), "champion": str(self.cfg.decision.champion),
+                "fingerprint": h.hexdigest()[:12]}
 
     @cached_property
     def scorecard(self):
