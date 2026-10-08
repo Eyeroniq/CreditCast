@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from creditcast.features import engineer, rate_benchmark
+from creditcast.features import engineer
 from creditcast.pipeline.silver import QUALITY_RANGES
-from creditcast.validation.stability import psi, psi_status, csi
+from creditcast.validation.stability import csi, psi, psi_status
 
 
 def test_engineered_features():

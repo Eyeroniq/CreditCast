@@ -30,7 +30,7 @@ class Calibrator:
         self._iso: IsotonicRegression | None = None
         self._platt: LogisticRegression | None = None
 
-    def fit(self, raw_p: np.ndarray, y: np.ndarray) -> "Calibrator":
+    def fit(self, raw_p: np.ndarray, y: np.ndarray) -> Calibrator:
         raw_p = np.asarray(raw_p, float)
         y = np.asarray(y, int)
         if self.method == "isotonic":

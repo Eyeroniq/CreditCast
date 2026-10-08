@@ -58,7 +58,7 @@ class LGDModel:
             X[c] = pd.Categorical(X[c].astype(str), categories=cats).codes
         return X
 
-    def fit(self, defaults: pd.DataFrame) -> "LGDModel":
+    def fit(self, defaults: pd.DataFrame) -> LGDModel:
         d = defaults.copy()
         d["loss_occurred"] = (d["lgd"] > 0).astype(int)
         X = self._encode(d)

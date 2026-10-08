@@ -96,7 +96,7 @@ def _toy_book():
 
 
 def test_threshold_curve_is_monotone_and_consistent():
-    from creditcast.governance.decision import decision_summary, threshold_curve
+    from creditcast.governance.decision import threshold_curve
 
     cfg = load_config()
     book = _toy_book()

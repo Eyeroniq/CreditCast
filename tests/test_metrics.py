@@ -68,6 +68,7 @@ def _book():
 
 def _cfg(privileged="A"):
     import copy
+
     from creditcast.config import Config
 
     cfg = Config(copy.deepcopy(dict(load_config())))

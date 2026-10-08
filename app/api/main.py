@@ -204,9 +204,9 @@ def score(request: Request, applicant: Applicant):
     try:
         result = b.score(raw)
     except KeyError as e:
-        raise HTTPException(422, f"missing feature: {e}")
-    except Exception:
-        raise _internal_error(request, "scoring")
+        raise HTTPException(422, f"missing feature: {e}") from e
+    except Exception as e:
+        raise _internal_error(request, "scoring") from e
     # Audit trail: model version + input hash, never the raw inputs.
     version = getattr(b, "model_version", {}) or {}
     decision_log.info(
@@ -234,8 +234,8 @@ def whatif(request: Request, applicant: Applicant):
     b = bundle()
     try:
         return what_if(applicant.model_dump(), b.pd_batch, b.threshold)
-    except Exception:
-        raise _internal_error(request, "searching for changes")
+    except Exception as e:
+        raise _internal_error(request, "searching for changes") from e
 
 
 @router.get("/validation")
@@ -356,9 +356,9 @@ def agent_chat(request: Request, q: AgentQuery):
     try:
         return orchestrator.run(q.question)
     except LLMNotConfigured as e:
-        raise HTTPException(503, str(e))
-    except Exception:
-        raise _internal_error(request, "answering")
+        raise HTTPException(503, str(e)) from e
+    except Exception as e:
+        raise _internal_error(request, "answering") from e
 
 
 # Register the API, then (in the container) serve the static Next.js export at /.

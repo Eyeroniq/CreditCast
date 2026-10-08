@@ -21,9 +21,10 @@ from creditcast.config import Config, load_config, run_stamp
 from creditcast.dataset import categorical_columns, feature_columns, numeric_columns
 from creditcast.features import engineer
 from creditcast.governance import decision, explain, reason_codes, shap_explain
-from creditcast.models import calibration, challenger, ead as ead_mod
-from creditcast.models import el as el_mod, lgd as lgd_mod, scorecard
-
+from creditcast.models import calibration, challenger, scorecard
+from creditcast.models import ead as ead_mod
+from creditcast.models import el as el_mod
+from creditcast.models import lgd as lgd_mod
 
 # Files the scoring service needs: (config path key, file name).
 REQUIRED_ARTIFACTS = [

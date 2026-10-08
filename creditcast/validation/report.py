@@ -91,19 +91,23 @@ def loss_component_accuracy(scored: pd.DataFrame) -> dict:
     there; LGD only on *resolved* defaults)."""
     d = scored[scored["default_12m"] == 1]
     e = d[d["ead_realized"].fillna(0) > 0]
-    l = d[d["lgd_realized"].notna()]
-    out = {"n_defaults": int(len(d)), "n_ead_observed": int(len(e)), "n_lgd_resolved": int(len(l))}
+    res = d[d["lgd_realized"].notna()]
+    out = {
+        "n_defaults": int(len(d)),
+        "n_ead_observed": int(len(e)),
+        "n_lgd_resolved": int(len(res)),
+    }
     if len(e):
         ape = (e["ead"] - e["ead_realized"]).abs() / e["ead_realized"]
         out.update(
             ead_mape=float(ape.mean()),
             ead_bias=float((e["ead"].sum() - e["ead_realized"].sum()) / e["ead_realized"].sum()),
         )
-    if len(l):
+    if len(res):
         out.update(
-            lgd_mae=float((l["lgd_hat"] - l["lgd_realized"]).abs().mean()),
-            lgd_mean_pred=float(l["lgd_hat"].mean()),
-            lgd_mean_realized=float(l["lgd_realized"].mean()),
+            lgd_mae=float((res["lgd_hat"] - res["lgd_realized"]).abs().mean()),
+            lgd_mean_pred=float(res["lgd_hat"].mean()),
+            lgd_mean_realized=float(res["lgd_realized"].mean()),
         )
     return out
 
@@ -200,5 +204,5 @@ if __name__ == "__main__":
         f"max feature CSI={r['stability']['max_feature_csi']:.4f}"
     )
     print(
-        f"[validation] report -> artifacts/validation_report.json + reports/validation_report.html"
+        "[validation] report -> artifacts/validation_report.json + reports/validation_report.html"
     )

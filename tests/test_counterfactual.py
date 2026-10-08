@@ -68,7 +68,9 @@ def test_already_approved_returns_no_options():
 
 
 def test_no_single_change_is_reported_honestly():
-    hopeless = lambda rows: np.full(len(rows), 0.9)  # nothing helps
+    def hopeless(rows):  # nothing helps
+        return np.full(len(rows), 0.9)
+
     r = what_if(BASE, hopeless, THR)
     assert r["options"] == [] and "No single change" in r["message"]
 

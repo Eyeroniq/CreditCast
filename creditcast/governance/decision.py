@@ -60,7 +60,7 @@ def empirical_threshold(pd_hat, y_true, cfg: Config | None = None) -> float:
     return best_thr
 
 
-def assign_band(score, cfg: Config | None = None) -> "np.ndarray | str":
+def assign_band(score, cfg: Config | None = None) -> np.ndarray | str:
     """Map credit score -> rating grade using configured band floors."""
     cfg = cfg or load_config()
     # Ascending by floor so each higher-grade floor overwrites the lower grade:
@@ -75,7 +75,7 @@ def assign_band(score, cfg: Config | None = None) -> "np.ndarray | str":
     return out[0] if scalar else out
 
 
-def decide(pd_hat, threshold: float) -> "np.ndarray | str":
+def decide(pd_hat, threshold: float) -> np.ndarray | str:
     p = np.asarray(pd_hat, float)
     decision = np.where(p <= threshold, "approve", "decline")
     return decision.item() if decision.ndim == 0 else decision

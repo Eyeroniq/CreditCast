@@ -3,7 +3,6 @@ same frame shape, and scorecard reasons are points lost vs the best bin."""
 
 import copy
 
-import pandas as pd
 import pytest
 
 from creditcast.config import Config, load_config

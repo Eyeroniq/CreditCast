@@ -18,8 +18,10 @@ from sklearn.metrics import roc_auc_score
 
 from creditcast.config import Config, load_config, run_stamp, set_global_seed
 from creditcast.dataset import feature_columns
-from creditcast.models import calibration, challenger, ead as ead_mod, el as el_mod
-from creditcast.models import lgd as lgd_mod, scorecard
+from creditcast.models import calibration, challenger, scorecard
+from creditcast.models import ead as ead_mod
+from creditcast.models import el as el_mod
+from creditcast.models import lgd as lgd_mod
 from creditcast.pipeline.split import Split, make_split
 
 

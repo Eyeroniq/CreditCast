@@ -14,8 +14,9 @@ Three batched model calls in total, no SHAP — fast enough for live UI use.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any
 
 import numpy as np
 
@@ -142,7 +143,7 @@ def what_if(
 
     # ---- 2. refine between the last failing and first passing point ----------
     candidates, fine_rows, fine_grids, i = [], [], [], 0
-    for lv, g in zip(LEVERS, grids):
+    for lv, g in zip(LEVERS, grids, strict=True):
         seg = pds[i : i + len(g)]
         i += len(g)
         hit = np.flatnonzero(seg <= threshold)
@@ -158,15 +159,15 @@ def what_if(
 
     # ---- 3. round, then confirm each suggestion really approves ---------------
     proposals, j = [], 0
-    for lv, fg in zip(candidates, fine_grids):
+    for lv, fg in zip(candidates, fine_grids, strict=True):
         seg = fpds[j : j + len(fg)]
         j += len(fg)
         first = int(np.flatnonzero(seg <= threshold)[0])
         proposals.append((lv, _normalise(lv, applicant, float(fg[first]))))
     confirm = pd_batch([p for _, p in proposals]) if proposals else np.array([])
 
-    options = []
-    for (lv, new_app), p in zip(proposals, confirm):
+    options: list[dict[str, Any]] = []
+    for (lv, new_app), p in zip(proposals, confirm, strict=True):
         if p > threshold:  # rounding crossed back over the line
             continue
         cur, target = float(applicant[lv.feature]), float(new_app[lv.feature])

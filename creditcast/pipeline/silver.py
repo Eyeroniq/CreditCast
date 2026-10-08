@@ -190,7 +190,6 @@ def build_silver(cfg: Config | None = None) -> Path:
         silver_df = silver_df[silver_df["label_complete"] == 1].reset_index(drop=True)
 
     # ---- data-quality gate: reject implausible rows before they poison training
-    before = len(silver_df)
     mask = pd.Series(True, index=silver_df.index)
     for col, (lo, hi) in QUALITY_RANGES.items():
         mask &= silver_df[col].between(lo, hi)

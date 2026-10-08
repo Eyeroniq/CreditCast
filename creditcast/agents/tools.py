@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 
-import numpy as np
 import pandas as pd
 
 from creditcast.agents import charts
