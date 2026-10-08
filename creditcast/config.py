@@ -41,7 +41,7 @@ def load_config(path: str | os.PathLike | None = None) -> Config:
     used by the end-to-end test to run the whole lifecycle in a temp folder."""
     env_path = os.environ.get("CREDITCAST_CONFIG")
     cfg_path = Path(path) if path else Path(env_path) if env_path else DEFAULT_CONFIG_PATH
-    with open(cfg_path, "r") as fh:
+    with open(cfg_path) as fh:
         raw = yaml.safe_load(fh)
     return Config(raw)
 

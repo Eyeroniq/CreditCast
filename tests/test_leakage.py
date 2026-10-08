@@ -20,8 +20,7 @@ def _frame(vintages, n_each=20):
 
 
 def test_clean_split_passes():
-    cfg = load_config()
-    boundary = cfg.target.oot.test_vintage_start  # e.g. "2020-01"
+    cfg = load_config()  # test boundary is 2020-01
     split = Split(
         train=_frame(["2017-01", "2018-06"]),
         calib=_frame(["2019-01"]),

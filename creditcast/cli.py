@@ -31,8 +31,8 @@ def generate():
 @app.command()
 def pipeline():
     """Build Silver (point-in-time target) then Gold (feature matrix)."""
-    from creditcast.pipeline.silver import build_silver
     from creditcast.pipeline.gold import build_gold
+    from creditcast.pipeline.silver import build_silver
 
     build_silver()
     build_gold()

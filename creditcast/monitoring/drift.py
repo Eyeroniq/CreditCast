@@ -21,9 +21,9 @@ from creditcast.validation import stability as stab
 def snapshot_baseline(cfg: Config | None = None) -> Path:
     """Persist the training-time score + feature baseline for drift comparison."""
     cfg = cfg or load_config()
+    from creditcast.dataset import feature_columns
     from creditcast.models import scorecard
     from creditcast.pipeline.split import make_split
-    from creditcast.dataset import feature_columns
 
     train = make_split(cfg=cfg).train
     sc = scorecard.load(cfg)

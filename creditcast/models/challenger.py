@@ -12,6 +12,7 @@ from pathlib import Path
 
 import joblib
 import lightgbm as lgb
+import numpy as np
 import pandas as pd
 
 from creditcast.config import Config, load_config, run_stamp
@@ -65,8 +66,9 @@ def fit_challenger(
     return model
 
 
-def predict_pd(model: lgb.LGBMClassifier, X: pd.DataFrame) -> "pd.Series":
-    return model.predict_proba(_as_model_frame(X))[:, 1]
+def predict_pd(model: lgb.LGBMClassifier, X: pd.DataFrame) -> np.ndarray:
+    """Raw (uncalibrated) PD of the positive class, one per row."""
+    return np.asarray(model.predict_proba(_as_model_frame(X)))[:, 1]
 
 
 def save(model: lgb.LGBMClassifier, cfg: Config | None = None) -> Path:
