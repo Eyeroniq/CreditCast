@@ -23,8 +23,9 @@ from creditcast.config import Config, load_config, run_stamp
 class Calibrator:
     """Maps raw predicted PD -> calibrated PD via isotonic or Platt scaling."""
 
-    def __init__(self, method: str = "isotonic"):
+    def __init__(self, method: str = "isotonic", pd_floor: float = 0.0):
         self.method = method
+        self.pd_floor = float(pd_floor)
         self._iso: IsotonicRegression | None = None
         self._platt: LogisticRegression | None = None
 
@@ -45,17 +46,22 @@ class Calibrator:
     def transform(self, raw_p: np.ndarray) -> np.ndarray:
         raw_p = np.asarray(raw_p, float)
         if self._iso is not None:
-            return self._iso.transform(raw_p)
-        if self._platt is not None:
+            out = self._iso.transform(raw_p)
+        elif self._platt is not None:
             z = np.log(np.clip(raw_p, 1e-6, 1 - 1e-6) / (1 - np.clip(raw_p, 1e-6, 1 - 1e-6)))
-            return self._platt.predict_proba(z.reshape(-1, 1))[:, 1]
-        raise RuntimeError("Calibrator not fitted")
+            out = self._platt.predict_proba(z.reshape(-1, 1))[:, 1]
+        else:
+            raise RuntimeError("Calibrator not fitted")
+        # Regulatory PD floor: isotonic steps can hit exactly 0 and sigmoid
+        # tails get arbitrarily close; no applicant is ever "riskless".
+        return np.clip(out, getattr(self, "pd_floor", 0.0), 1.0)
 
 
 def fit_calibrator(raw_p: np.ndarray, y: np.ndarray,
                    cfg: Config | None = None) -> Calibrator:
     cfg = cfg or load_config()
-    return Calibrator(method=str(cfg.calibration.method)).fit(raw_p, y)
+    return Calibrator(method=str(cfg.calibration.method),
+                      pd_floor=float(cfg.calibration.pd_floor)).fit(raw_p, y)
 
 
 def cross_fit_transform(raw_p: np.ndarray, y: np.ndarray,
@@ -74,7 +80,8 @@ def cross_fit_transform(raw_p: np.ndarray, y: np.ndarray,
                             random_state=int(cfg.run.seed))
     out = np.empty(len(raw_p), dtype=float)
     for fit_idx, oof_idx in folds.split(raw_p.reshape(-1, 1), y):
-        cal = Calibrator(method=str(cfg.calibration.method)).fit(raw_p[fit_idx], y[fit_idx])
+        cal = Calibrator(method=str(cfg.calibration.method),
+                         pd_floor=float(cfg.calibration.pd_floor)).fit(raw_p[fit_idx], y[fit_idx])
         out[oof_idx] = cal.transform(raw_p[oof_idx])
     return out
 

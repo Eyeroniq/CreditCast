@@ -149,6 +149,9 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
 
     pd_12 = _default_probability(df, cfg)
     defaults = rng.random(n) < pd_12
+    # Some defaults cure: they catch up (back to current) two months after
+    # hitting 90+ DPD, are never disposed, and so carry zero loss.
+    cured = defaults & (rng.random(n) < float(cfg.generator.cure_rate))
 
     # Default month within the forward observation window (skewed later in window)
     default_month = np.where(
@@ -179,6 +182,7 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
         r, T = rate_m[i], term[i]
         pmt = bal * r / (1 - (1 + r) ** (-T)) if r > 0 else bal / T
         dm = default_month[i]
+        cures = bool(cured[i])
         disposed = False
         for age in range(1, horizon + 1):
             if disposed:
@@ -189,7 +193,7 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
 
             zb = pd.NA
             net_loss = np.nan
-            if dm and age >= dm:
+            if dm and age >= dm and not (cures and age >= dm + 2):
                 months_delinq = age - dm + 3  # entered 90+ at the default month
                 dpd_status = str(min(months_delinq, 6))
                 if age >= dm + 4:  # disposition ~4 months after default -> REO + loss
@@ -202,8 +206,8 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
                     dpd_status = "1"
                 else:
                     dpd_status = "0"
-                # small share of healthy loans prepay and leave the panel
-                if not dm and age >= 6 and rng.random() < 0.012:
+                # small share of healthy (or cured) loans prepay and leave
+                if (not dm or cures) and age >= 6 and rng.random() < 0.012:
                     zb = ZB_PREPAID
                     disposed = True
 
@@ -223,6 +227,10 @@ def generate(cfg: Config | None = None) -> dict[str, Path]:
 
     orig = _origination(cfg, rng)
     perf = _performance(orig, cfg, rng)
+    # A real data drop ends at a reporting month: nothing after the cutoff
+    # exists yet, so the most recent vintages are only partly observed.
+    cutoff = str(cfg.generator.data_cutoff)
+    perf = perf[perf["monthly_reporting_period"] <= cutoff].reset_index(drop=True)
 
     bronze = cfg.path("bronze")
     (bronze / "origination").mkdir(parents=True, exist_ok=True)

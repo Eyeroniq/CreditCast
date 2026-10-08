@@ -1,16 +1,18 @@
 # Model Card — CreditCast PD/LGD/EAD Expected-Loss Model
 
-> Auto-generated. data_version=`synthetic-v1` · code_version=`0.1.0` · seed=`42`
+> Auto-generated. data_version=`synthetic-v2` · code_version=`0.1.0` · seed=`42`
 
 ## 1. Model details
 - **Purpose:** Estimate 12-month Probability of Default (PD), Loss Given Default
   (LGD), Exposure at Default (EAD) and combine them into Expected Loss
   (EL = PD × LGD × EAD) for a residential-mortgage portfolio.
 - **Models:** (A) regulatory **WoE/IV logistic scorecard**; (B) **LightGBM
-  challenger**, isotonic-calibrated. Champion for EL/decisioning: **challenger (LightGBM, isotonic-calibrated)**.
-- **Decision threshold:** approve if PD ≤ 0.0344 (cost-minimizing,
-  FN:FP = 15:1), chosen on the calibration slice —
-  never on the OOT test outcomes it is evaluated on.
+  challenger**, sigmoid-calibrated. Champion for EL/decisioning: **challenger (LightGBM, sigmoid-calibrated)**.
+- **Decision threshold:** approve if PD ≤ 0.0625
+  (method `closed_form`, FN:FP = 15:1;
+  closed-form 0.0625, empirical on calib
+  0.0680). Never chosen on the OOT
+  test outcomes it is evaluated on. PDs are floored at 0.0003.
 - **Methodology:** Global Basel/IRB framework (jurisdiction-agnostic). Data is the
   Freddie Mac Single-Family schema (synthetic generator standing in for the GSE
   files; real files drop into the same pipeline).
@@ -29,20 +31,20 @@
 ## 4. Performance (out-of-time)
 | Metric | Scorecard | Challenger |
 |---|---|---|
-| Gini | 0.4483 | 0.4327 |
-| KS | 0.3401 | 0.3209 |
-| Calibration max band error | 0.0221 | 0.0169 |
-| ECE | 0.0080 | 0.0069 |
+| Gini | 0.4391 | 0.4278 |
+| KS | 0.3292 | 0.3290 |
+| Calibration max band error | 0.0213 | 0.0185 |
+| ECE | 0.0047 | 0.0055 |
 
-- **Benchmark:** challenger − scorecard Gini gap = -0.0156. Negligible accuracy gap — the interpretable scorecard is fully competitive. Deploy the scorecard; retain the challenger as an ongoing benchmark.
+- **Benchmark:** challenger − scorecard Gini gap = -0.0113. Negligible accuracy gap — the interpretable scorecard is fully competitive. Deploy the scorecard; retain the challenger as an ongoing benchmark.
 - **Top global drivers (SHAP):** fico, ltv_dti, ltv, occupancy_status, orig_interest_rate.
-- **Portfolio:** EL ≈ 68,124,889 on EAD 4,082,620,862
-  (≈ 167 bps); mean PD 4.32%, mean LGD 35.76%.
+- **Portfolio:** EL ≈ 37,204,643 on EAD 3,050,441,699
+  (≈ 122 bps); mean PD 4.32%, mean LGD 26.14%.
 
 ## 5. Fairness
-- Disparate-impact (4/5ths) at the decision threshold: min ratio **0.677**
+- Disparate-impact (4/5ths) at the decision threshold: min ratio **0.799**
   (floor 0.8) → **REVIEW**.
-- Max equal-opportunity difference: 0.212.
+- Max equal-opportunity difference: 0.161.
 - **Discussion:** the model excludes race, yet neutral features (e.g. credit
   score, DTI) proxy historical disparity, producing disparate impact. Mitigation
   options: feature review, reject-option / fairness-constrained training
@@ -54,7 +56,7 @@
 - Synthetic data calibrated to plausible mortgage behaviour, not a specific
   institution's book. Macro scenarios are implicit in vintages, not modelled
   explicitly.
-- LGD is trained only on *resolved* defaults (1,434 of 1,434
+- LGD is trained only on *resolved* defaults (1,429 of 1,429
   training defaults; workout window 36 months).
 - Labels are right-censoring-aware (policy: `drop`).
 - EAD is the scheduled amortized balance after 6 payments.
