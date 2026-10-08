@@ -105,7 +105,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.2.2 | What-if / counterfactual panel | [x] | 2026-10-09 | `POST /api/whatif`, ~50 ms |
 | 6.2.3 | Compare applicants | [ ] | | |
 | 6.2.4 | Clickable drill-down charts | [ ] | | |
-| 6.2.5 | Interactive threshold slider | [ ] | | Needs backend endpoint |
+| 6.2.5 | Interactive threshold slider | [x] | 2026-10-09 | Precomputed 99-point curve; no API calls while scrubbing |
 | 6.2.6 | Searchable loan table + CSV | [ ] | | |
 | 6.2.7 | Stress-test playground | [ ] | | Depends on 5.2 |
 | 6.2.8 | Better Copilot chat | [ ] | | |
@@ -950,6 +950,23 @@ API client `lib/api.js`.
   (approval rate, expected loss, fairness DI with the 0.80 line); marker for
   the cost-optimal threshold (from 1.1).
 - **Done when:** scrubbing updates all readouts smoothly.
+- **Result (2026-10-09):** `decision.threshold_curve()` computes 99 cut-offs
+  (0.5%–25%, 0.25-pt steps) on the OOT book at governance time →
+  `artifacts/threshold_curve.json` → `GET /api/threshold-curve` (one fetch; the
+  `?thr=` per-request variant wasn't needed). Each point: approval rate,
+  default rate among approved, share of all defaults approved, expected loss of
+  the approved book ($ and bps), min disparate-impact ratio and approval rate
+  per group. `components/ThresholdExplorer.jsx` on the Fairness page: slider
+  that snaps to the curve, four live readouts with deltas vs policy, a ✓/✗
+  4/5ths chip, a chart of approval rate and fairness ratio vs limit with the
+  policy, current limit and 0.80 floor marked, and "Reset to policy". The
+  text states the policy limit comes from the cost ratio and that per-group
+  limits are illegal. Verified in the browser: 3% limit → approval 46.7%
+  (−34.0 pts), defaults among approved 1.96%, EL $7.00M, ratio 0.565 ✗.
+  The curve matches governance exactly at the policy point (80.7%, 0.799). The
+  chart's line animation is off: it is an interactive explorer, and paused
+  animation frames left the lines flat during verification. Tests: curve
+  monotonicity/consistency on a toy book + artifact consistency; 97 → 99.
 
 #### 6.2.6 Searchable, sortable loan table
 - Use TanStack Table: search by loan ID, sort any column, filters (band,

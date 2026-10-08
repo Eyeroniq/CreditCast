@@ -5,6 +5,7 @@ import {
 import { api, pct } from "@/lib/api";
 import { PageHead, Stat, Pill, Band, useFetch, Loading, ApiError, CardTitle, TableWrap, InfoTip } from "@/components/ui";
 import { featureLabel } from "@/lib/labels";
+import ThresholdExplorer from "@/components/ThresholdExplorer";
 
 export default function GovernancePage() {
   const { data, error, loading } = useFetch(() => api.governance(), []);
@@ -37,6 +38,8 @@ export default function GovernancePage() {
           <div className="sub">max EO diff {f.max_equal_opportunity_diff.toFixed(3)}</div>
         </div>
       </div>
+
+      <ThresholdExplorer />
 
       <div className="grid cols-2" style={{ marginBottom: 16 }}>
         <div className="card">
