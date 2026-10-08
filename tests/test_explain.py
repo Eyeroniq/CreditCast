@@ -1,8 +1,8 @@
 """Champion-consistent explanations (Phase 1.7): both champions return the
 same frame shape, and scorecard reasons are points lost vs the best bin."""
+
 import copy
 
-import pandas as pd
 import pytest
 
 from creditcast.config import Config, load_config
@@ -10,7 +10,8 @@ from creditcast.config import Config, load_config
 ART = load_config().path("artifacts")
 pytestmark = pytest.mark.skipif(
     not (ART / "scorecard.joblib").exists() or not (ART / "challenger.joblib").exists(),
-    reason="run the pipeline first (python -m creditcast.cli all)")
+    reason="run the pipeline first (python -m creditcast.cli all)",
+)
 
 from creditcast.dataset import feature_columns, load_gold  # noqa: E402
 from creditcast.governance import explain, reason_codes  # noqa: E402

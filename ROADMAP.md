@@ -77,7 +77,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 2.3 | Expand test suite (≥70% coverage) | [x] | 2026-10-09 | 89% coverage, 122 tests in ~9 s; CI floor 80% |
 | 2.4 | Lock dependencies | [x] | 2026-10-09 | uv-compiled, hash-checked; serve lock constrained by training lock; CI checks sync |
 | 2.5 | Model registry & versioning | [ ] | | |
-| 2.6 | Lint / format / types + pre-commit | [ ] | | |
+| 2.6 | Lint / format / types + pre-commit | [x] | 2026-10-09 | ruff + mypy + ESLint in CI; formatting commit blame-ignored |
 | 3.1 | Rate-limit Copilot | [x] | 2026-10-08 | Also /score and /portfolio; per real client IP behind Caddy |
 | 3.2 | Bound & validate API inputs | [x] | 2026-10-08 | 16 bad-input cases → 422 |
 | 3.3 | Tighten CORS, optional API key | [x] | 2026-10-08 | Same-origin by default |
@@ -564,6 +564,22 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   `creditcast/governance`, `creditcast/serving.py`) via `pyproject.toml`;
   `.pre-commit-config.yaml`; ESLint for the dashboard; run in CI.
 - **Done when:** CI fails on lint errors; codebase is clean.
+- **Result (2026-10-09):** `pyproject.toml` configures ruff 0.16.10 (rules E, W, F,
+  I, B, UP; line length 100) and mypy 2.4.0 (typed core: `models/`,
+  `governance/`, `serving.py`, `features.py`, `config.py`). Both are pinned in
+  `requirements.in` and locked. Steps:
+  1. A pure `ruff format` commit (52 files), listed in `.git-blame-ignore-revs`;
+     122 tests pass before and after.
+  2. 33 lint findings fixed: exception chaining in the API (`raise … from e`);
+     `zip(strict=True)` in the what-if search (outputs must line up with their
+     candidates); unused/ambiguous names; import order.
+  3. 3 mypy errors fixed: `challenger.predict_pd` was annotated `Series` but
+     returns an array; the what-if options list is typed.
+  4. Dashboard: ESLint 8.57.1 + `eslint-config-next` 14.2.15
+     (`next/core-web-vitals`); 1 finding fixed.
+
+  CI now runs `ruff check`, `ruff format --check`, `mypy` and `npm run lint`.
+  `.pre-commit-config.yaml` provides the same checks as optional local hooks.
 
 ---
 

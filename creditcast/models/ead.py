@@ -10,6 +10,7 @@ overstate exposure — the borrower has already repaid some principal by then.
 The hook is left explicit so a revolving/undrawn product can plug in a fitted
 CCF model later.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -40,6 +41,5 @@ def estimate_ead(df: pd.DataFrame, cfg: Config | None = None) -> np.ndarray:
     cfg = cfg or load_config()
     ccf = float(cfg.ead.ccf)
     k = int(cfg.ead.expected_default_month)
-    bal = amortized_balance(df["orig_upb"], df["orig_interest_rate"],
-                            df["orig_loan_term"], k)
+    bal = amortized_balance(df["orig_upb"], df["orig_interest_rate"], df["orig_loan_term"], k)
     return bal * ccf

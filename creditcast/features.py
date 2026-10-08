@@ -10,6 +10,7 @@ benchmark**: the average note rate of loans originated in the trailing
 `window` months *strictly before* the loan's month. A lender knows that number
 on the origination date; it never uses the loan's own month or anything later.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -26,15 +27,18 @@ def rate_benchmark(df: pd.DataFrame, window: int = BENCHMARK_WINDOW_MONTHS) -> p
     `vintage` ('YYYY-MM') and `rate_benchmark`.
     """
     months = pd.PeriodIndex(df["vintage"].astype(str), freq="M")
-    g = (pd.DataFrame({"m": months, "r": df["orig_interest_rate"].to_numpy(float)})
-         .groupby("m")["r"].agg(["sum", "count"]))
+    g = (
+        pd.DataFrame({"m": months, "r": df["orig_interest_rate"].to_numpy(float)})
+        .groupby("m")["r"]
+        .agg(["sum", "count"])
+    )
     full = pd.period_range(g.index.min(), g.index.max() + 1, freq="M")
     g = g.reindex(full, fill_value=0.0)
     # rolling over the previous `window` months, shifted so the current month
     # is excluded (strictly point-in-time)
     s = g["sum"].rolling(window, min_periods=1).sum().shift(1)
     n = g["count"].rolling(window, min_periods=1).sum().shift(1)
-    bench = (s / n.replace(0, np.nan))
+    bench = s / n.replace(0, np.nan)
     # The earliest month has no history; fall back to the first month that has
     # one (affects only the oldest training vintage, never the OOT test set).
     bench = bench.bfill().ffill()
@@ -45,8 +49,7 @@ def lookup_benchmark(vintages: pd.Series, benchmark: pd.DataFrame) -> np.ndarray
     """Benchmark for each vintage; unknown/missing/future months use the latest."""
     table = benchmark.set_index("vintage")["rate_benchmark"]
     latest = float(table.iloc[-1])
-    return (vintages.astype("object").map(table).astype(float)
-            .fillna(latest).to_numpy())
+    return vintages.astype("object").map(table).astype(float).fillna(latest).to_numpy()
 
 
 def engineer(df: pd.DataFrame, benchmark: pd.DataFrame) -> pd.DataFrame:
@@ -57,8 +60,9 @@ def engineer(df: pd.DataFrame, benchmark: pd.DataFrame) -> pd.DataFrame:
     # Rate spread vs the point-in-time market benchmark: isolates idiosyncratic
     # pricing/risk without looking at the loan's own cohort or the future.
     vint = df["vintage"] if "vintage" in df else pd.Series([None] * len(df), index=df.index)
-    df["rate_spread"] = (df["orig_interest_rate"].to_numpy(float)
-                         - lookup_benchmark(vint, benchmark)).round(3)
+    df["rate_spread"] = (
+        df["orig_interest_rate"].to_numpy(float) - lookup_benchmark(vint, benchmark)
+    ).round(3)
     # High-LTV flag (regulatory PMI boundary at 80)
     df["high_ltv"] = (df["ltv"] > 80).astype(int)
     return df

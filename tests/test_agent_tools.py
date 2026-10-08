@@ -4,13 +4,15 @@ Verifies the tools return well-formed summaries + valid chart specs, so the agen
 layer is testable in CI without a live model key. Skips cleanly if artifacts
 haven't been generated yet.
 """
+
 import pytest
 
 from creditcast.config import load_config
 
 pytestmark = pytest.mark.skipif(
     not (load_config().path("artifacts") / "test_scored.parquet").exists(),
-    reason="run the pipeline first (python -m creditcast.cli all)")
+    reason="run the pipeline first (python -m creditcast.cli all)",
+)
 
 from creditcast.agents import tools  # noqa: E402
 
@@ -39,9 +41,17 @@ def test_portfolio_slice_fico_monotonic_ish():
 
 
 def test_score_borrower_high_risk_declines():
-    r = tools.score_borrower(fico=640, dti=48, ltv=95, orig_interest_rate=6.0,
-                             orig_upb=350000, occupancy_status="I", loan_purpose="C",
-                             property_type="MH", first_time_homebuyer="Y")
+    r = tools.score_borrower(
+        fico=640,
+        dti=48,
+        ltv=95,
+        orig_interest_rate=6.0,
+        orig_upb=350000,
+        occupancy_status="I",
+        loan_purpose="C",
+        property_type="MH",
+        first_time_homebuyer="Y",
+    )
     s = r["summary"]
     assert s["decision"] in ("approve", "decline")
     assert 0 <= s["pd"] <= 1 and s["reason_codes"]

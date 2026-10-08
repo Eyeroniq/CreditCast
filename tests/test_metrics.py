@@ -1,5 +1,6 @@
 """Validation maths and fairness metrics on hand-made data with known answers
 (ROADMAP 2.3)."""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -13,11 +14,11 @@ from creditcast.validation import discrimination as disc
 # ---- discrimination ------------------------------------------------------------
 def test_perfect_and_random_ranking():
     y = np.array([0] * 50 + [1] * 50)
-    perfect = np.linspace(0, 1, 100)                  # defaulters score highest
+    perfect = np.linspace(0, 1, 100)  # defaulters score highest
     assert disc.auc(y, perfect) == pytest.approx(1.0)
     assert disc.gini(y, perfect) == pytest.approx(1.0)
     assert disc.ks_statistic(y, perfect) == pytest.approx(1.0)
-    assert disc.gini(y, perfect[::-1]) == pytest.approx(-1.0)   # inverted ranking
+    assert disc.gini(y, perfect[::-1]) == pytest.approx(-1.0)  # inverted ranking
 
 
 def test_gains_capture_all_defaults_and_report_shape():
@@ -37,7 +38,7 @@ def test_gains_capture_all_defaults_and_report_shape():
 def test_well_calibrated_predictions_have_small_errors():
     rng = np.random.default_rng(1)
     p = rng.uniform(0.01, 0.3, 50_000)
-    y = (rng.random(50_000) < p).astype(int)           # outcomes drawn from p itself
+    y = (rng.random(50_000) < p).astype(int)  # outcomes drawn from p itself
     rep = cal.calibration_report(y, p, 10)
     assert rep["ece"] < 0.01
     assert rep["max_band_error"] < 0.02
@@ -48,7 +49,7 @@ def test_well_calibrated_predictions_have_small_errors():
 def test_miscalibration_is_detected():
     rng = np.random.default_rng(2)
     p = rng.uniform(0.01, 0.3, 20_000)
-    y = (rng.random(20_000) < p / 2).astype(int)        # truth is half the prediction
+    y = (rng.random(20_000) < p / 2).astype(int)  # truth is half the prediction
     assert cal.expected_calibration_error(y, p, 10) > 0.03
     assert cal.hosmer_lemeshow(y, p, 10)["p_value"] < 0.01
 
@@ -58,14 +59,18 @@ def _book():
     # Group A: 100 loans, PD 0.02 -> all approved. Group B: 100 loans, half at
     # PD 0.02 and half at PD 0.20 -> 50% approved. Privileged group = A.
     rows = [{"borrower_race": "A", "pd_champion": 0.02, "default_12m": 0} for _ in range(100)]
-    rows += [{"borrower_race": "B", "pd_champion": 0.02 if i < 50 else 0.20,
-              "default_12m": 0} for i in range(100)]
+    rows += [
+        {"borrower_race": "B", "pd_champion": 0.02 if i < 50 else 0.20, "default_12m": 0}
+        for i in range(100)
+    ]
     return pd.DataFrame(rows)
 
 
 def _cfg(privileged="A"):
     import copy
+
     from creditcast.config import Config
+
     cfg = Config(copy.deepcopy(dict(load_config())))
     cfg["fairness"] = {**cfg["fairness"], "privileged_group": privileged}
     return cfg

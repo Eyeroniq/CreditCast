@@ -4,11 +4,11 @@ Global importance (what drives the model overall) and per-applicant local
 attributions (why *this* decision), computed on the challenger via the fast
 TreeExplainer. Local attributions feed the adverse-action reason codes.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import joblib
 import numpy as np
 import pandas as pd
 import shap
@@ -35,17 +35,27 @@ def global_importance(explainer, X: pd.DataFrame) -> pd.DataFrame:
     """Mean |SHAP| per feature — the global driver ranking."""
     sv = _shap_values(explainer, X)
     imp = np.abs(sv).mean(axis=0)
-    return (pd.DataFrame({"feature": feature_columns(), "mean_abs_shap": imp})
-            .sort_values("mean_abs_shap", ascending=False).reset_index(drop=True))
+    return (
+        pd.DataFrame({"feature": feature_columns(), "mean_abs_shap": imp})
+        .sort_values("mean_abs_shap", ascending=False)
+        .reset_index(drop=True)
+    )
 
 
 def local_attribution(explainer, x_row: pd.DataFrame) -> pd.DataFrame:
     """Signed SHAP contributions for one applicant (positive => raises PD)."""
     sv = _shap_values(explainer, x_row)[0]
-    return (pd.DataFrame({"feature": feature_columns(),
-                          "value": x_row[feature_columns()].iloc[0].astype(str).to_numpy(),
-                          "shap": sv})
-            .sort_values("shap", key=np.abs, ascending=False).reset_index(drop=True))
+    return (
+        pd.DataFrame(
+            {
+                "feature": feature_columns(),
+                "value": x_row[feature_columns()].iloc[0].astype(str).to_numpy(),
+                "shap": sv,
+            }
+        )
+        .sort_values("shap", key=np.abs, ascending=False)
+        .reset_index(drop=True)
+    )
 
 
 def _shap_values(explainer, X: pd.DataFrame) -> np.ndarray:
@@ -60,6 +70,7 @@ def save_global(cfg: Config | None = None) -> Path:
     """Precompute + persist global importance for the dashboard Governance screen."""
     cfg = cfg or load_config()
     from creditcast.pipeline.split import make_split
+
     expl = build_explainer(cfg=cfg)
     test = make_split(cfg=cfg).test
     sample = test.sample(min(2000, len(test)), random_state=int(cfg.run.seed))
@@ -73,4 +84,5 @@ if __name__ == "__main__":
     p = save_global()
     print("[shap] global importance ->", p)
     import json
+
     print(json.dumps(json.loads(p.read_text())[:5], indent=2))

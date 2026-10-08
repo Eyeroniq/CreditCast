@@ -1,4 +1,5 @@
 """EAD tests (Phase 1.6): scheduled amortized balance."""
+
 import pandas as pd
 import pytest
 
@@ -25,10 +26,10 @@ def test_textbook_example():
 
 def test_estimate_ead_below_original_upb():
     cfg = load_config()
-    df = pd.DataFrame({"orig_upb": [300_000], "orig_interest_rate": [5.0],
-                       "orig_loan_term": [360]})
+    df = pd.DataFrame({"orig_upb": [300_000], "orig_interest_rate": [5.0], "orig_loan_term": [360]})
     ead = estimate_ead(df, cfg)[0]
     assert 0 < ead < 300_000
     assert ead == pytest.approx(
         amortized_balance(300_000, 5.0, 360, int(cfg.ead.expected_default_month))
-        * float(cfg.ead.ccf))
+        * float(cfg.ead.ccf)
+    )

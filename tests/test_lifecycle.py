@@ -6,6 +6,7 @@ pipeline, training, validation, governance, monitoring, gates and CLI code is
 exercised by the test suite (and measured by coverage). `CREDITCAST_CONFIG`
 points the whole app at a temp config; nothing in the repo is touched.
 """
+
 import hashlib
 import json
 import os
@@ -31,8 +32,7 @@ def tiny(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("lifecycle")
     raw = yaml.safe_load(DEFAULT_CONFIG_PATH.read_text(encoding="utf-8"))
     dirs = ("bronze", "silver", "gold", "artifacts", "reports")
-    raw["paths"] = {**{d: str(tmp / d) for d in dirs},
-                    "model_card": str(tmp / "model_card.md")}
+    raw["paths"] = {**{d: str(tmp / d) for d in dirs}, "model_card": str(tmp / "model_card.md")}
     raw["generator"]["n_loans"] = N_LOANS
     raw["tracking"] = {"enabled": False}
     for d in dirs:
@@ -47,9 +47,15 @@ def tiny(tmp_path_factory):
     dataset.reload()
     try:
         from creditcast import cli
+
         result = CliRunner().invoke(cli.app, ["all"])
-        yield {"tmp": tmp, "result": result, "cfg": load_config(), "cli": cli,
-               "real_card_before": real_card_before}
+        yield {
+            "tmp": tmp,
+            "result": result,
+            "cfg": load_config(),
+            "cli": cli,
+            "real_card_before": real_card_before,
+        }
     finally:
         if previous is None:
             os.environ.pop("CREDITCAST_CONFIG", None)
@@ -69,11 +75,22 @@ def test_lifecycle_runs_to_the_gates(tiny):
 
 def test_every_stage_writes_its_outputs(tiny):
     art = tiny["tmp"] / "artifacts"
-    for name in ("scorecard.joblib", "challenger.joblib", "lgd.joblib",
-                 "calibrator_scorecard.joblib", "calibrator_challenger.joblib",
-                 "test_scored.parquet", "calib_scored.parquet", "baseline.parquet",
-                 "train_metrics.json", "validation_report.json", "governance_report.json",
-                 "monitoring_report.json", "threshold_curve.json", "shap_global.json"):
+    for name in (
+        "scorecard.joblib",
+        "challenger.joblib",
+        "lgd.joblib",
+        "calibrator_scorecard.joblib",
+        "calibrator_challenger.joblib",
+        "test_scored.parquet",
+        "calib_scored.parquet",
+        "baseline.parquet",
+        "train_metrics.json",
+        "validation_report.json",
+        "governance_report.json",
+        "monitoring_report.json",
+        "threshold_curve.json",
+        "shap_global.json",
+    ):
         assert (art / name).exists(), name
     assert (tiny["tmp"] / "reports" / "validation_report.html").exists()
     assert (tiny["tmp"] / "gold" / "feature_manifest.json").exists()
@@ -103,6 +120,7 @@ def test_reports_are_coherent(tiny):
 
 def test_gates_report_every_check(tiny):
     from creditcast.eval.gates import run_gates
+
     passed, results = run_gates(tiny["cfg"])
     assert isinstance(passed, bool)
     assert {r["check"].split(" ")[0] for r in results} >= {"Gini", "KS", "Calibration", "Max"}
@@ -110,11 +128,23 @@ def test_gates_report_every_check(tiny):
 
 def test_serving_scores_with_the_freshly_trained_models(tiny):
     from creditcast.serving import ModelBundle
+
     b = ModelBundle(tiny["cfg"])
     assert b.missing_artifacts() == []
-    out = b.score(dict(fico=690, dti=38.0, ltv=82, orig_interest_rate=4.3,
-                       orig_upb=300000, orig_loan_term=360, occupancy_status="P",
-                       loan_purpose="N", property_type="CO", first_time_homebuyer="Y"))
+    out = b.score(
+        dict(
+            fico=690,
+            dti=38.0,
+            ltv=82,
+            orig_interest_rate=4.3,
+            orig_upb=300000,
+            orig_loan_term=360,
+            occupancy_status="P",
+            loan_purpose="N",
+            property_type="CO",
+            first_time_homebuyer="Y",
+        )
+    )
     assert out["decision"] in {"approve", "decline"} and 0 < out["pd"] < 1
     assert len(b.model_version["fingerprint"]) == 12
 

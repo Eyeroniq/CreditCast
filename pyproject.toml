@@ -1,0 +1,40 @@
+# Tool configuration only — CreditCast is run as a repo (python -m creditcast.cli),
+# not installed as a package. Dependencies live in requirements*.in / *.txt.
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["app/dashboard"]
+
+[tool.ruff.lint]
+# pycodestyle errors/warnings, pyflakes, import order, bugbear, pyupgrade
+select = ["E", "W", "F", "I", "B", "UP"]
+ignore = [
+    "E501",    # line length is handled by the formatter; long SQL/strings are fine
+    "B008",    # FastAPI's Depends()/Query() defaults are idiomatic
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["creditcast", "app"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true      # sklearn/lightgbm/optbinning/shap ship partial stubs
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+# Typed core: the decision-making code paths. Others are checked as they're touched.
+files = [
+    "creditcast/models",
+    "creditcast/governance",
+    "creditcast/serving.py",
+    "creditcast/features.py",
+    "creditcast/config.py",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

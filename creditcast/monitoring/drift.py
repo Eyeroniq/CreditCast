@@ -5,6 +5,7 @@ training baseline, with threshold-based alerts. The baseline is snapshotted at
 training time so monitoring is reproducible. Populates the dashboard Monitoring
 screen and can run on a GitHub Actions cron.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,9 +21,9 @@ from creditcast.validation import stability as stab
 def snapshot_baseline(cfg: Config | None = None) -> Path:
     """Persist the training-time score + feature baseline for drift comparison."""
     cfg = cfg or load_config()
+    from creditcast.dataset import feature_columns
     from creditcast.models import scorecard
     from creditcast.pipeline.split import make_split
-    from creditcast.dataset import feature_columns
 
     train = make_split(cfg=cfg).train
     sc = scorecard.load(cfg)
@@ -39,17 +40,22 @@ def monitor_batch(batch: pd.DataFrame, cfg: Config | None = None) -> dict:
     bins = int(cfg.validation.psi_bins)
     baseline = pd.read_parquet(cfg.path("artifacts") / "baseline.parquet")
 
-    score_psi = (stab.psi(baseline["credit_score"], batch["credit_score"], bins)
-                 if "credit_score" in batch else None)
+    score_psi = (
+        stab.psi(baseline["credit_score"], batch["credit_score"], bins)
+        if "credit_score" in batch
+        else None
+    )
     feats = [f for f in (numeric_columns() + categorical_columns()) if f in batch]
     csi = stab.csi_by_feature(baseline, batch, feats, bins)
     alerts = []
     if score_psi is not None and stab.psi_status(score_psi) != "stable":
-        alerts.append({"signal": "score", "psi": round(score_psi, 4),
-                       "status": stab.psi_status(score_psi)})
+        alerts.append(
+            {"signal": "score", "psi": round(score_psi, 4), "status": stab.psi_status(score_psi)}
+        )
     for rec in csi[csi["status"] != "stable"].to_dict(orient="records"):
-        alerts.append({"signal": rec["feature"], "psi": round(rec["csi"], 4),
-                       "status": rec["status"]})
+        alerts.append(
+            {"signal": rec["feature"], "psi": round(rec["csi"], 4), "status": rec["status"]}
+        )
 
     return {
         "stamp": run_stamp(),
@@ -70,17 +76,20 @@ def run_monitoring(cfg: Config | None = None) -> dict:
     scored = pd.read_parquet(cfg.path("artifacts") / "test_scored.parquet")
     # the scored set has credit_score; pull features from the OOT split too
     from creditcast.pipeline.split import make_split
-    test = make_split(cfg=cfg).test.merge(
-        scored[["loan_id", "credit_score"]], on="loan_id")
+
+    test = make_split(cfg=cfg).test.merge(scored[["loan_id", "credit_score"]], on="loan_id")
     report = monitor_batch(test, cfg)
     (cfg.path("artifacts") / "monitoring_report.json").write_text(
-        json.dumps(report, indent=2, default=float))
+        json.dumps(report, indent=2, default=float)
+    )
     return report
 
 
 if __name__ == "__main__":
     r = run_monitoring()
-    print(f"[monitor] score PSI={r['score_psi']} ({r['score_status']}) | "
-          f"{len(r['alerts'])} alert(s) | healthy={r['healthy']}")
+    print(
+        f"[monitor] score PSI={r['score_psi']} ({r['score_status']}) | "
+        f"{len(r['alerts'])} alert(s) | healthy={r['healthy']}"
+    )
     for a in r["alerts"]:
         print(f"    ALERT {a['signal']}: PSI={a['psi']} ({a['status']})")
