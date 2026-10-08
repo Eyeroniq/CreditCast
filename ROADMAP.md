@@ -104,9 +104,9 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.2.1 | Live scoring with sliders | [x] | 2026-10-08 | |
 | 6.2.2 | What-if / counterfactual panel | [x] | 2026-10-09 | `POST /api/whatif`, ~50 ms |
 | 6.2.3 | Compare applicants | [ ] | | |
-| 6.2.4 | Clickable drill-down charts | [ ] | | |
+| 6.2.4 | Clickable drill-down charts | [~] | 2026-10-09 | Portfolio charts filter the table; Monitoring brush/zoom still open |
 | 6.2.5 | Interactive threshold slider | [x] | 2026-10-09 | Precomputed 99-point curve; no API calls while scrubbing |
-| 6.2.6 | Searchable loan table + CSV | [ ] | | |
+| 6.2.6 | Searchable loan table + CSV | [x] | 2026-10-09 | Client-side, 1,000 rows, no new dependency |
 | 6.2.7 | Stress-test playground | [ ] | | Depends on 5.2 |
 | 6.2.8 | Better Copilot chat | [ ] | | |
 | 6.3.1 | Responsive / mobile layout | [x] | 2026-10-08 | No sideways scroll at 375 px on all 7 pages |
@@ -939,6 +939,13 @@ API client `lib/api.js`.
 - Active filters shown as removable chips.
 - **Done when:** every chart has hover tooltips and Portfolio charts filter
   the table.
+- **Result (2026-10-09, partial):** on Portfolio, clicking a bar in "Loans per
+  risk grade" or "Expected loss per risk grade" filters the table to that grade;
+  clicking a bin of the default-risk histogram filters to that PD range; click
+  again to clear. Unselected bars dim; tooltips say "click to filter"; the
+  page scrolls to the table; active filters show as removable chips with
+  "Clear all". Verified: clicking BB → 389 BB loans. Every chart already had
+  hover tooltips. Still open: brush/zoom on the Monitoring time series.
 
 #### 6.2.5 Interactive threshold slider
 - **Backend:** `GET /api/threshold-sim?thr=` → for the scored OOT set returns
@@ -975,6 +982,17 @@ API client `lib/api.js`.
 - API: add `offset`, `sort`, `filter` params to `/api/portfolio` (bounded by
   3.2) or ship the sample once and filter client-side (≤ 1,000 rows).
 - **Done when:** smooth with 1,000 rows; export matches filters.
+- **Result (2026-10-09):** `components/LoanTable.jsx`, written without TanStack
+  (1,000 rows client-side is trivial, so no new dependency). Portfolio now loads
+  the 1,000 highest-expected-loss loans (the API cap) and says so. Search by loan
+  ID; filters for grade, origination month, decision and actual outcome;
+  click-to-sort on every column (`aria-sort`, ▲/▼); 25/50/100 rows per page
+  with Prev/Next; "Showing x–y of n (filtered from 1,000)"; plain headers with
+  ⓘ; cells stay on one line and the table scrolls inside its card on phones.
+  CSV export of the filtered and sorted rows with raw numbers. Verified in the
+  browser: sort ↓/↑ on default risk (44.66% / 2.22% first); declined + defaulted
+  → 129 loans, all matching; BB filter → CSV with exactly 389 rows, all BB. No
+  horizontal page scroll at 375 px.
 
 #### 6.2.7 Stress-test playground *(after 5.2)*
 - New `/stress` page: sliders for unemployment change, house-price change,
