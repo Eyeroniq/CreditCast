@@ -6,7 +6,7 @@
 
 run:
   seed: 42                      # global determinism
-  data_version: "synthetic-v1"  # bump when the generator schema changes
+  data_version: "synthetic-v2"  # bump when the generator schema changes (v2: cures + data cutoff)
   code_version: "0.1.0"
 
 paths:
@@ -26,6 +26,9 @@ generator:
   perf_horizon_months: 24       # monthly performance rows generated per loan
   base_default_rate: 0.045      # portfolio-level 12m default rate (realistic mortgage)
   recovery_mean: 0.65           # for LGD: mean recovery fraction on defaults
+  cure_rate: 0.25               # share of defaults that cure (back to current, 0 loss)
+  data_cutoff: "2022-06"        # last reporting month in the panel (like a real data drop);
+                                # recent vintages are right-censored by it
 
 # ---- Target definition (leakage discipline) ---------------------------------
 target:
@@ -94,12 +97,17 @@ challenger:
 
 # ---- Calibration -------------------------------------------------------------
 calibration:
-  method: "isotonic"    # isotonic | sigmoid(Platt)
+  # sigmoid (Platt): smooth PDs. Isotonic was tried first but its step function
+  # put up to 23% of loans on one PD, so approval jumped ~20pp depending on
+  # which side of the cut-off a step landed (ROADMAP 1.8). isotonic | sigmoid
+  method: "sigmoid"
+  pd_floor: 0.0003      # Basel 3 bp PD floor: no applicant is ever "riskless"
 
 # ---- LGD / EAD ---------------------------------------------------------------
 lgd:
   method: "two_stage"   # cure model (P[loss>0]) x severity regressor
   workout_window_months: 36   # months after default to observe the final loss (LGD only)
+  cure_months: 6              # months back at current (0 DPD) after default = cured, 0 loss
 ead:
   ccf: 1.0              # fully-drawn mortgage: EAD ~= outstanding balance
   expected_default_month: 6   # months of payments made before default (scheduled balance)
@@ -120,6 +128,12 @@ decision:
   # Champion PD model: drives Expected Loss, approve/decline and reason codes.
   # challenger (LightGBM + SHAP reasons) | scorecard (WoE points-lost reasons)
   champion: "challenger"
+  # How the approve/decline cut-off is set (both are always reported):
+  #   closed_form: approve if PD <= cost_fp / (cost_fp + cost_fn). Optimal for
+  #                calibrated PDs and stable (doesn't move with sample noise).
+  #   empirical:   minimise realised cost on the calib slice (noisy when the
+  #                cost curve is flat — see ROADMAP 1.8).
+  threshold_method: "closed_form"
   # Threshold from cost of false-negative vs false-positive (made explicit)
   cost_fn: 15.0              # cost of approving a defaulter (loss >> lost margin)
   cost_fp: 1.0               # cost of declining a good borrower (lost margin)

@@ -18,8 +18,8 @@ from creditcast.governance import decision, explain, fairness, reason_codes, sha
 from creditcast.pipeline.split import make_split
 
 CHAMPION_PD = "pd_champion"   # the configured champion's calibrated PD (train.py)
-CHAMPION_LABEL = {"challenger": "challenger (LightGBM, isotonic-calibrated)",
-                  "scorecard": "scorecard (WoE logistic, isotonic-calibrated)"}
+CHAMPION_LABEL = {"challenger": "challenger (LightGBM, {cal}-calibrated)",
+                  "scorecard": "scorecard (WoE logistic, {cal}-calibrated)"}
 
 
 def build_governance(cfg: Config | None = None) -> dict:
@@ -33,6 +33,11 @@ def build_governance(cfg: Config | None = None) -> dict:
     # (cross-fitted PDs) — never on the OOT test outcomes it is reported on.
     calib = pd.read_parquet(art / "calib_scored.parquet")
     thr = decision.default_threshold(calib[CHAMPION_PD], calib["default_12m"], cfg)
+    thr_alternatives = {
+        "closed_form": decision.closed_form_threshold(cfg),
+        "empirical_calib": decision.empirical_threshold(
+            calib[CHAMPION_PD], calib["default_12m"], cfg),
+    }
     dec_summary = decision.decision_summary(scored, CHAMPION_PD, thr, cfg)
     fair = fairness.fairness_report(scored, CHAMPION_PD, thr, cfg)
 
@@ -63,8 +68,12 @@ def build_governance(cfg: Config | None = None) -> dict:
 
     report = {
         "stamp": run_stamp(),
-        "champion_model": CHAMPION_LABEL[str(cfg.decision.champion)],
-        "decision": {**dec_summary, "threshold_source": "calib (cross-fitted)"},
+        "champion_model": CHAMPION_LABEL[str(cfg.decision.champion)].format(
+            cal=cfg.calibration.method),
+        "decision": {**dec_summary,
+                     "threshold_method": str(cfg.decision.threshold_method),
+                     "threshold_source": "calib (cross-fitted)",
+                     "threshold_alternatives": thr_alternatives},
         "fairness": fair,
         "shap_global": shap_global,
         "adverse_action_example": example,
@@ -94,10 +103,12 @@ def _write_model_card(gov: dict, tm: dict, val: dict, cfg: Config) -> None:
   (LGD), Exposure at Default (EAD) and combine them into Expected Loss
   (EL = PD × LGD × EAD) for a residential-mortgage portfolio.
 - **Models:** (A) regulatory **WoE/IV logistic scorecard**; (B) **LightGBM
-  challenger**, isotonic-calibrated. Champion for EL/decisioning: **{gov['champion_model']}**.
-- **Decision threshold:** approve if PD ≤ {gov['decision']['threshold']:.4f} (cost-minimizing,
-  FN:FP = {cfg.decision.cost_fn:g}:{cfg.decision.cost_fp:g}), chosen on the calibration slice —
-  never on the OOT test outcomes it is evaluated on.
+  challenger**, {cfg.calibration.method}-calibrated. Champion for EL/decisioning: **{gov['champion_model']}**.
+- **Decision threshold:** approve if PD ≤ {gov['decision']['threshold']:.4f}
+  (method `{gov['decision']['threshold_method']}`, FN:FP = {cfg.decision.cost_fn:g}:{cfg.decision.cost_fp:g};
+  closed-form {gov['decision']['threshold_alternatives']['closed_form']:.4f}, empirical on calib
+  {gov['decision']['threshold_alternatives']['empirical_calib']:.4f}). Never chosen on the OOT
+  test outcomes it is evaluated on. PDs are floored at {cfg.calibration.pd_floor:g}.
 - **Methodology:** Global Basel/IRB framework (jurisdiction-agnostic). Data is the
   Freddie Mac Single-Family schema (synthetic generator standing in for the GSE
   files; real files drop into the same pipeline).

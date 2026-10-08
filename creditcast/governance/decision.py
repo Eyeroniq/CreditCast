@@ -3,8 +3,10 @@
 The approve/decline cutoff is a *business* decision made explicit: pick the PD
 threshold that minimizes expected misclassification cost, where a false negative
 (approving a defaulter) costs `cost_fn` and a false positive (declining a good
-borrower) costs `cost_fp`. Risk bands map the scaled credit score to rating
-grades from config.
+borrower) costs `cost_fp`. For calibrated PDs the optimum is the closed form
+PD ≤ cost_fp / (cost_fp + cost_fn) (default, stable); the empirical minimum on
+the calibration slice is kept for comparison. Risk bands map the scaled credit
+score to rating grades from config.
 """
 from __future__ import annotations
 
@@ -14,8 +16,30 @@ import pandas as pd
 from creditcast.config import Config, load_config
 
 
-def default_threshold(pd_hat, y_true, cfg: Config | None = None) -> float:
-    """PD cutoff minimizing expected cost (cost_fn·FN + cost_fp·FP)."""
+def closed_form_threshold(cfg: Config | None = None) -> float:
+    """Bayes-optimal cut-off for *calibrated* PDs: approve while the expected
+    cost of approving (cost_fn · PD) is below that of declining
+    (cost_fp · (1 − PD)), i.e. PD ≤ cost_fp / (cost_fp + cost_fn)."""
+    cfg = cfg or load_config()
+    cost_fn = float(cfg.decision.cost_fn)
+    cost_fp = float(cfg.decision.cost_fp)
+    return cost_fp / (cost_fp + cost_fn)
+
+
+def default_threshold(pd_hat, y_true, cfg: Config | None = None,
+                      method: str | None = None) -> float:
+    """The decision cut-off, by `decision.threshold_method` (or `method`)."""
+    cfg = cfg or load_config()
+    method = method or str(cfg.decision.get("threshold_method", "empirical"))
+    if method == "closed_form":
+        return closed_form_threshold(cfg)
+    if method != "empirical":
+        raise ValueError(f"unknown threshold method: {method}")
+    return empirical_threshold(pd_hat, y_true, cfg)
+
+
+def empirical_threshold(pd_hat, y_true, cfg: Config | None = None) -> float:
+    """PD cutoff minimizing realised cost (cost_fn·FN + cost_fp·FP) on a sample."""
     cfg = cfg or load_config()
     cost_fn = float(cfg.decision.cost_fn)
     cost_fp = float(cfg.decision.cost_fp)
