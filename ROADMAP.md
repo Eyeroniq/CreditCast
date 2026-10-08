@@ -72,7 +72,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 1.6 | Amortized-balance EAD | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
 | 1.7 | Reason codes follow the champion model | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
 | 1.8 | Phase 1 follow-ups (PD floor, threshold stability, generator cures/cutoff) | [ ] | | Found while doing Phase 1 |
-| 2.1 | GitHub Actions CI | [ ] | | |
+| 2.1 | GitHub Actions CI | [x] | 2026-10-08 | PR #2; first run green (python 1m48s, web 1m23s) |
 | 2.2 | Scheduled drift workflow | [ ] | | |
 | 2.3 | Expand test suite (≥70% coverage) | [ ] | | |
 | 2.4 | Lock dependencies | [ ] | | MLflow 3.x broke the old file store — fixed in Phase 1 branch; pinning still needed |
@@ -405,6 +405,12 @@ the same code always produces the same numbers.
   5. Add the CI badge to the README.
 - **Done when:** a PR shows three green checks; a deliberately broken gate
   (e.g. `gini_min: 0.99`) turns CI red.
+- **Result (2026-10-08):** `.github/workflows/ci.yml` merged (PR #2). PRs run
+  `python` + `web` (both green on the first run); `docker` runs only on `main`
+  pushes / manual dispatch. Job summary shows the OOT metrics table; reports,
+  model card and `coverage.xml` are uploaded. Coverage 41% (target in 2.3).
+  ESLint deferred to 2.6 (`next lint` has no config yet). The "broken gate turns
+  CI red" check was not run on GitHub; locally `cli gates` exits non-zero on failure.
 
 ### 2.2 Scheduled drift workflow
 
