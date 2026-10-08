@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import { START_TOUR_EVENT } from "@/components/Tour";
 
 const NAV = [
   { href: "/", label: "Score an applicant" },
@@ -31,7 +32,7 @@ export default function Sidebar() {
           {open ? "✕ Close" : "☰ Menu"}
         </button>
       </div>
-      <nav id="main-nav" className={`nav ${open ? "open" : ""}`} aria-label="Main">
+      <nav id="main-nav" data-tour="nav" className={`nav ${open ? "open" : ""}`} aria-label="Main">
         {NAV.map((n) => {
           const active = n.href === "/" ? path === "/" : path.startsWith(n.href);
           return (
@@ -45,6 +46,10 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        <button type="button" className="theme-toggle"
+          onClick={() => { setOpen(false); window.dispatchEvent(new Event(START_TOUR_EVENT)); }}>
+          ✦ Take the tour
+        </button>
         <ThemeToggle />
       </nav>
       <div className="sidebar-foot small muted">

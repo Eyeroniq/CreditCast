@@ -13,7 +13,7 @@ export default function GlossaryPage() {
     <>
       <PageHead title="Glossary"
         subtitle="Every term in the cockpit, in plain language. The ⓘ icons across the app show the short version." />
-      <input className="search" type="search" placeholder="Search terms (e.g. PD, fairness, drift)…"
+      <input data-tour="glossary" className="search" type="search" placeholder="Search terms (e.g. PD, fairness, drift)…"
         aria-label="Search the glossary" value={q} onChange={(e) => setQ(e.target.value)} />
 
       {entries.length === 0 && <p className="muted">No terms match “{q}”.</p>}

@@ -41,7 +41,7 @@ export default function ThresholdExplorer() {
   };
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
+    <div className="card" style={{ marginBottom: 16 }} data-tour="threshold">
       <CardTitle info="threshold">Try a different approval limit</CardTitle>
       <p className="small muted" style={{ marginTop: -6 }}>
         Approve every application whose default risk is at or below the limit. A higher limit
