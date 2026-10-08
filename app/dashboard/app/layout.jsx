@@ -1,6 +1,7 @@
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
+import Tour from "@/components/Tour";
 
 export const metadata = {
   title: "CreditCast · Risk Cockpit",
@@ -20,6 +21,7 @@ export default function RootLayout({ children }) {
           <Sidebar />
           <main className="main">{children}</main>
         </div>
+        <Tour />
       </body>
     </html>
   );

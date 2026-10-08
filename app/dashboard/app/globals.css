@@ -288,6 +288,28 @@ button.chip:disabled { opacity: .45; cursor: default; }
 }
 .theme-toggle:hover { color: var(--text); border-color: var(--muted); }
 
+/* ---- guided tour (6.1.4) ------------------------------------------------------ */
+.tour-spot {
+  position: fixed; z-index: 90; border-radius: 12px; pointer-events: auto;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 9999px rgba(0, 0, 0, .55);
+  transition: top .2s, left .2s, width .2s, height .2s;
+}
+.tour-dim { position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, .55); }
+.tour-card {
+  position: fixed; z-index: 91; background: var(--panel); color: var(--text);
+  border: 1px solid var(--border-bright); border-radius: 12px; padding: 16px 18px;
+  box-shadow: 0 12px 32px var(--shadow); outline: none;
+}
+.tour-card.centred { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(380px, calc(100vw - 32px)); }
+.tour-card h3 { margin: 4px 0 6px; font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--text); }
+.tour-card p { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; }
+.tour-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+@media (max-width: 560px) {
+  .tour-card:not(.centred) { left: 16px !important; right: 16px; width: auto !important;
+                             top: auto !important; bottom: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .tour-spot { transition: none; } }
+
 /* ---- mobile nav (6.3.1) ---------------------------------------------------- */
 .menu-btn { display: none; }
 .sidebar-foot { position: absolute; bottom: 18px; left: 24px; right: 24px; }

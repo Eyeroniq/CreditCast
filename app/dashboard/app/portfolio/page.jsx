@@ -45,7 +45,7 @@ export default function PortfolioPage() {
       <p className="small muted" style={{ margin: "0 0 10px" }}>
         Tip: click a bar to filter the loan table below; click it again to clear.
       </p>
-      <div className="grid cols-2" style={{ marginBottom: 16 }}>
+      <div className="grid cols-2" style={{ marginBottom: 16 }} data-tour="charts">
         <div className="card">
           <CardTitle info="risk_band">Loans per risk grade</CardTitle>
           <ResponsiveContainer width="100%" height={230}>
@@ -101,7 +101,7 @@ export default function PortfolioPage() {
         </ResponsiveContainer>
       </div>
 
-      <div className="card" id="loan-table">
+      <div className="card" id="loan-table" data-tour="loan-table">
         <CardTitle info="el">Loans with the highest expected loss</CardTitle>
         <p className="small muted" style={{ marginTop: -6 }}>
           The {num(data.sample.length)} loans with the largest expected loss in the book of {num(data.n_loans)}.

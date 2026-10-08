@@ -99,7 +99,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.1.1 | Plain-language labels | [x] | 2026-10-08 | |
 | 6.1.2 | Tooltips + Glossary page | [x] | 2026-10-08 | 25 terms |
 | 6.1.3 | Page verdict summaries | [ ] | | |
-| 6.1.4 | Guided tour | [ ] | | |
+| 6.1.4 | Guided tour | [x] | 2026-10-09 | 8 steps across 4 pages; built in-house (no library) |
 | 6.1.5 | Human-friendly decision card | [x] | 2026-10-08 | Done with 6.2.1 |
 | 6.2.1 | Live scoring with sliders | [x] | 2026-10-08 | |
 | 6.2.2 | What-if / counterfactual panel | [x] | 2026-10-09 | `POST /api/whatif`, ~50 ms |
@@ -934,6 +934,23 @@ API client `lib/api.js`.
   auto-starts on first visit (flag in `localStorage`, wrapped in try/catch);
   "Take the tour" button in the sidebar.
 - **Done when:** tour completes in < 1 minute and can be replayed.
+- **Result (2026-10-09):** `components/Tour.jsx`, built in-house rather than
+  with react-joyride/driver.js, because the steps span several pages (it
+  navigates and waits for each target) and it should use the theme tokens.
+  Eight steps: welcome/navigation, live sliders, decision card, portfolio
+  charts, loan table, approval-limit explorer, Copilot, glossary. Targets are
+  `[data-tour="…"]` attributes, not CSS classes. The target is spotlighted
+  (dimmed page, accent ring) and the card is placed below or above it and
+  clamped to the screen. On phones the card pins to the bottom, and a hidden
+  target (the collapsed menu) falls back to a centred card. Skip / Back / Next
+  / Finish, ← → keys, Esc, and focus moves to the card (`role="dialog"`).
+  Auto-starts once on a first visit to the start page (flag in
+  `localStorage`, try/catch); "✦ Take the tour" in the menu replays it.
+  Verified in the browser: auto-start on first visit; all 8 steps found and
+  spotlighted their targets on desktop; clicking through took 2.3 s, so a
+  person reading finishes well under a minute; no auto-start on the next
+  visit; replay works; phone layout (centred step 1, bottom-pinned card);
+  Skip and Esc close it.
 
 #### 6.1.5 Human-friendly decision card
 - Replace the current decision block on `/` with:
