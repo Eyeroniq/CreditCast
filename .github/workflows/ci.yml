@@ -139,7 +139,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build image (trainer stage runs the lifecycle + gates)
-        run: docker build -t creditcast:ci .
+        run: docker build --build-arg GIT_SHA=${{ github.sha }} -t creditcast:ci .
 
       - name: Run container and wait for HEALTHCHECK (/api/ready)
         run: |
@@ -153,6 +153,7 @@ jobs:
           done
           [ "$status" = "healthy" ] || { docker logs cc; exit 1; }
           curl -fsS http://localhost:8000/api/ready
+          curl -fsS http://localhost:8000/api/health   # served registry version + git sha
           curl -fsS -o /dev/null -w "cockpit: %{http_code}\n" http://localhost:8000/
           curl -fsS -H 'content-type: application/json' \
             -d '{"fico":690,"dti":38,"ltv":82,"orig_interest_rate":4.3,"orig_upb":300000,"orig_loan_term":360,"occupancy_status":"P","loan_purpose":"N","property_type":"CO","first_time_homebuyer":"Y"}' \

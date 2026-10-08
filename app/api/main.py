@@ -59,8 +59,19 @@ LIMITS = API_CFG.rate_limits
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    """Warm the model bundle at startup so the first visitor isn't slow. A
-    failure is logged, not fatal: /api/ready then reports 503 (unhealthy)."""
+    """Apply a pinned model version (rollback), then warm the model bundle so the
+    first visitor isn't slow. Failures are logged, not fatal: /api/ready then
+    reports 503 (unhealthy)."""
+    pinned = (load_config().get("serving") or {}).get("pinned_version")
+    if pinned:
+        from creditcast.registry import activate, active_version
+
+        try:
+            if active_version() != pinned:
+                activate(pinned)
+                log.info({"event": "model_version_pinned", "version": pinned})
+        except Exception:
+            log.exception("could not activate pinned model version %s", pinned)
     try:
         bundle().warm()
         log.info({"event": "startup", "model_version": bundle().model_version})
@@ -175,8 +186,17 @@ class Applicant(BaseModel):
 
 @router.get("/health")
 def health():
-    """Liveness: the process is up (does not touch the models)."""
-    return {"status": "ok", "stamp": load_config()["run"]}
+    """Liveness: the process is up (does not load the models), plus which
+    registered model version is being served."""
+    from creditcast.config import git_sha
+    from creditcast.registry import active_version
+
+    return {
+        "status": "ok",
+        "stamp": load_config()["run"],
+        "git_sha": git_sha(),
+        "model_version": active_version(),
+    }
 
 
 @router.get("/ready")

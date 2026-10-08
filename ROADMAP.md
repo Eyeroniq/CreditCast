@@ -76,7 +76,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 2.2 | Scheduled drift workflow | [x] | 2026-10-08 | PR #5; forced test run opened issue #6 (closed) |
 | 2.3 | Expand test suite (≥70% coverage) | [x] | 2026-10-09 | 89% coverage, 122 tests in ~9 s; CI floor 80% |
 | 2.4 | Lock dependencies | [x] | 2026-10-09 | uv-compiled, hash-checked; serve lock constrained by training lock; CI checks sync |
-| 2.5 | Model registry & versioning | [ ] | | |
+| 2.5 | Model registry & versioning | [x] | 2026-10-09 | File registry v0001…; rollback via CLI or `serving.pinned_version`; reproducible builds |
 | 2.6 | Lint / format / types + pre-commit | [x] | 2026-10-09 | ruff + mypy + ESLint in CI; formatting commit blame-ignored |
 | 3.1 | Rate-limit Copilot | [x] | 2026-10-08 | Also /score and /portfolio; per real client IP behind Caddy |
 | 3.2 | Bound & validate API inputs | [x] | 2026-10-08 | 16 bad-input cases → 422 |
@@ -557,6 +557,43 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   4. Serving reads `config.serving.model_version` (default `CURRENT`).
   5. `/api/health` returns the served model version.
 - **Done when:** can roll back by changing one config value.
+- **Result (2026-10-09):** `creditcast/registry.py` is a file-based registry.
+  - **register:** a run that passes the gates is snapshotted to
+    `artifacts/registry/v0001…` (all artifacts, plus the gold feature manifest,
+    rate benchmark and model card). The `manifest.json` holds the git commit,
+    run stamp, model fingerprint, gates result and headline metrics. A run with
+    byte-identical model files reuses the latest version.
+  - **activate:** restores a version into the working locations, deletes files
+    it didn't have, and verifies the fingerprint.
+
+  CLI: `cli all` auto-registers on passing gates; plus `register`, `models list`
+  (with `*` = active) and `models use vNNNN`. **Config rollback:**
+  `serving.pinned_version: "v0001"` is applied by the API at startup. Verified
+  on the real 60k pipeline: v0001 (sigmoid) and v0002 (isotonic) registered;
+  pinning v0001 → `/api/ready` served v0001's fingerprint. `/api/health`
+  returns the live version and git sha. `run_stamp()` gains `git_sha`
+  (`$GIT_SHA`, passed as a Docker build arg in CI/compose, else
+  `git rev-parse`).
+
+  **Reproducibility fix (found while verifying):** retraining gave a different
+  scorecard file only because optbinning stores wall-clock fit timings
+  (`_time_*`) in the pickle. These are zeroed on save, so identical training
+  now gives byte-identical models on the same platform: two retrains and a
+  fresh full `cli all` all gave fingerprint `7bed00881754`. A lifecycle test
+  guards it.
+
+  **Deviations from the plan:**
+  - Snapshot-and-restore instead of serving from `artifacts/<run_id>/`
+    directly, because about a dozen loaders assume the working folder.
+  - No MLflow model-registry entry: the file registry is the source of truth,
+    and MLflow keeps run tracking.
+  - In Docker each image retrains and contains only its own version, so
+    rolling back the live site means redeploying an earlier commit (the
+    fingerprint confirms the model); `deploy/README.md` explains this.
+
+  Tests: `tests/test_registry.py` (register, dedupe, next version, rollback
+  removes newer-only files, unknown version, tamper detection, health) plus
+  lifecycle tests. 122 → 132 tests.
 
 ### 2.6 Lint / format / types
 

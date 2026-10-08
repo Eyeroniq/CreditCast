@@ -20,6 +20,12 @@ paths:
 tracking:
   enabled: true                 # MLflow run logging (best-effort; off in tests)
 
+# ---- Model registry / serving (ROADMAP 2.5) ----------------------------------
+serving:
+  # Roll back by pinning a registered version (e.g. "v0003"): the API restores
+  # it from artifacts/registry when it starts. null = serve the latest run.
+  pinned_version: null
+
 # ---- Synthetic GSE-schema generator -----------------------------------------
 # Mimics Freddie Mac Single-Family loan-level + monthly performance schema so
 # real GSE files drop into the exact same Silver/Gold pipeline later.

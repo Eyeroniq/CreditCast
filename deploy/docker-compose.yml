@@ -10,6 +10,8 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}   # GIT_SHA=$(git rev-parse --short HEAD) docker compose ... up
     image: creditcast:latest
     restart: unless-stopped
     env_file:

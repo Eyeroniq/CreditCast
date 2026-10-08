@@ -10,7 +10,6 @@ codes. Used by the FastAPI service.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from functools import cached_property
 
@@ -38,14 +37,7 @@ REQUIRED_ARTIFACTS = [
     ("gold", "feature_manifest.json"),
     ("gold", "rate_benchmark.parquet"),
 ]
-# The model files whose bytes define "which model made this decision".
-_FINGERPRINTED = [
-    "scorecard.joblib",
-    "challenger.joblib",
-    "calibrator_scorecard.joblib",
-    "calibrator_challenger.joblib",
-    "lgd.joblib",
-]
+# "Which model made this decision" = registry.fingerprint() over the model files.
 
 
 class ModelBundle:
@@ -81,14 +73,15 @@ class ModelBundle:
 
     @cached_property
     def model_version(self) -> dict:
-        """Run stamp + champion + a fingerprint of the model files' bytes."""
-        h = hashlib.sha256()
-        for name in _FINGERPRINTED:
-            h.update((self.cfg.path("artifacts") / name).read_bytes())
+        """Run stamp + champion + registered version + a fingerprint of the
+        model files' bytes."""
+        from creditcast.registry import active_version, fingerprint
+
         return {
             **run_stamp(),
             "champion": str(self.cfg.decision.champion),
-            "fingerprint": h.hexdigest()[:12],
+            "registry_version": active_version(self.cfg),
+            "fingerprint": fingerprint(self.cfg.path("artifacts")),
         }
 
     @cached_property
