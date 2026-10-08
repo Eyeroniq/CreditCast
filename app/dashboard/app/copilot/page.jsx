@@ -169,7 +169,7 @@ export default function CopilotPage() {
         <div ref={endRef} />
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+      <div data-tour="copilot" style={{ display: "flex", gap: 10, marginTop: 14 }}>
         <input style={{ flex: 1, fontFamily: "var(--sans)" }}
           placeholder="Ask the risk team… (e.g. what drives Expected Loss in the book?)"
           value={input} onChange={(e) => setInput(e.target.value)}

@@ -96,7 +96,7 @@ export default function ScorePage() {
             ))}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div data-tour="sliders" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {SLIDERS.map((s) => (
               <SliderField key={s.key} id={`f-${s.key}`} label={s.label || featureLabel(s.key)}
                 value={form[s.key]} onChange={(v) => set(s.key, v)}
@@ -160,7 +160,7 @@ function Result({ res, busy, whatif, onApply }) {
 
   return (
     <>
-      <div className="card" style={{ borderColor: approved ? "var(--green)" : "var(--red)" }}>
+      <div data-tour="decision" className="card" style={{ borderColor: approved ? "var(--green)" : "var(--red)" }}>
         <div className="decision">
           <div>
             <div className="small muted" style={{ textTransform: "uppercase", letterSpacing: ".6px" }}>
