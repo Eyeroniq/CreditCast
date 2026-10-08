@@ -159,6 +159,17 @@ agents:
   max_tool_iters: 4                  # per-specialist LLM<->tool round trips
   max_specialists: 3                 # how many specialists the orchestrator may use
 
+# ---- Public API limits (Phase 3) ---------------------------------------------
+# Per client IP. Behind the Caddy proxy the real IP comes from X-Forwarded-For
+# (uvicorn trusts it via FORWARDED_ALLOW_IPS, set in deploy/docker-compose.yml).
+api:
+  rate_limits:
+    score: "60/minute"
+    portfolio: "30/minute"
+    agent_chat: "10/minute;100/day"   # protects the free Groq quota
+  max_question_chars: 500
+  portfolio_max_rows: 1000
+
 # ---- Fairness ----------------------------------------------------------------
 fairness:
   protected_attribute: "borrower_race"

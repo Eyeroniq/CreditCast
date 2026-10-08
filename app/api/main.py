@@ -3,30 +3,80 @@
 Serves single-applicant scoring (PD/LGD/EL + decision + reason codes) and the
 precomputed report artifacts under `/api/*`, and (when present) the pre-built
 static Next.js Risk Cockpit at `/` — so the whole app runs as one container at
-one origin (no CORS). Run locally:
+one origin (no CORS).
+
+Public-facing hardening: per-IP rate limits (slowapi) on the costly endpoints,
+strict input validation (unknown fields, out-of-range values and unknown
+category codes are 422s), and unexpected errors return a request ID instead of
+a stack trace. Limits live in `config.yaml` under `api`. Run locally:
 
     uvicorn app.api.main:app --reload --port 8001
 """
 from __future__ import annotations
 
 import json
+import logging
 import os
+import uuid
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from creditcast.config import load_config
 from creditcast.governance import decision
 from creditcast.serving import ModelBundle
 
+log = logging.getLogger("creditcast.api")
+API_CFG = load_config().api
+LIMITS = API_CFG.rate_limits
+
 app = FastAPI(title="CreditCast Scoring API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# Per-client-IP rate limits (in-memory: one container, one process).
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+def _rate_limited(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    """Friendly 429 the cockpit can show as-is (`detail`), plus Retry-After."""
+    try:
+        retry_after = int(exc.limit.limit.get_expiry())   # window length, seconds
+    except AttributeError:
+        retry_after = 60
+    return JSONResponse(
+        status_code=429,
+        headers={"Retry-After": str(retry_after)},
+        content={"detail": "You're sending requests quickly — please try again "
+                           f"in a minute (limit: {exc.detail}).",
+                 "limit": str(exc.detail)})
+
+
+@app.middleware("http")
+async def _request_id(request: Request, call_next):
+    """Tag every request with an ID (echoed in X-Request-ID and in 500s)."""
+    request.state.request_id = uuid.uuid4().hex[:12]
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request.state.request_id
+    return response
+
+
+def _internal_error(request: Request, what: str) -> HTTPException:
+    rid = getattr(request.state, "request_id", "-")
+    log.exception("%s failed (request_id=%s)", what, rid)
+    return HTTPException(500, f"Internal error while {what} (request id {rid}).")
 
 # All API endpoints live under /api so they never collide with the static
 # cockpit routes (e.g. the page /validation vs the endpoint /api/validation).
@@ -47,17 +97,22 @@ def _artifact(name: str) -> dict:
 
 
 class Applicant(BaseModel):
+    """One mortgage application. Ranges mirror the Silver data-quality gate;
+    category codes are the ones the models were trained on."""
+    model_config = ConfigDict(extra="forbid")
+
     fico: int = Field(ge=300, le=850, examples=[680])
-    dti: float = Field(ge=0, le=70, examples=[42.0])
+    dti: float = Field(ge=0, le=70, allow_inf_nan=False, examples=[42.0])
     ltv: int = Field(ge=1, le=125, examples=[88])
-    orig_interest_rate: float = Field(ge=0, le=25, examples=[4.5])
-    orig_upb: int = Field(ge=1000, examples=[280000])
+    orig_interest_rate: float = Field(ge=0, le=25, allow_inf_nan=False, examples=[4.5])
+    orig_upb: int = Field(ge=1_000, le=5_000_000, examples=[280000])
     orig_loan_term: int = Field(ge=60, le=480, examples=[360])
-    occupancy_status: str = Field(examples=["I"])
-    loan_purpose: str = Field(examples=["C"])
-    property_type: str = Field(examples=["SF"])
-    first_time_homebuyer: str = Field(examples=["N"])
-    vintage: str | None = Field(default=None, examples=["2021-06"])
+    occupancy_status: Literal["P", "I", "S"] = Field(examples=["I"])
+    loan_purpose: Literal["P", "C", "N"] = Field(examples=["C"])
+    property_type: Literal["SF", "CO", "PU", "MH"] = Field(examples=["SF"])
+    first_time_homebuyer: Literal["Y", "N"] = Field(examples=["N"])
+    vintage: str | None = Field(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$",
+                                examples=["2021-06"])
 
 
 @router.get("/health")
@@ -66,11 +121,14 @@ def health():
 
 
 @router.post("/score")
-def score(applicant: Applicant):
+@limiter.limit(LIMITS.score)
+def score(request: Request, applicant: Applicant):
     try:
         return bundle().score(applicant.model_dump())
     except KeyError as e:
         raise HTTPException(422, f"missing feature: {e}")
+    except Exception:
+        raise _internal_error(request, "scoring")
 
 
 @router.get("/validation")
@@ -94,7 +152,9 @@ def shap_global():
 
 
 @router.get("/portfolio")
-def portfolio(n: int = 500):
+@limiter.limit(LIMITS.portfolio)
+def portfolio(request: Request,
+              n: int = Query(500, ge=1, le=int(API_CFG.portfolio_max_rows))):
     """Portfolio risk view: aggregates + a sample of scored loans for the UI."""
     cfg = load_config()
     scored = pd.read_parquet(cfg.path("artifacts") / "test_scored.parquet")
@@ -134,7 +194,10 @@ def _histogram(series: pd.Series, bins: int) -> list[dict]:
 
 # ---- Risk Copilot (agent layer) -------------------------------------------
 class AgentQuery(BaseModel):
-    question: str = Field(examples=["Why is the 2021 vintage riskier, and is the model fair?"])
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(min_length=1, max_length=int(API_CFG.max_question_chars),
+                          examples=["Why is the 2021 vintage riskier, and is the model fair?"])
 
 
 @router.get("/agent/team")
@@ -148,7 +211,8 @@ def agent_team():
 
 
 @router.post("/agent/chat")
-def agent_chat(q: AgentQuery):
+@limiter.limit(LIMITS.agent_chat)
+def agent_chat(request: Request, q: AgentQuery):
     """Route the question to the specialist team and return answer + charts + trace."""
     from creditcast.agents import orchestrator
     from creditcast.agents.llm import LLMNotConfigured
@@ -156,6 +220,8 @@ def agent_chat(q: AgentQuery):
         return orchestrator.run(q.question)
     except LLMNotConfigured as e:
         raise HTTPException(503, str(e))
+    except Exception:
+        raise _internal_error(request, "answering")
 
 
 # Register the API, then (in the container) serve the static Next.js export at /.

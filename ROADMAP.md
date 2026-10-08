@@ -78,8 +78,8 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 2.4 | Lock dependencies | [ ] | | MLflow 3.x broke the old file store — fixed in Phase 1 branch; pinning still needed |
 | 2.5 | Model registry & versioning | [ ] | | |
 | 2.6 | Lint / format / types + pre-commit | [ ] | | |
-| 3.1 | Rate-limit Copilot | [ ] | | |
-| 3.2 | Bound & validate API inputs | [ ] | | |
+| 3.1 | Rate-limit Copilot | [x] | 2026-10-08 | Also /score and /portfolio; per real client IP behind Caddy |
+| 3.2 | Bound & validate API inputs | [x] | 2026-10-08 | 16 bad-input cases → 422 |
 | 3.3 | Tighten CORS, optional API key | [ ] | | |
 | 3.4 | Structured logs + decision audit trail | [ ] | | |
 | 3.5 | Health/readiness + Docker HEALTHCHECK | [ ] | | |
@@ -546,6 +546,14 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   500 chars (`Field(max_length=500)`); return friendly 429 JSON that the UI
   shows ("You're asking quickly — try again in a minute").
 - **Done when:** 11th request in a minute returns 429.
+- **Result (2026-10-08):** `slowapi` limits from `config.yaml` → `api.rate_limits`:
+  `/api/agent/chat` 10/min + 100/day, `/api/score` 60/min, `/api/portfolio`
+  30/min (health/reports unlimited). 429 returns a readable `detail` plus
+  `Retry-After`; the cockpit now shows the API's own message. Question length
+  1–500 chars. `deploy/docker-compose.yml` sets `FORWARDED_ALLOW_IPS` so limits
+  key on the **real visitor IP** behind Caddy — verified on a live server:
+  visitor A got 10 → 429 while visitor B was unaffected. Note: invalid bodies
+  are rejected (422) before the limiter runs, so they are not counted.
 
 ### 3.2 Bound and validate inputs
 
@@ -556,6 +564,12 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   3. Catch unexpected exceptions in `/score` → 500 with a request ID, never a
      stack trace.
 - **Done when:** fuzzing bad payloads only yields 422s; tests in `test_api.py`.
+- **Result (2026-10-08):** `Applicant` forbids unknown fields; category codes are
+  `Literal`s; NaN/∞ rejected; `orig_upb` ≤ 5M; `vintage` must be `YYYY-MM`;
+  `/api/portfolio?n=` 1…1000. Every request gets an `X-Request-ID`; unexpected
+  errors in `/score` and `/agent/chat` return 500 with that ID and no internals.
+  `tests/test_api.py`: 24 tests (16 bad-input cases, limits, 500 handling).
+  Tests 56 → 80.
 
 ### 3.3 Tighten CORS and add optional auth
 
