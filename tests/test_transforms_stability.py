@@ -1,4 +1,5 @@
 """Unit tests for feature transforms, the Silver quality gate, and PSI/CSI."""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -9,15 +10,19 @@ from creditcast.validation.stability import psi, psi_status, csi
 
 
 def test_engineered_features():
-    df = pd.DataFrame({
-        "vintage": ["2020-01", "2020-01"],
-        "ltv": [80, 90], "dti": [40, 50], "orig_interest_rate": [4.0, 5.0],
-    })
+    df = pd.DataFrame(
+        {
+            "vintage": ["2020-01", "2020-01"],
+            "ltv": [80, 90],
+            "dti": [40, 50],
+            "orig_interest_rate": [4.0, 5.0],
+        }
+    )
     bench = pd.DataFrame({"vintage": ["2020-01"], "rate_benchmark": [4.25]})
     out = engineer(df, bench)
-    assert out["ltv_dti"].tolist() == [32.0, 45.0]            # ltv*dti/100
-    assert out["high_ltv"].tolist() == [0, 1]                  # >80 threshold
-    assert out["rate_spread"].tolist() == [-0.25, 0.75]        # rate - benchmark
+    assert out["ltv_dti"].tolist() == [32.0, 45.0]  # ltv*dti/100
+    assert out["high_ltv"].tolist() == [0, 1]  # >80 threshold
+    assert out["rate_spread"].tolist() == [-0.25, 0.75]  # rate - benchmark
 
 
 def test_quality_ranges_are_sane():
@@ -45,4 +50,4 @@ def test_psi_grows_with_shift():
 def test_csi_categorical():
     a = pd.Series(["P"] * 80 + ["I"] * 20)
     b = pd.Series(["P"] * 50 + ["I"] * 50)
-    assert csi(a, b) > 0.1   # a clear categorical shift
+    assert csi(a, b) > 0.1  # a clear categorical shift

@@ -3,6 +3,7 @@
 Gini (= 2·AUC − 1, the bank-standard headline), KS, and a gains/lift table by
 score band. Reported on the out-of-time set.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -34,13 +35,15 @@ def gains_table(y_true, y_score, n_bands: int = 10) -> pd.DataFrame:
     """Decile gains/lift table, riskiest band first."""
     df = pd.DataFrame({"y": np.asarray(y_true), "p": np.asarray(y_score)})
     # rank by descending PD: band 1 = highest risk
-    df["band"] = pd.qcut(df["p"].rank(method="first", ascending=False),
-                         q=n_bands, labels=range(1, n_bands + 1))
+    df["band"] = pd.qcut(
+        df["p"].rank(method="first", ascending=False), q=n_bands, labels=range(1, n_bands + 1)
+    )
     base_rate = df["y"].mean()
-    g = (df.groupby("band", observed=True)
-           .agg(n=("y", "size"), defaults=("y", "sum"),
-                avg_pd=("p", "mean"))
-           .reset_index())
+    g = (
+        df.groupby("band", observed=True)
+        .agg(n=("y", "size"), defaults=("y", "sum"), avg_pd=("p", "mean"))
+        .reset_index()
+    )
     g["default_rate"] = g["defaults"] / g["n"]
     g["lift"] = g["default_rate"] / base_rate
     g["cum_defaults"] = g["defaults"].cumsum()

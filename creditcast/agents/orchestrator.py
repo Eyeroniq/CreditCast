@@ -5,6 +5,7 @@ each specialist runs its own tool loop independently -> a synthesis call fuses
 their findings into one answer. Charts from every specialist are merged and
 returned for the cockpit to render.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,18 +27,19 @@ _ROUTER_SYSTEM = (
     '{"plan":[{"specialist":"analyst","task":"..."}]}. '
     "Use 1 specialist for focused questions, up to the cap for cross-cutting ones. "
     "For a greeting or a question unrelated to the platform, return "
-    '{"plan":[], "direct":"<short reply>"}.')
+    '{"plan":[], "direct":"<short reply>"}.'
+)
 
 
 def _route(question: str, max_specialists: int) -> dict:
     resp = llm.complete(
-        [{"role": "system", "content": _ROUTER_SYSTEM},
-         {"role": "user", "content": question}],
-        temperature=0.0)
+        [{"role": "system", "content": _ROUTER_SYSTEM}, {"role": "user", "content": question}],
+        temperature=0.0,
+    )
     raw = resp.choices[0].message.content or ""
     start, end = raw.find("{"), raw.rfind("}")
     try:
-        plan = json.loads(raw[start:end + 1]) if 0 <= start < end else None
+        plan = json.loads(raw[start : end + 1]) if 0 <= start < end else None
     except json.JSONDecodeError:
         plan = None
     # Unusable routing (no JSON, bad JSON, or no "plan" key): answer the question
@@ -65,9 +67,17 @@ def run(question: str) -> dict:
     plan = _route(question, int(cfg.agents.max_specialists))
 
     if not plan["plan"]:
-        return {"answer": plan.get("direct", "I focus on this credit-risk platform — "
+        return {
+            "answer": plan.get(
+                "direct",
+                "I focus on this credit-risk platform — "
                 "ask about the portfolio, model validation, fairness, or scoring a "
-                "borrower."), "charts": [], "trace": [], "agents": []}
+                "borrower.",
+            ),
+            "charts": [],
+            "trace": [],
+            "agents": [],
+        }
 
     findings, charts, trace, agents = [], [], [], []
     for step in plan["plan"]:

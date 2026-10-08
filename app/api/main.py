@@ -22,6 +22,7 @@ Run locally:
 
     uvicorn app.api.main:app --reload --port 8001
 """
+
 from __future__ import annotations
 
 import hmac
@@ -70,6 +71,7 @@ async def _lifespan(app: FastAPI):
 
 app = FastAPI(title="CreditCast Scoring API", version="0.1.0", lifespan=_lifespan)
 
+
 # CORS: same-origin only by default (the cockpit is served by this app). Allow
 # extra browser origins explicitly, e.g. a split local dev server.
 def cors_origins(raw: str | None) -> list[str]:
@@ -79,9 +81,12 @@ def cors_origins(raw: str | None) -> list[str]:
 
 ALLOWED_ORIGINS = cors_origins(os.environ.get("CC_ALLOWED_ORIGINS"))
 if ALLOWED_ORIGINS:
-    app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS,
-                       allow_methods=["GET", "POST"],
-                       allow_headers=["content-type", "x-api-key"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_methods=["GET", "POST"],
+        allow_headers=["content-type", "x-api-key"],
+    )
 
 
 def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
@@ -89,6 +94,7 @@ def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
     expected = os.environ.get("CC_API_KEY")
     if expected and not (x_api_key and hmac.compare_digest(x_api_key, expected)):
         raise HTTPException(401, "Missing or invalid API key (send header X-API-Key).")
+
 
 # Per-client-IP rate limits (in-memory: one container, one process).
 limiter = Limiter(key_func=get_remote_address)
@@ -99,15 +105,18 @@ app.state.limiter = limiter
 def _rate_limited(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     """Friendly 429 the cockpit can show as-is (`detail`), plus Retry-After."""
     try:
-        retry_after = int(exc.limit.limit.get_expiry())   # window length, seconds
+        retry_after = int(exc.limit.limit.get_expiry())  # window length, seconds
     except AttributeError:
         retry_after = 60
     return JSONResponse(
         status_code=429,
         headers={"Retry-After": str(retry_after)},
-        content={"detail": "You're sending requests quickly — please try again "
-                           f"in a minute (limit: {exc.detail}).",
-                 "limit": str(exc.detail)})
+        content={
+            "detail": "You're sending requests quickly — please try again "
+            f"in a minute (limit: {exc.detail}).",
+            "limit": str(exc.detail),
+        },
+    )
 
 
 @app.middleware("http")
@@ -123,6 +132,7 @@ def _internal_error(request: Request, what: str) -> HTTPException:
     rid = getattr(request.state, "request_id", "-")
     log.exception("%s failed (request_id=%s)", what, rid)
     return HTTPException(500, f"Internal error while {what} (request id {rid}).")
+
 
 # All API endpoints live under /api so they never collide with the static
 # cockpit routes (e.g. the page /validation vs the endpoint /api/validation).
@@ -145,6 +155,7 @@ def _artifact(name: str) -> dict:
 class Applicant(BaseModel):
     """One mortgage application. Ranges mirror the Silver data-quality gate;
     category codes are the ones the models were trained on."""
+
     model_config = ConfigDict(extra="forbid")
 
     fico: int = Field(ge=300, le=850, examples=[680])
@@ -157,8 +168,9 @@ class Applicant(BaseModel):
     loan_purpose: Literal["P", "C", "N"] = Field(examples=["C"])
     property_type: Literal["SF", "CO", "PU", "MH"] = Field(examples=["SF"])
     first_time_homebuyer: Literal["Y", "N"] = Field(examples=["N"])
-    vintage: str | None = Field(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$",
-                                examples=["2021-06"])
+    vintage: str | None = Field(
+        default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$", examples=["2021-06"]
+    )
 
 
 @router.get("/health")
@@ -179,8 +191,7 @@ def ready():
         b.warm()
     except Exception as exc:
         log.exception("readiness check failed")
-        return JSONResponse(status_code=503,
-                            content={"ready": False, "error": type(exc).__name__})
+        return JSONResponse(status_code=503, content={"ready": False, "error": type(exc).__name__})
     return {"ready": True, "model_version": b.model_version}
 
 
@@ -198,12 +209,20 @@ def score(request: Request, applicant: Applicant):
         raise _internal_error(request, "scoring")
     # Audit trail: model version + input hash, never the raw inputs.
     version = getattr(b, "model_version", {}) or {}
-    decision_log.info(audit.decision_record(
-        request_id=request.state.request_id, model_version=version,
-        applicant=raw, result=result,
-        latency_ms=(time.perf_counter() - started) * 1000))
-    return {**result, "request_id": request.state.request_id,
-            "model_fingerprint": version.get("fingerprint")}
+    decision_log.info(
+        audit.decision_record(
+            request_id=request.state.request_id,
+            model_version=version,
+            applicant=raw,
+            result=result,
+            latency_ms=(time.perf_counter() - started) * 1000,
+        )
+    )
+    return {
+        **result,
+        "request_id": request.state.request_id,
+        "model_fingerprint": version.get("fingerprint"),
+    }
 
 
 @router.post("/whatif", dependencies=[Depends(require_api_key)])
@@ -211,6 +230,7 @@ def score(request: Request, applicant: Applicant):
 def whatif(request: Request, applicant: Applicant):
     """Smallest single changes that would turn a decline into an approval."""
     from creditcast.governance.counterfactual import what_if
+
     b = bundle()
     try:
         return what_if(applicant.model_dump(), b.pd_batch, b.threshold)
@@ -246,23 +266,39 @@ def shap_global():
 
 @router.get("/portfolio")
 @limiter.limit(LIMITS.portfolio)
-def portfolio(request: Request,
-              n: int = Query(500, ge=1, le=int(API_CFG.portfolio_max_rows))):
+def portfolio(request: Request, n: int = Query(500, ge=1, le=int(API_CFG.portfolio_max_rows))):
     """Portfolio risk view: aggregates + a sample of scored loans for the UI."""
     cfg = load_config()
     scored = pd.read_parquet(cfg.path("artifacts") / "test_scored.parquet")
     thr = bundle().threshold
     bands = decision.assign_band(scored["credit_score"].to_numpy(), cfg)
-    scored = scored.assign(risk_band=bands,
-                           decision=decision.decide(scored["pd_champion"].to_numpy(), thr))
+    scored = scored.assign(
+        risk_band=bands, decision=decision.decide(scored["pd_champion"].to_numpy(), thr)
+    )
     band_order = [b["name"] for b in cfg.decision.bands]
-    band_dist = (scored["risk_band"].value_counts().reindex(band_order).fillna(0)
-                 .astype(int).to_dict())
-    el_by_band = (scored.groupby("risk_band")["expected_loss"].sum()
-                  .reindex(band_order).fillna(0).round(2).to_dict())
-    sample_cols = ["loan_id", "vintage", "pd_champion", "credit_score",
-                   "risk_band", "lgd_hat", "ead", "expected_loss", "decision",
-                   "default_12m"]
+    band_dist = (
+        scored["risk_band"].value_counts().reindex(band_order).fillna(0).astype(int).to_dict()
+    )
+    el_by_band = (
+        scored.groupby("risk_band")["expected_loss"]
+        .sum()
+        .reindex(band_order)
+        .fillna(0)
+        .round(2)
+        .to_dict()
+    )
+    sample_cols = [
+        "loan_id",
+        "vintage",
+        "pd_champion",
+        "credit_score",
+        "risk_band",
+        "lgd_hat",
+        "ead",
+        "expected_loss",
+        "decision",
+        "default_12m",
+    ]
     return {
         "n_loans": int(len(scored)),
         "portfolio_el": float(scored["expected_loss"].sum()),
@@ -274,33 +310,40 @@ def portfolio(request: Request,
         "el_by_band": el_by_band,
         "pd_histogram": _histogram(scored["pd_champion"], 25),
         "sample": scored.sort_values("expected_loss", ascending=False)
-                        .head(n)[sample_cols].to_dict(orient="records"),
+        .head(n)[sample_cols]
+        .to_dict(orient="records"),
     }
 
 
 def _histogram(series: pd.Series, bins: int) -> list[dict]:
     counts, edges = pd.cut(series, bins=bins, retbins=True)
     vc = counts.value_counts(sort=False)
-    return [{"x": round(float(edges[i]), 4), "count": int(vc.iloc[i])}
-            for i in range(len(vc))]
+    return [{"x": round(float(edges[i]), 4), "count": int(vc.iloc[i])} for i in range(len(vc))]
 
 
 # ---- Risk Copilot (agent layer) -------------------------------------------
 class AgentQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    question: str = Field(min_length=1, max_length=int(API_CFG.max_question_chars),
-                          examples=["Why is the 2021 vintage riskier, and is the model fair?"])
+    question: str = Field(
+        min_length=1,
+        max_length=int(API_CFG.max_question_chars),
+        examples=["Why is the 2021 vintage riskier, and is the model fair?"],
+    )
 
 
 @router.get("/agent/team")
 def agent_team():
     """The specialist roster shown in the Copilot UI."""
     from creditcast.agents.specialists import SPECIALISTS
-    return {"llm_ready": bool(os.environ.get("GROQ_API_KEY")),
-            "model": load_config().agents.model,
-            "agents": [{"id": k, "title": v["title"],
-                        "tools": v["tools"]} for k, v in SPECIALISTS.items()]}
+
+    return {
+        "llm_ready": bool(os.environ.get("GROQ_API_KEY")),
+        "model": load_config().agents.model,
+        "agents": [
+            {"id": k, "title": v["title"], "tools": v["tools"]} for k, v in SPECIALISTS.items()
+        ],
+    }
 
 
 @router.post("/agent/chat", dependencies=[Depends(require_api_key)])
@@ -309,6 +352,7 @@ def agent_chat(request: Request, q: AgentQuery):
     """Route the question to the specialist team and return answer + charts + trace."""
     from creditcast.agents import orchestrator
     from creditcast.agents.llm import LLMNotConfigured
+
     try:
         return orchestrator.run(q.question)
     except LLMNotConfigured as e:

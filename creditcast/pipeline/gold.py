@@ -6,6 +6,7 @@ categorical features, the **origination-only** engineered features from
 out-of-time split, the protected attribute (carried for fairness, never fed to
 a model), and the LGD fields (EAD, realized loss, derived LGD on defaults).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -41,8 +42,13 @@ def build_gold(cfg: Config | None = None) -> Path:
     numeric = list(cfg.features.numeric) + ["ltv_dti", "rate_spread", "high_ltv"]
     categorical = list(cfg.features.categorical)
     protected = list(cfg.features.protected)
-    keep = (["loan_id", "vintage", "default_12m"] + numeric + categorical
-            + protected + ["ead", "net_loss", "resolved", "lgd"])
+    keep = (
+        ["loan_id", "vintage", "default_12m"]
+        + numeric
+        + categorical
+        + protected
+        + ["ead", "net_loss", "resolved", "lgd"]
+    )
 
     out_df = df[keep].copy()
     # Cast categoricals so downstream (LightGBM) can use native categorical dtype
@@ -53,15 +59,22 @@ def build_gold(cfg: Config | None = None) -> Path:
     out_df.to_parquet(out, index=False)
 
     # Persist the feature manifest so models/serving agree on inputs
-    manifest = {"numeric": numeric, "categorical": categorical,
-                "protected": protected, "target": "default_12m"}
+    manifest = {
+        "numeric": numeric,
+        "categorical": categorical,
+        "protected": protected,
+        "target": "default_12m",
+    }
     import json
-    (gold / "feature_manifest.json").write_text(json.dumps(manifest, indent=2))
-    dataset.reload()          # the manifest just changed: drop the cached copy
 
-    print(f"[gold] {len(out_df):,} rows | {len(numeric)} numeric + "
-          f"{len(categorical)} categorical features | "
-          f"{out_df['lgd'].notna().sum():,} loans with realized LGD")
+    (gold / "feature_manifest.json").write_text(json.dumps(manifest, indent=2))
+    dataset.reload()  # the manifest just changed: drop the cached copy
+
+    print(
+        f"[gold] {len(out_df):,} rows | {len(numeric)} numeric + "
+        f"{len(categorical)} categorical features | "
+        f"{out_df['lgd'].notna().sum():,} loans with realized LGD"
+    )
     return out
 
 

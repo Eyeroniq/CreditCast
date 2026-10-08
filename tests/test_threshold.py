@@ -1,4 +1,5 @@
 """Decision-threshold tests (Phase 1.1) and champion consistency (Phase 1.7)."""
+
 import json
 
 import numpy as np
@@ -6,8 +7,11 @@ import pandas as pd
 import pytest
 
 from creditcast.config import load_config
-from creditcast.governance.decision import (closed_form_threshold, default_threshold,
-                                            empirical_threshold)
+from creditcast.governance.decision import (
+    closed_form_threshold,
+    default_threshold,
+    empirical_threshold,
+)
 from creditcast.models.calibration import cross_fit_transform
 
 
@@ -29,10 +33,11 @@ def test_closed_form_threshold_is_cost_ratio():
 
 def test_calibrated_pds_respect_floor():
     from creditcast.models.calibration import fit_calibrator
+
     cfg = load_config()
     rng = np.random.default_rng(1)
     raw = rng.random(3000)
-    y = (rng.random(3000) < raw ** 4 * 0.3).astype(int)   # many PDs near 0
+    y = (rng.random(3000) < raw**4 * 0.3).astype(int)  # many PDs near 0
     out = fit_calibrator(raw, y, cfg).transform(raw)
     assert out.min() >= float(cfg.calibration.pd_floor)
 
@@ -48,9 +53,9 @@ def test_cross_fit_is_out_of_fold_and_in_range():
 
 ART = load_config().path("artifacts")
 needs_artifacts = pytest.mark.skipif(
-    not (ART / "governance_report.json").exists()
-    or not (ART / "calib_scored.parquet").exists(),
-    reason="run the pipeline first (python -m creditcast.cli all)")
+    not (ART / "governance_report.json").exists() or not (ART / "calib_scored.parquet").exists(),
+    reason="run the pipeline first (python -m creditcast.cli all)",
+)
 
 
 @needs_artifacts
@@ -79,23 +84,26 @@ def _toy_book():
     rng = np.random.default_rng(3)
     n = 4000
     pd_ = rng.beta(1.2, 20, n)
-    return pd.DataFrame({
-        "pd_champion": pd_,
-        "default_12m": (rng.random(n) < pd_).astype(int),
-        "expected_loss": pd_ * 0.3 * 200_000,
-        "ead": np.full(n, 200_000.0),
-        "borrower_race": rng.choice(["White", "Black", "Asian"], n),
-    })
+    return pd.DataFrame(
+        {
+            "pd_champion": pd_,
+            "default_12m": (rng.random(n) < pd_).astype(int),
+            "expected_loss": pd_ * 0.3 * 200_000,
+            "ead": np.full(n, 200_000.0),
+            "borrower_race": rng.choice(["White", "Black", "Asian"], n),
+        }
+    )
 
 
 def test_threshold_curve_is_monotone_and_consistent():
     from creditcast.governance.decision import decision_summary, threshold_curve
+
     cfg = load_config()
     book = _toy_book()
     curve = threshold_curve(book, "pd_champion", cfg, grid=[0.02, 0.05, 0.1, 0.2])
     appr = [p["approval_rate"] for p in curve]
     el = [p["expected_loss_approved"] for p in curve]
-    assert appr == sorted(appr) and el == sorted(el)       # looser limit: more approvals, more loss
+    assert appr == sorted(appr) and el == sorted(el)  # looser limit: more approvals, more loss
     for p in curve:
         assert 0 <= p["di_min"] <= 1 + 1e-9
         assert set(p["group_approval"]) == {"White", "Black", "Asian"}

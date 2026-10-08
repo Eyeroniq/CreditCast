@@ -7,6 +7,7 @@ LGD distributions are bimodal (mass near 0 = cured / fully recovered, mass near
 Predicted LGD = P(loss>0) · E[severity | loss>0]. Fit only on the *defaulted*
 population (the only place LGD is observed), out-of-time like everything else.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -31,8 +32,14 @@ class LGDModel:
         self.seed = seed
         self.cure = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000))
         self.severity = LGBMRegressor(
-            n_estimators=300, learning_rate=0.03, num_leaves=15,
-            min_child_samples=30, random_state=seed, n_jobs=-1, verbose=-1)
+            n_estimators=300,
+            learning_rate=0.03,
+            num_leaves=15,
+            min_child_samples=30,
+            random_state=seed,
+            n_jobs=-1,
+            verbose=-1,
+        )
         self.features = feature_columns()
         self.categorical = categorical_columns()
         self._cat_maps: dict[str, list] = {}
@@ -65,9 +72,11 @@ class LGDModel:
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         Xe = self._encode(X)
-        p_loss = (np.full(len(Xe), self._p_loss_const)
-                  if self._p_loss_const is not None
-                  else self.cure.predict_proba(Xe)[:, 1])
+        p_loss = (
+            np.full(len(Xe), self._p_loss_const)
+            if self._p_loss_const is not None
+            else self.cure.predict_proba(Xe)[:, 1]
+        )
         sev = np.clip(self.severity.predict(Xe), 0, 1)
         return np.clip(p_loss * sev, 0, 1)
 
@@ -104,6 +113,8 @@ if __name__ == "__main__":
     test_def = _defaulted(split.test)
     pred = model.predict(test_def)
     obs = test_def["lgd"].to_numpy()
-    print(f"[lgd] fit on {len(_defaulted(split.train)):,} train defaults | "
-          f"OOT defaults={len(test_def):,} | mean realized LGD={obs.mean():.3f} "
-          f"pred={pred.mean():.3f} | MAE={mean_absolute_error(obs, pred):.3f}")
+    print(
+        f"[lgd] fit on {len(_defaulted(split.train)):,} train defaults | "
+        f"OOT defaults={len(test_def):,} | mean realized LGD={obs.mean():.3f} "
+        f"pred={pred.mean():.3f} | MAE={mean_absolute_error(obs, pred):.3f}"
+    )

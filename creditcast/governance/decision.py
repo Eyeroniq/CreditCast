@@ -8,6 +8,7 @@ PD ≤ cost_fp / (cost_fp + cost_fn) (default, stable); the empirical minimum on
 the calibration slice is kept for comparison. Risk bands map the scaled credit
 score to rating grades from config.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -26,8 +27,9 @@ def closed_form_threshold(cfg: Config | None = None) -> float:
     return cost_fp / (cost_fp + cost_fn)
 
 
-def default_threshold(pd_hat, y_true, cfg: Config | None = None,
-                      method: str | None = None) -> float:
+def default_threshold(
+    pd_hat, y_true, cfg: Config | None = None, method: str | None = None
+) -> float:
     """The decision cut-off, by `decision.threshold_method` (or `method`)."""
     cfg = cfg or load_config()
     method = method or str(cfg.decision.get("threshold_method", "empirical"))
@@ -50,8 +52,8 @@ def empirical_threshold(pd_hat, y_true, cfg: Config | None = None) -> float:
     best_thr, best_cost = candidates[0], np.inf
     for thr in candidates:
         approve = p <= thr
-        fn = int(((y == 1) & approve).sum())      # approved a defaulter
-        fp = int(((y == 0) & ~approve).sum())      # declined a good borrower
+        fn = int(((y == 1) & approve).sum())  # approved a defaulter
+        fp = int(((y == 0) & ~approve).sum())  # declined a good borrower
         cost = cost_fn * fn + cost_fp * fp
         if cost < best_cost:
             best_cost, best_thr = cost, float(thr)
@@ -79,8 +81,9 @@ def decide(pd_hat, threshold: float) -> "np.ndarray | str":
     return decision.item() if decision.ndim == 0 else decision
 
 
-def decision_summary(scored: pd.DataFrame, pd_col: str, threshold: float,
-                     cfg: Config | None = None) -> dict:
+def decision_summary(
+    scored: pd.DataFrame, pd_col: str, threshold: float, cfg: Config | None = None
+) -> dict:
     cfg = cfg or load_config()
     p = scored[pd_col].to_numpy()
     approve = p <= threshold
@@ -95,8 +98,9 @@ def decision_summary(scored: pd.DataFrame, pd_col: str, threshold: float,
     }
 
 
-def threshold_curve(scored: pd.DataFrame, pd_col: str, cfg: Config | None = None,
-                    grid=None) -> list[dict]:
+def threshold_curve(
+    scored: pd.DataFrame, pd_col: str, cfg: Config | None = None, grid=None
+) -> list[dict]:
     """What-if over the approval cut-off (ROADMAP 6.2.5), for the cockpit slider.
 
     For each candidate threshold: approval rate, default rate among approved
@@ -125,14 +129,16 @@ def threshold_curve(scored: pd.DataFrame, pd_col: str, cfg: Config | None = None
         by_group = {g: float(a[groups == g].mean()) for g in names}
         ref = by_group.get(priv) or max(by_group.values()) or 1.0
         di = {g: (r / ref if ref else 0.0) for g, r in by_group.items()}
-        out.append({
-            "threshold": float(thr),
-            "approval_rate": float(a.mean()),
-            "approved_default_rate": float(y[a].mean()) if n_a else 0.0,
-            "defaults_approved_share": float(y[a].sum() / n_def),
-            "expected_loss_approved": float(el[a].sum()),
-            "el_bps_approved": float(el[a].sum() / ead[a].sum() * 1e4) if n_a else 0.0,
-            "di_min": float(min(di.values())),
-            "group_approval": by_group,
-        })
+        out.append(
+            {
+                "threshold": float(thr),
+                "approval_rate": float(a.mean()),
+                "approved_default_rate": float(y[a].mean()) if n_a else 0.0,
+                "defaults_approved_share": float(y[a].sum() / n_def),
+                "expected_loss_approved": float(el[a].sum()),
+                "el_bps_approved": float(el[a].sum() / ead[a].sum() * 1e4) if n_a else 0.0,
+                "di_min": float(min(di.values())),
+                "group_approval": by_group,
+            }
+        )
     return out

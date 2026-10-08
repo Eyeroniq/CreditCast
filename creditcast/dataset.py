@@ -4,6 +4,7 @@ Models and serving import from here so they always agree on which columns are
 features (and which are off-limits, e.g. the protected attribute and the LGD
 fields). Keeps the leakage guarantee in a single, auditable spot.
 """
+
 from __future__ import annotations
 
 import json

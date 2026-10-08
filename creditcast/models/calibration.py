@@ -7,6 +7,7 @@ the Expected-Loss/capital numbers wrong. We fit the calibrator on a held-out
 Model-agnostic by design: it maps any model's raw PD -> calibrated PD, so the
 scorecard and the challenger are calibrated through the identical mechanism.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -57,15 +58,16 @@ class Calibrator:
         return np.clip(out, getattr(self, "pd_floor", 0.0), 1.0)
 
 
-def fit_calibrator(raw_p: np.ndarray, y: np.ndarray,
-                   cfg: Config | None = None) -> Calibrator:
+def fit_calibrator(raw_p: np.ndarray, y: np.ndarray, cfg: Config | None = None) -> Calibrator:
     cfg = cfg or load_config()
-    return Calibrator(method=str(cfg.calibration.method),
-                      pd_floor=float(cfg.calibration.pd_floor)).fit(raw_p, y)
+    return Calibrator(
+        method=str(cfg.calibration.method), pd_floor=float(cfg.calibration.pd_floor)
+    ).fit(raw_p, y)
 
 
-def cross_fit_transform(raw_p: np.ndarray, y: np.ndarray,
-                        cfg: Config | None = None, n_splits: int = 5) -> np.ndarray:
+def cross_fit_transform(
+    raw_p: np.ndarray, y: np.ndarray, cfg: Config | None = None, n_splits: int = 5
+) -> np.ndarray:
     """Out-of-fold calibrated PDs for the calibration slice itself.
 
     The final calibrator is fit on the whole calib slice, so its in-sample
@@ -76,12 +78,12 @@ def cross_fit_transform(raw_p: np.ndarray, y: np.ndarray,
     cfg = cfg or load_config()
     raw_p = np.asarray(raw_p, float)
     y = np.asarray(y, int)
-    folds = StratifiedKFold(n_splits=n_splits, shuffle=True,
-                            random_state=int(cfg.run.seed))
+    folds = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=int(cfg.run.seed))
     out = np.empty(len(raw_p), dtype=float)
     for fit_idx, oof_idx in folds.split(raw_p.reshape(-1, 1), y):
-        cal = Calibrator(method=str(cfg.calibration.method),
-                         pd_floor=float(cfg.calibration.pd_floor)).fit(raw_p[fit_idx], y[fit_idx])
+        cal = Calibrator(
+            method=str(cfg.calibration.method), pd_floor=float(cfg.calibration.pd_floor)
+        ).fit(raw_p[fit_idx], y[fit_idx])
         out[oof_idx] = cal.transform(raw_p[oof_idx])
     return out
 

@@ -3,6 +3,7 @@
 The #1 way credit models lie is look-ahead. These tests assert the out-of-time
 split never lets train/calib vintages reach into the test vintages.
 """
+
 import pandas as pd
 import pytest
 
@@ -57,7 +58,7 @@ def test_valid_reaching_into_test_is_caught():
         train=_frame(["2017-01"]),
         calib=_frame(["2018-01"]),
         test=_frame(["2020-03"]),
-        valid=_frame(["2020-02"]),           # early-stopping slice leaks
+        valid=_frame(["2020-02"]),  # early-stopping slice leaks
     )
     with pytest.raises(AssertionError, match="LEAKAGE"):
         assert_no_vintage_overlap(bad, cfg)
@@ -66,7 +67,7 @@ def test_valid_reaching_into_test_is_caught():
 def test_shared_loan_between_in_time_slices_is_caught():
     cfg = load_config()
     train = _frame(["2017-01"]).assign(loan_id=range(0, 20))
-    calib = _frame(["2018-01"]).assign(loan_id=range(19, 39))   # loan 19 shared
+    calib = _frame(["2018-01"]).assign(loan_id=range(19, 39))  # loan 19 shared
     valid = _frame(["2018-06"]).assign(loan_id=range(100, 120))
     bad = Split(train=train, calib=calib, test=_frame(["2020-03"]), valid=valid)
     with pytest.raises(AssertionError, match="loan 19"):
@@ -79,6 +80,7 @@ def test_make_split_gives_four_disjoint_stratified_slices():
     for i, v in enumerate(["2016-01", "2017-01", "2018-01", "2019-01", "2020-01", "2021-01"] * 200):
         rows.append({"loan_id": i, "vintage": v, "default_12m": int(i % 10 == 0)})
     from creditcast.pipeline.split import make_split
+
     s = make_split(pd.DataFrame(rows), cfg)
     ids = [set(f["loan_id"]) for f in (s.train, s.valid, s.calib, s.test)]
     assert sum(map(len, ids)) == len(rows) == len(set().union(*ids))

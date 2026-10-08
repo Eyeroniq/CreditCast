@@ -6,6 +6,7 @@ feature stability train-vs-test, and emits:
   - artifacts/validation_report.json  (consumed by dashboard + CI gates)
   - reports/validation_report.html    (standalone portfolio artifact)
 """
+
 from __future__ import annotations
 
 import json
@@ -70,10 +71,12 @@ def build_report(cfg: Config | None = None) -> dict:
         "benchmark": benchmark,
         "stability": stability,
         "thresholds": {
-            "gini_min": float(v.gini_min), "ks_min": float(v.ks_min),
+            "gini_min": float(v.gini_min),
+            "ks_min": float(v.ks_min),
             "hl_pvalue_min": float(v.hl_pvalue_min),
             "calibration_max_band_error": float(v.calibration_max_band_error),
-            "psi_watch": float(v.psi_watch), "psi_unstable": float(v.psi_unstable),
+            "psi_watch": float(v.psi_watch),
+            "psi_unstable": float(v.psi_unstable),
         },
     }
 
@@ -89,37 +92,44 @@ def loss_component_accuracy(scored: pd.DataFrame) -> dict:
     d = scored[scored["default_12m"] == 1]
     e = d[d["ead_realized"].fillna(0) > 0]
     l = d[d["lgd_realized"].notna()]
-    out = {"n_defaults": int(len(d)), "n_ead_observed": int(len(e)),
-           "n_lgd_resolved": int(len(l))}
+    out = {"n_defaults": int(len(d)), "n_ead_observed": int(len(e)), "n_lgd_resolved": int(len(l))}
     if len(e):
         ape = (e["ead"] - e["ead_realized"]).abs() / e["ead_realized"]
-        out.update(ead_mape=float(ape.mean()),
-                   ead_bias=float((e["ead"].sum() - e["ead_realized"].sum())
-                                  / e["ead_realized"].sum()))
+        out.update(
+            ead_mape=float(ape.mean()),
+            ead_bias=float((e["ead"].sum() - e["ead_realized"].sum()) / e["ead_realized"].sum()),
+        )
     if len(l):
-        out.update(lgd_mae=float((l["lgd_hat"] - l["lgd_realized"]).abs().mean()),
-                   lgd_mean_pred=float(l["lgd_hat"].mean()),
-                   lgd_mean_realized=float(l["lgd_realized"].mean()))
+        out.update(
+            lgd_mae=float((l["lgd_hat"] - l["lgd_realized"]).abs().mean()),
+            lgd_mean_pred=float(l["lgd_hat"].mean()),
+            lgd_mean_realized=float(l["lgd_realized"].mean()),
+        )
     return out
 
 
 def _benchmark_verdict(g_sc: float, g_ch: float) -> str:
     gap = g_ch - g_sc
     if gap <= 0.01:
-        return ("Negligible accuracy gap — the interpretable scorecard is fully "
-                "competitive. Deploy the scorecard; retain the challenger as an "
-                "ongoing benchmark.")
+        return (
+            "Negligible accuracy gap — the interpretable scorecard is fully "
+            "competitive. Deploy the scorecard; retain the challenger as an "
+            "ongoing benchmark."
+        )
     if gap <= 0.03:
-        return ("Modest challenger edge. The interpretability/governance benefits "
-                "of the scorecard likely outweigh the marginal Gini gain.")
-    return ("Material challenger edge. Worth the model-risk cost of a less "
-            "transparent model only with strong explainability controls (SHAP, "
-            "reason codes) in place.")
+        return (
+            "Modest challenger edge. The interpretability/governance benefits "
+            "of the scorecard likely outweigh the marginal Gini gain."
+        )
+    return (
+        "Material challenger edge. Worth the model-risk cost of a less "
+        "transparent model only with strong explainability controls (SHAP, "
+        "reason codes) in place."
+    )
 
 
 def _badge(ok: bool) -> str:
-    return ("<span class='ok'>PASS</span>" if ok
-            else "<span class='bad'>REVIEW</span>")
+    return "<span class='ok'>PASS</span>" if ok else "<span class='bad'>REVIEW</span>"
 
 
 def _write_html(r: dict, path: Path) -> None:
@@ -130,11 +140,11 @@ def _write_html(r: dict, path: Path) -> None:
         c = r["models"][name]["calibration"]
         rows.append(f"""
         <tr><td>{name}</td>
-            <td>{d['gini']:.4f} {_badge(d['gini'] >= t['gini_min'])}</td>
-            <td>{d['ks']:.4f} {_badge(d['ks'] >= t['ks_min'])}</td>
-            <td>{c['hosmer_lemeshow']['p_value']:.4f}</td>
-            <td>{c['max_band_error']:.4f} {_badge(c['max_band_error'] <= t['calibration_max_band_error'])}</td>
-            <td>{c['ece']:.4f}</td></tr>""")
+            <td>{d["gini"]:.4f} {_badge(d["gini"] >= t["gini_min"])}</td>
+            <td>{d["ks"]:.4f} {_badge(d["ks"] >= t["ks_min"])}</td>
+            <td>{c["hosmer_lemeshow"]["p_value"]:.4f}</td>
+            <td>{c["max_band_error"]:.4f} {_badge(c["max_band_error"] <= t["calibration_max_band_error"])}</td>
+            <td>{c["ece"]:.4f}</td></tr>""")
     b = r["benchmark"]
     html = f"""<!doctype html><html><head><meta charset="utf-8">
 <title>CreditCast — Validation Report</title>
@@ -150,30 +160,30 @@ def _write_html(r: dict, path: Path) -> None:
   .muted{{color:#8aa0b8}} .accent{{color:#7fb3ff}}
 </style></head><body>
 <h1>CreditCast · Model Validation Report</h1>
-<p class="muted mono">data={r['stamp']['data_version']} · code={r['stamp']['code_version']} · seed={r['stamp']['seed']}
-   · OOT loans={r['n_oot']:,} · OOT default rate={r['oot_default_rate']:.2%}</p>
+<p class="muted mono">data={r["stamp"]["data_version"]} · code={r["stamp"]["code_version"]} · seed={r["stamp"]["seed"]}
+   · OOT loans={r["n_oot"]:,} · OOT default rate={r["oot_default_rate"]:.2%}</p>
 
 <h2>Discrimination &amp; Calibration (out-of-time)</h2>
 <table><tr><th>Model</th><th>Gini</th><th>KS</th><th>HL p-value</th>
-<th>Max band error</th><th>ECE</th></tr>{''.join(rows)}</table>
+<th>Max band error</th><th>ECE</th></tr>{"".join(rows)}</table>
 
 <h2>Scorecard vs Challenger Benchmark</h2>
 <div class="card">
-  <div class="mono">scorecard Gini = <span class="accent">{b['scorecard_gini']:.4f}</span>
-   · challenger Gini = <span class="accent">{b['challenger_gini']:.4f}</span>
-   · gap = {b['gini_gap']:+.4f} ({b['gini_gap_pct']:+.1f}%)</div>
-  <p>{b['verdict']}</p>
+  <div class="mono">scorecard Gini = <span class="accent">{b["scorecard_gini"]:.4f}</span>
+   · challenger Gini = <span class="accent">{b["challenger_gini"]:.4f}</span>
+   · gap = {b["gini_gap"]:+.4f} ({b["gini_gap_pct"]:+.1f}%)</div>
+  <p>{b["verdict"]}</p>
 </div>
 
 <h2>Stability</h2>
 <div class="card mono">
-  max score PSI across vintages = {r['stability']['max_score_psi']:.4f}
-   {_badge(r['stability']['max_score_psi'] <= t['psi_unstable'])}<br>
-  max feature CSI (train→test) = {r['stability']['max_feature_csi']:.4f}
-   {_badge(r['stability']['max_feature_csi'] <= t['psi_unstable'])}
+  max score PSI across vintages = {r["stability"]["max_score_psi"]:.4f}
+   {_badge(r["stability"]["max_score_psi"] <= t["psi_unstable"])}<br>
+  max feature CSI (train→test) = {r["stability"]["max_feature_csi"]:.4f}
+   {_badge(r["stability"]["max_feature_csi"] <= t["psi_unstable"])}
 </div>
-<p class="muted">Thresholds: Gini ≥ {t['gini_min']}, KS ≥ {t['ks_min']},
-  max band error ≤ {t['calibration_max_band_error']}, PSI watch {t['psi_watch']} / unstable {t['psi_unstable']}.</p>
+<p class="muted">Thresholds: Gini ≥ {t["gini_min"]}, KS ≥ {t["ks_min"]},
+  max band error ≤ {t["calibration_max_band_error"]}, PSI watch {t["psi_watch"]} / unstable {t["psi_unstable"]}.</p>
 </body></html>"""
     path.write_text(html, encoding="utf-8")
 
@@ -181,8 +191,14 @@ def _write_html(r: dict, path: Path) -> None:
 if __name__ == "__main__":
     r = build_report()
     b = r["benchmark"]
-    print(f"[validation] scorecard Gini={b['scorecard_gini']:.4f}  "
-          f"challenger Gini={b['challenger_gini']:.4f}  gap={b['gini_gap']:+.4f}")
-    print(f"[validation] max score PSI={r['stability']['max_score_psi']:.4f}  "
-          f"max feature CSI={r['stability']['max_feature_csi']:.4f}")
-    print(f"[validation] report -> artifacts/validation_report.json + reports/validation_report.html")
+    print(
+        f"[validation] scorecard Gini={b['scorecard_gini']:.4f}  "
+        f"challenger Gini={b['challenger_gini']:.4f}  gap={b['gini_gap']:+.4f}"
+    )
+    print(
+        f"[validation] max score PSI={r['stability']['max_score_psi']:.4f}  "
+        f"max feature CSI={r['stability']['max_feature_csi']:.4f}"
+    )
+    print(
+        f"[validation] report -> artifacts/validation_report.json + reports/validation_report.html"
+    )

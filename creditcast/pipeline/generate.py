@@ -12,6 +12,7 @@ simulated consistently. Everything is seeded -> bit-for-bit reproducible.
 Real Freddie/Fannie files drop into Silver unchanged: they carry the same
 columns this generator emits (see `ORIG_SCHEMA` / `PERF_SCHEMA`).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,23 +24,37 @@ from creditcast.config import Config, load_config, set_global_seed
 
 # --- Schema (subset of the Freddie Mac data dictionary we actually model) ----
 ORIG_SCHEMA = [
-    "loan_id", "vintage", "orig_date",
-    "fico", "dti", "ltv", "orig_interest_rate", "orig_upb", "orig_loan_term",
-    "occupancy_status", "loan_purpose", "property_type", "first_time_homebuyer",
-    "borrower_race",   # protected attribute for fairness — NEVER a model input
+    "loan_id",
+    "vintage",
+    "orig_date",
+    "fico",
+    "dti",
+    "ltv",
+    "orig_interest_rate",
+    "orig_upb",
+    "orig_loan_term",
+    "occupancy_status",
+    "loan_purpose",
+    "property_type",
+    "first_time_homebuyer",
+    "borrower_race",  # protected attribute for fairness — NEVER a model input
 ]
 PERF_SCHEMA = [
-    "loan_id", "monthly_reporting_period", "loan_age",
-    "current_upb", "current_loan_delinquency_status",
-    "zero_balance_code", "net_loss",
+    "loan_id",
+    "monthly_reporting_period",
+    "loan_age",
+    "current_upb",
+    "current_loan_delinquency_status",
+    "zero_balance_code",
+    "net_loss",
 ]
 
 # Freddie zero-balance codes we use: 01 prepaid (no loss), 09 REO disposition (loss)
 ZB_PREPAID = "01"
 ZB_REO = "09"
 
-_OCCUPANCY = np.array(["P", "I", "S"])       # Primary, Investment, Second home
-_PURPOSE = np.array(["P", "C", "N"])         # Purchase, Cash-out refi, No-cash refi
+_OCCUPANCY = np.array(["P", "I", "S"])  # Primary, Investment, Second home
+_PURPOSE = np.array(["P", "C", "N"])  # Purchase, Cash-out refi, No-cash refi
 _PROPERTY = np.array(["SF", "CO", "PU", "MH"])  # SingleFam, Condo, PUD, ManufHousing
 _RACE = np.array(["White", "Black", "Hispanic", "Asian", "Other"])
 
@@ -60,10 +75,16 @@ def _origination(cfg: Config, rng: np.random.Generator) -> pd.DataFrame:
     # documented socioeconomic gaps). The model never sees race; these offsets
     # are the *only* pathway by which neutral features can proxy for it, which
     # is exactly the disparate-impact mechanism the fairness screen surfaces.
-    fico_shift = pd.Series(race).map(
-        {"White": 0, "Asian": 8, "Black": -28, "Hispanic": -18, "Other": -6}).to_numpy()
-    dti_shift = pd.Series(race).map(
-        {"White": 0, "Asian": -1, "Black": 3.0, "Hispanic": 2.0, "Other": 1.0}).to_numpy()
+    fico_shift = (
+        pd.Series(race)
+        .map({"White": 0, "Asian": 8, "Black": -28, "Hispanic": -18, "Other": -6})
+        .to_numpy()
+    )
+    dti_shift = (
+        pd.Series(race)
+        .map({"White": 0, "Asian": -1, "Black": 3.0, "Hispanic": 2.0, "Other": 1.0})
+        .to_numpy()
+    )
 
     fico = np.clip(rng.normal(735, 45, n) + fico_shift, 580, 830).round()
     dti = np.clip(rng.normal(34, 9, n) + dti_shift, 5, 60).round(1)
@@ -73,8 +94,7 @@ def _origination(cfg: Config, rng: np.random.Generator) -> pd.DataFrame:
     orig_loan_term = rng.choice([180, 240, 360], size=n, p=[0.18, 0.07, 0.75])
 
     # Rate rises with risk: low FICO / high LTV pay more (used later by LGD too)
-    rate = (3.6 + (760 - fico) * 0.004 + (ltv - 75) * 0.012
-            + rng.normal(0, 0.35, n))
+    rate = 3.6 + (760 - fico) * 0.004 + (ltv - 75) * 0.012 + rng.normal(0, 0.35, n)
     rate = np.clip(rate, 2.4, 8.5).round(3)
 
     occupancy = rng.choice(_OCCUPANCY, n, p=[0.86, 0.10, 0.04])
@@ -82,22 +102,24 @@ def _origination(cfg: Config, rng: np.random.Generator) -> pd.DataFrame:
     prop = rng.choice(_PROPERTY, n, p=[0.70, 0.14, 0.13, 0.03])
     fthb = rng.choice(["Y", "N"], n, p=[0.22, 0.78])
 
-    df = pd.DataFrame({
-        "loan_id": np.arange(1, n + 1),
-        "vintage": orig_period.astype(str),
-        "orig_date": orig_period.to_timestamp(),
-        "fico": fico.astype(int),
-        "dti": dti,
-        "ltv": ltv.astype(int),
-        "orig_interest_rate": rate,
-        "orig_upb": orig_upb.astype(int),
-        "orig_loan_term": orig_loan_term.astype(int),
-        "occupancy_status": occupancy,
-        "loan_purpose": purpose,
-        "property_type": prop,
-        "first_time_homebuyer": fthb,
-        "borrower_race": race,
-    })
+    df = pd.DataFrame(
+        {
+            "loan_id": np.arange(1, n + 1),
+            "vintage": orig_period.astype(str),
+            "orig_date": orig_period.to_timestamp(),
+            "fico": fico.astype(int),
+            "dti": dti,
+            "ltv": ltv.astype(int),
+            "orig_interest_rate": rate,
+            "orig_upb": orig_upb.astype(int),
+            "orig_loan_term": orig_loan_term.astype(int),
+            "occupancy_status": occupancy,
+            "loan_purpose": purpose,
+            "property_type": prop,
+            "first_time_homebuyer": fthb,
+            "borrower_race": race,
+        }
+    )
     return df
 
 
@@ -119,10 +141,10 @@ def _default_probability(df: pd.DataFrame, cfg: Config) -> np.ndarray:
         + 0.035 * ((df["dti"].to_numpy() - 30) / 8.0) ** 2
         # Compounding (super-additive) interactions the monotonic scorecard
         # under-fits but the GBM captures -> an honest source of challenger edge.
-        + np.where((df["occupancy_status"].to_numpy() == "I")
-                   & (df["ltv"].to_numpy() > 80), 0.80, 0.0)
-        + np.where((df["loan_purpose"].to_numpy() == "C")
-                   & (df["ltv"].to_numpy() > 85), 0.55, 0.0)
+        + np.where(
+            (df["occupancy_status"].to_numpy() == "I") & (df["ltv"].to_numpy() > 80), 0.80, 0.0
+        )
+        + np.where((df["loan_purpose"].to_numpy() == "C") & (df["ltv"].to_numpy() > 85), 0.55, 0.0)
         # Unexplained borrower heterogeneity: keeps feature IVs and Gini in a
         # realistic mortgage range (no single feature dominates / leaks).
         + rng.normal(0, 1.1, len(df))
@@ -164,7 +186,8 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
     base_recovery = float(cfg.generator.recovery_mean)
     recovery = np.clip(
         base_recovery + (75 - df["ltv"].to_numpy()) * 0.006 + rng.normal(0, 0.12, n),
-        0.05, 0.98,
+        0.05,
+        0.98,
     )
     lgd = 1.0 - recovery  # fraction of EAD lost
 
@@ -211,10 +234,17 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
                     zb = ZB_PREPAID
                     disposed = True
 
-            rows.append((
-                loan_ids[i], str(per + age), age,
-                round(bal, 2), dpd_status, zb, net_loss,
-            ))
+            rows.append(
+                (
+                    loan_ids[i],
+                    str(per + age),
+                    age,
+                    round(bal, 2),
+                    dpd_status,
+                    zb,
+                    net_loss,
+                )
+            )
 
     return pd.DataFrame(rows, columns=PERF_SCHEMA)
 
@@ -240,18 +270,22 @@ def generate(cfg: Config | None = None) -> dict[str, Path]:
     orig["_vyear"] = orig["vintage"].str.slice(0, 4)
     for yr, part in orig.groupby("_vyear"):
         part.drop(columns="_vyear").to_parquet(
-            bronze / "origination" / f"orig_{yr}.parquet", index=False)
+            bronze / "origination" / f"orig_{yr}.parquet", index=False
+        )
     orig = orig.drop(columns="_vyear")
 
     perf = perf.merge(orig[["loan_id", "vintage"]], on="loan_id", how="left")
     perf["_vyear"] = perf["vintage"].str.slice(0, 4)
     for yr, part in perf.groupby("_vyear"):
         part.drop(columns=["_vyear", "vintage"]).to_parquet(
-            bronze / "performance" / f"perf_{yr}.parquet", index=False)
+            bronze / "performance" / f"perf_{yr}.parquet", index=False
+        )
 
     n_def = perf["zero_balance_code"].eq(ZB_REO).sum()
-    print(f"[generate] {len(orig):,} loans, {len(perf):,} performance rows, "
-          f"{n_def:,} REO dispositions (~{n_def / len(orig):.2%} of book)")
+    print(
+        f"[generate] {len(orig):,} loans, {len(perf):,} performance rows, "
+        f"{n_def:,} REO dispositions (~{n_def / len(orig):.2%} of book)"
+    )
     return {"origination": bronze / "origination", "performance": bronze / "performance"}
 
 

@@ -7,6 +7,7 @@ credit score and risk band, predict LGD/EAD, compute Expected Loss, apply the
 cost-based decision, and attach champion-consistent adverse-action reason
 codes. Used by the FastAPI service.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -17,8 +18,7 @@ import numpy as np
 import pandas as pd
 
 from creditcast.config import Config, load_config, run_stamp
-from creditcast.dataset import (categorical_columns, feature_columns,
-                                 numeric_columns)
+from creditcast.dataset import categorical_columns, feature_columns, numeric_columns
 from creditcast.features import engineer
 from creditcast.governance import decision, explain, reason_codes, shap_explain
 from creditcast.models import calibration, challenger, ead as ead_mod
@@ -38,8 +38,13 @@ REQUIRED_ARTIFACTS = [
     ("gold", "rate_benchmark.parquet"),
 ]
 # The model files whose bytes define "which model made this decision".
-_FINGERPRINTED = ["scorecard.joblib", "challenger.joblib", "calibrator_scorecard.joblib",
-                  "calibrator_challenger.joblib", "lgd.joblib"]
+_FINGERPRINTED = [
+    "scorecard.joblib",
+    "challenger.joblib",
+    "calibrator_scorecard.joblib",
+    "calibrator_challenger.joblib",
+    "lgd.joblib",
+]
 
 
 class ModelBundle:
@@ -51,14 +56,26 @@ class ModelBundle:
     # ---- readiness ----------------------------------------------------------
     def missing_artifacts(self) -> list[str]:
         """Required files that are not on disk (checked on every call)."""
-        return [f"{key}/{name}" for key, name in REQUIRED_ARTIFACTS
-                if not (self.cfg.path(key) / name).exists()]
+        return [
+            f"{key}/{name}"
+            for key, name in REQUIRED_ARTIFACTS
+            if not (self.cfg.path(key) / name).exists()
+        ]
 
     def warm(self) -> None:
         """Load every artifact now, so the first real request isn't slow and a
         broken artifact fails readiness instead of a user's request."""
-        for prop in ("scorecard", "challenger", "cal_sc", "cal_ch", "lgd",
-                     "explainer", "threshold", "rate_benchmark", "model_version"):
+        for prop in (
+            "scorecard",
+            "challenger",
+            "cal_sc",
+            "cal_ch",
+            "lgd",
+            "explainer",
+            "threshold",
+            "rate_benchmark",
+            "model_version",
+        ):
             getattr(self, prop)
 
     @cached_property
@@ -67,8 +84,11 @@ class ModelBundle:
         h = hashlib.sha256()
         for name in _FINGERPRINTED:
             h.update((self.cfg.path("artifacts") / name).read_bytes())
-        return {**run_stamp(), "champion": str(self.cfg.decision.champion),
-                "fingerprint": h.hexdigest()[:12]}
+        return {
+            **run_stamp(),
+            "champion": str(self.cfg.decision.champion),
+            "fingerprint": h.hexdigest()[:12],
+        }
 
     @cached_property
     def scorecard(self):
@@ -144,8 +164,11 @@ class ModelBundle:
 
         dec = str(decision.decide(pd_champ, self.threshold))
         local = explain.local_drivers(
-            X, self.cfg, scorecard=self.scorecard,
-            explainer=self.explainer if champion == "challenger" else None)
+            X,
+            self.cfg,
+            scorecard=self.scorecard,
+            explainer=self.explainer if champion == "challenger" else None,
+        )
         codes = reason_codes.reason_codes(local, top_n=4)
 
         return {

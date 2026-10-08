@@ -3,6 +3,7 @@
 The models *supply* PD/LGD/EAD; this module just does the arithmetic, so it is
 pure, deterministic, and unit-tested (Part 10.6). Per-loan EL and portfolio EL.
 """
+
 from __future__ import annotations
 
 import numpy as np
