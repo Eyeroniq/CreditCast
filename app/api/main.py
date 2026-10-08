@@ -206,6 +206,18 @@ def score(request: Request, applicant: Applicant):
             "model_fingerprint": version.get("fingerprint")}
 
 
+@router.post("/whatif", dependencies=[Depends(require_api_key)])
+@limiter.limit(LIMITS.whatif)
+def whatif(request: Request, applicant: Applicant):
+    """Smallest single changes that would turn a decline into an approval."""
+    from creditcast.governance.counterfactual import what_if
+    b = bundle()
+    try:
+        return what_if(applicant.model_dump(), b.pd_batch, b.threshold)
+    except Exception:
+        raise _internal_error(request, "searching for changes")
+
+
 @router.get("/validation")
 def validation():
     return _artifact("validation_report.json")
