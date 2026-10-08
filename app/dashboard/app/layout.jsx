@@ -2,7 +2,7 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 
 export const metadata = {
-  title: "CreditForge · Risk Cockpit",
+  title: "CreditCast · Risk Cockpit",
   description: "Bank-grade credit-risk modeling, validation, and monitoring (BONITAS).",
 };
 

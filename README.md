@@ -1,6 +1,8 @@
-# CreditForge · `BONITAS`
+# CreditCast · `BONITAS`
 
 **🌐 Live demo: https://huggingface.co/spaces/sidnov6/CreditForge**
+
+**🗺️ Improvement plan: see [ROADMAP.md](ROADMAP.md)**
 
 **Bank-grade credit-risk modeling & validation platform.** A calibrated PD model
 (regulatory WoE scorecard *and* an ML challenger), LGD, and EAD combined into
@@ -22,11 +24,11 @@ EL = PD × LGD × EAD
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt          # macOS LightGBM: brew install libomp
-python -m creditforge.cli generate       # synthetic GSE panels -> Bronze
-python -m creditforge.cli pipeline       # Bronze -> Silver -> Gold (+ OOT split)
-python -m creditforge.cli train          # scorecard + challenger + calibration
-python -m creditforge.cli validate       # Gini/KS/calibration/PSI -> report
-python -m creditforge.cli all            # the whole lifecycle end-to-end
+python -m creditcast.cli generate       # synthetic GSE panels -> Bronze
+python -m creditcast.cli pipeline       # Bronze -> Silver -> Gold (+ OOT split)
+python -m creditcast.cli train          # scorecard + challenger + calibration
+python -m creditcast.cli validate       # Gini/KS/calibration/PSI -> report
+python -m creditcast.cli all            # the whole lifecycle end-to-end
 ```
 
 ## Deploy (single container)
@@ -36,8 +38,8 @@ the pre-built static Next.js cockpit at `/` (one origin, no CORS). Models are
 trained and baked at build time, so the runtime image only serves.
 
 ```bash
-docker build -t creditforge .
-docker run -p 7860:7860 creditforge        # open http://localhost:7860
+docker build -t creditcast .
+docker run -p 7860:7860 creditcast        # open http://localhost:7860
 ```
 
 Deployed free on Hugging Face Spaces (Docker SDK) — see
@@ -70,7 +72,7 @@ orchestrator routes a question to the right specialist(s); answers come back wit
 **interactive charts the agents emit** and a transparent **tool trace**. Numbers
 come from the models, never the LLM.
 
-- Backend: [`creditforge/agents/`](creditforge/agents/) — tools, Groq tool-calling
+- Backend: [`creditcast/agents/`](creditcast/agents/) — tools, Groq tool-calling
   loop (forced first call for grounding; auto-fallback to a lighter model on
   rate-limit), specialists, orchestrator. Endpoints: `/api/agent/team`, `/api/agent/chat`.
 - Frontend: the **Risk Copilot** screen — chat, the visible team (lights up which
@@ -86,7 +88,7 @@ CI performance gates, and drift monitoring.
 
 ## Layout
 ```
-creditforge/
+creditcast/
   conf/config.yaml      # all thresholds/scaling/cutoffs — no hardcoding
   pipeline/             # synthetic generator + Bronze/Silver/Gold + split
   models/               # scorecard, challenger, calibration, lgd, ead, el

@@ -1,4 +1,4 @@
-# ---- CreditForge / BONITAS :: Python dependencies ----
+# ---- CreditCast / BONITAS :: Python dependencies ----
 # Pinned loosely (>=) for free-tier reproducibility; lockfile via `pip freeze` in CI.
 
 # Data engineering

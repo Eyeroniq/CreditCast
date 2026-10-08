@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from creditforge.pipeline.gold import _engineer
-from creditforge.pipeline.silver import QUALITY_RANGES
-from creditforge.validation.stability import psi, psi_status, csi
+from creditcast.pipeline.gold import _engineer
+from creditcast.pipeline.silver import QUALITY_RANGES
+from creditcast.validation.stability import psi, psi_status, csi
 
 
 def test_engineered_features():

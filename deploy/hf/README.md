@@ -1,5 +1,5 @@
 ---
-title: CreditForge Risk Cockpit
+title: CreditCast Risk Cockpit
 emoji: 📊
 colorFrom: blue
 colorTo: gray
@@ -9,7 +9,7 @@ pinned: false
 license: mit
 ---
 
-# CreditForge · BONITAS — Risk Cockpit
+# CreditCast · BONITAS — Risk Cockpit
 
 Bank-grade credit-risk modeling & validation platform. A calibrated PD model
 (WoE/logistic regulatory **scorecard** + **LightGBM challenger**), **LGD**, and

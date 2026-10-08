@@ -16,7 +16,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <span className="name">CreditForge</span>
+        <span className="name">CreditCast</span>
         <span className="code">BONITAS</span>
         <span className="tag">PD · LGD · EAD · Expected Loss</span>
       </div>

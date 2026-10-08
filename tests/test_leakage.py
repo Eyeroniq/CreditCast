@@ -6,8 +6,8 @@ split never lets train/calib vintages reach into the test vintages.
 import pandas as pd
 import pytest
 
-from creditforge.config import load_config
-from creditforge.pipeline.split import Split, assert_no_vintage_overlap
+from creditcast.config import load_config
+from creditcast.pipeline.split import Split, assert_no_vintage_overlap
 
 
 def _frame(vintages, n_each=20):

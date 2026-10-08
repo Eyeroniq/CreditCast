@@ -6,13 +6,13 @@ haven't been generated yet.
 """
 import pytest
 
-from creditforge.config import load_config
+from creditcast.config import load_config
 
 pytestmark = pytest.mark.skipif(
     not (load_config().path("artifacts") / "test_scored.parquet").exists(),
-    reason="run the pipeline first (python -m creditforge.cli all)")
+    reason="run the pipeline first (python -m creditcast.cli all)")
 
-from creditforge.agents import tools  # noqa: E402
+from creditcast.agents import tools  # noqa: E402
 
 VALID_CHART_TYPES = {"bar", "hbar", "line", "scatter"}
 

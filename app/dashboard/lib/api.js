@@ -1,4 +1,4 @@
-// Thin client for the CreditForge FastAPI scoring service.
+// Thin client for the CreditCast FastAPI scoring service.
 // Same-origin in the container (base = "/api"); in split local dev set
 // NEXT_PUBLIC_API_URL=http://localhost:8001 and it becomes that host + "/api".
 export const API = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
