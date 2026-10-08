@@ -17,6 +17,9 @@ services:
         required: false
     environment:
       PORT: "8000"
+      # Trust X-Forwarded-For from the proxy so rate limits are per real
+      # client IP (the app port is only reachable by caddy, never public).
+      FORWARDED_ALLOW_IPS: "*"
     expose:
       - "8000"                   # only reachable by caddy, not the internet
 

@@ -5,6 +5,7 @@
 fastapi>=0.110
 uvicorn[standard]>=0.27
 pydantic>=2.6
+slowapi>=0.1.9       # per-IP API rate limits
 numpy>=1.26
 pandas>=2.1
 pyarrow>=14.0
