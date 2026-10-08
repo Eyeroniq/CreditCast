@@ -16,6 +16,7 @@ creditcast/artifacts/*
 !creditcast/artifacts/.gitkeep
 creditcast/reports/*.html
 mlruns/
+mlflow.db
 
 # Node / Next.js
 node_modules/

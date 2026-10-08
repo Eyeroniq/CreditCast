@@ -1,6 +1,6 @@
 """MLflow experiment tracking + registry (Part 10.2).
 
-Self-hosted, free, local file store. Logs the run stamp, key config params, the
+Self-hosted, free, local SQLite store (`mlflow.db`). Logs the run stamp, key config params, the
 out-of-time metrics, and the artifacts directory so any model version is
 re-instantiable. Tracking is best-effort: if MLflow misbehaves it must never
 break the training pipeline.
@@ -21,11 +21,21 @@ def log_run(run_name: str, cfg: Config | None = None):
         yield None
         return
 
-    mlflow.set_tracking_uri(f"file:{REPO_ROOT / 'mlruns'}")
-    mlflow.set_experiment("creditcast")
-    with mlflow.start_run(run_name=run_name) as run:
+    # SQLite backend: the legacy ./mlruns file store is refused by MLflow 3.x.
+    try:
+        mlflow.set_tracking_uri(f"sqlite:///{(REPO_ROOT / 'mlflow.db').as_posix()}")
+        mlflow.set_experiment("creditcast")
+        run = mlflow.start_run(run_name=run_name)
         mlflow.set_tags(run_stamp())
+    except Exception as exc:  # best-effort: never break the pipeline
+        print(f"[tracking] MLflow unavailable ({type(exc).__name__}: {exc}); "
+              "continuing without tracking")
+        yield None
+        return
+    try:
         yield _Logger(mlflow, run)
+    finally:
+        mlflow.end_run()
 
 
 class _Logger:
