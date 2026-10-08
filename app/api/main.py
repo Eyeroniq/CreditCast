@@ -8,22 +8,35 @@ one origin (no CORS).
 Public-facing hardening: per-IP rate limits (slowapi) on the costly endpoints,
 strict input validation (unknown fields, out-of-range values and unknown
 category codes are 422s), and unexpected errors return a request ID instead of
-a stack trace. Limits live in `config.yaml` under `api`. Run locally:
+a stack trace. Limits live in `config.yaml` under `api`.
+
+Production settings (environment variables, all optional):
+  CC_ALLOWED_ORIGINS  comma-separated origins allowed to call the API from a
+                      browser (CORS). Unset = same-origin only (the cockpit).
+  CC_API_KEY          if set, POST /api/score and /api/agent/chat require the
+                      header `X-API-Key: <key>` (API-only deployments; leave
+                      unset when the public cockpit must work).
+  CC_LOG_DIR          where `decisions.jsonl` (the audit trail) is written.
+
+Run locally:
 
     uvicorn app.api.main:app --reload --port 8001
 """
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
+import time
 import uuid
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
 import pandas as pd
-from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,17 +45,50 @@ from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from app.api import audit
 from creditcast.config import load_config
 from creditcast.governance import decision
 from creditcast.serving import ModelBundle
 
+decision_log = audit.setup_logging()
 log = logging.getLogger("creditcast.api")
 API_CFG = load_config().api
 LIMITS = API_CFG.rate_limits
 
-app = FastAPI(title="CreditCast Scoring API", version="0.1.0")
-app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Warm the model bundle at startup so the first visitor isn't slow. A
+    failure is logged, not fatal: /api/ready then reports 503 (unhealthy)."""
+    try:
+        bundle().warm()
+        log.info({"event": "startup", "model_version": bundle().model_version})
+    except Exception:
+        log.exception("model warm-up failed; /api/ready will report unhealthy")
+    yield
+
+
+app = FastAPI(title="CreditCast Scoring API", version="0.1.0", lifespan=_lifespan)
+
+# CORS: same-origin only by default (the cockpit is served by this app). Allow
+# extra browser origins explicitly, e.g. a split local dev server.
+def cors_origins(raw: str | None) -> list[str]:
+    """Parse CC_ALLOWED_ORIGINS ("https://a.com, http://localhost:3000")."""
+    return [o.strip().rstrip("/") for o in (raw or "").split(",") if o.strip()]
+
+
+ALLOWED_ORIGINS = cors_origins(os.environ.get("CC_ALLOWED_ORIGINS"))
+if ALLOWED_ORIGINS:
+    app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS,
+                       allow_methods=["GET", "POST"],
+                       allow_headers=["content-type", "x-api-key"])
+
+
+def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
+    """Optional shared-secret check, active only when CC_API_KEY is set."""
+    expected = os.environ.get("CC_API_KEY")
+    if expected and not (x_api_key and hmac.compare_digest(x_api_key, expected)):
+        raise HTTPException(401, "Missing or invalid API key (send header X-API-Key).")
 
 # Per-client-IP rate limits (in-memory: one container, one process).
 limiter = Limiter(key_func=get_remote_address)
@@ -117,18 +163,47 @@ class Applicant(BaseModel):
 
 @router.get("/health")
 def health():
+    """Liveness: the process is up (does not touch the models)."""
     return {"status": "ok", "stamp": load_config()["run"]}
 
 
-@router.post("/score")
+@router.get("/ready")
+def ready():
+    """Readiness: every required artifact exists and loads. Used by the Docker
+    HEALTHCHECK, so a missing/broken model marks the container unhealthy."""
+    b = bundle()
+    missing = b.missing_artifacts()
+    if missing:
+        return JSONResponse(status_code=503, content={"ready": False, "missing": missing})
+    try:
+        b.warm()
+    except Exception as exc:
+        log.exception("readiness check failed")
+        return JSONResponse(status_code=503,
+                            content={"ready": False, "error": type(exc).__name__})
+    return {"ready": True, "model_version": b.model_version}
+
+
+@router.post("/score", dependencies=[Depends(require_api_key)])
 @limiter.limit(LIMITS.score)
 def score(request: Request, applicant: Applicant):
+    started = time.perf_counter()
+    raw = applicant.model_dump()
+    b = bundle()
     try:
-        return bundle().score(applicant.model_dump())
+        result = b.score(raw)
     except KeyError as e:
         raise HTTPException(422, f"missing feature: {e}")
     except Exception:
         raise _internal_error(request, "scoring")
+    # Audit trail: model version + input hash, never the raw inputs.
+    version = getattr(b, "model_version", {}) or {}
+    decision_log.info(audit.decision_record(
+        request_id=request.state.request_id, model_version=version,
+        applicant=raw, result=result,
+        latency_ms=(time.perf_counter() - started) * 1000))
+    return {**result, "request_id": request.state.request_id,
+            "model_fingerprint": version.get("fingerprint")}
 
 
 @router.get("/validation")
@@ -210,7 +285,7 @@ def agent_team():
                         "tools": v["tools"]} for k, v in SPECIALISTS.items()]}
 
 
-@router.post("/agent/chat")
+@router.post("/agent/chat", dependencies=[Depends(require_api_key)])
 @limiter.limit(LIMITS.agent_chat)
 def agent_chat(request: Request, q: AgentQuery):
     """Route the question to the specialist team and return answer + charts + trace."""

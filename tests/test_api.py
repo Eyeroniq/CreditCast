@@ -130,3 +130,100 @@ def test_score_rate_limit(client, monkeypatch):
 
 def test_health_is_not_rate_limited(client):
     assert all(client.get("/api/health").status_code == 200 for _ in range(150))
+
+
+# ---- 3.3 CORS + optional API key ------------------------------------------------
+def test_cors_is_same_origin_only_by_default(client):
+    from app.api.main import ALLOWED_ORIGINS
+    if ALLOWED_ORIGINS:
+        pytest.skip("CC_ALLOWED_ORIGINS is set in this environment")
+    r = client.get("/api/health", headers={"Origin": "https://evil.example"})
+    assert "access-control-allow-origin" not in r.headers
+
+
+def test_cors_origins_parsing():
+    from app.api.main import cors_origins
+    assert cors_origins(None) == []
+    assert cors_origins(" https://dhyyraj.in/ , http://localhost:3000 ,") == [
+        "https://dhyyraj.in", "http://localhost:3000"]
+
+
+class _StubBundle:
+    model_version = {"code_version": "test", "fingerprint": "abc123def456"}
+
+    def score(self, raw):
+        return {"decision": "decline", "pd": 0.2, "risk_band": "B", "threshold": 0.0625,
+                "reason_codes": [{"feature": "fico"}, {"feature": "dti"}]}
+
+
+def test_api_key_enforced_only_when_configured(client, monkeypatch):
+    import app.api.main as api
+    monkeypatch.setattr(api, "bundle", lambda: _StubBundle())
+    monkeypatch.delenv("CC_API_KEY", raising=False)
+    assert client.post("/api/score", json=GOOD).status_code == 200      # open demo
+    monkeypatch.setenv("CC_API_KEY", "s3cret")
+    assert client.post("/api/score", json=GOOD).status_code == 401
+    assert client.post("/api/score", json=GOOD,
+                       headers={"X-API-Key": "wrong"}).status_code == 401
+    assert client.post("/api/score", json=GOOD,
+                       headers={"X-API-Key": "s3cret"}).status_code == 200
+
+
+# ---- 3.4 decision audit trail ---------------------------------------------------
+def test_score_writes_traceable_audit_record(client, monkeypatch):
+    import logging
+
+    import app.api.main as api
+    from app.api.audit import input_hash
+    monkeypatch.setattr(api, "bundle", lambda: _StubBundle())
+    records = []
+
+    class Capture(logging.Handler):
+        def emit(self, record):
+            records.append(record.msg)
+
+    h = Capture()
+    logging.getLogger("creditcast.decisions").addHandler(h)
+    try:
+        r = client.post("/api/score", json=GOOD)
+    finally:
+        logging.getLogger("creditcast.decisions").removeHandler(h)
+    assert r.status_code == 200
+    (rec,) = records
+    assert rec["request_id"] == r.headers["X-Request-ID"] == r.json()["request_id"]
+    assert rec["model_version"]["fingerprint"] == "abc123def456"
+    assert rec["input_hash"] == input_hash(api.Applicant(**GOOD).model_dump())
+    assert rec["decision"] == "decline" and rec["reason_features"] == ["fico", "dti"]
+    assert rec["latency_ms"] >= 0
+    assert "fico" not in rec and 690 not in rec.values()     # no raw inputs logged
+
+
+def test_input_hash_is_order_independent():
+    from app.api.audit import input_hash
+    a = {"fico": 690, "dti": 38.0}
+    assert input_hash(a) == input_hash(dict(reversed(list(a.items()))))
+    assert input_hash(a) != input_hash({**a, "fico": 691})
+
+
+# ---- 3.5 readiness ----------------------------------------------------------------
+@needs_artifacts
+def test_ready_reports_model_version(client):
+    r = client.get("/api/ready")
+    assert r.status_code == 200
+    assert r.json()["ready"] is True
+    assert len(r.json()["model_version"]["fingerprint"]) == 12
+
+
+def test_ready_is_503_when_an_artifact_is_missing(client, monkeypatch, tmp_path):
+    import copy
+
+    import app.api.main as api
+    from creditcast.config import Config
+    from creditcast.serving import ModelBundle
+    cfg = Config(copy.deepcopy(dict(load_config())))
+    cfg["paths"] = {**cfg["paths"], "artifacts": str(tmp_path)}   # empty dir
+    monkeypatch.setattr(api, "bundle", lambda: ModelBundle(cfg))
+    r = client.get("/api/ready")
+    assert r.status_code == 503
+    assert "artifacts/challenger.joblib" in r.json()["missing"]
+    assert client.get("/api/health").status_code == 200       # still alive

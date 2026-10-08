@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from creditcast import dataset
 from creditcast.config import Config, load_config
 from creditcast.features import engineer, rate_benchmark
 
@@ -56,6 +57,7 @@ def build_gold(cfg: Config | None = None) -> Path:
                 "protected": protected, "target": "default_12m"}
     import json
     (gold / "feature_manifest.json").write_text(json.dumps(manifest, indent=2))
+    dataset.reload()          # the manifest just changed: drop the cached copy
 
     print(f"[gold] {len(out_df):,} rows | {len(numeric)} numeric + "
           f"{len(categorical)} categorical features | "

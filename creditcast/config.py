@@ -42,6 +42,11 @@ def load_config(path: str | os.PathLike | None = None) -> Config:
     return Config(raw)
 
 
+def reload() -> None:
+    """Forget the cached config (call after editing config.yaml in-process)."""
+    load_config.cache_clear()
+
+
 def set_global_seed(seed: int | None = None) -> int:
     """Seed Python + NumPy for determinism. Returns the seed used."""
     cfg = load_config()
