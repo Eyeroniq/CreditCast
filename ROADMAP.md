@@ -71,7 +71,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 1.5 | Remove `rate_spread` train/serve skew | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
 | 1.6 | Amortized-balance EAD | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
 | 1.7 | Reason codes follow the champion model | [x] | 2026-10-08 | branch `roadmap/phase-1-methodology` |
-| 1.8 | Phase 1 follow-ups (PD floor, threshold stability, generator cures/cutoff) | [ ] | | Found while doing Phase 1 |
+| 1.8 | Phase 1 follow-ups (PD floor, threshold stability, generator cures/cutoff) | [x] | 2026-10-08 | Also fixed a censoring bias in 1.3 and switched calibration to sigmoid |
 | 2.1 | GitHub Actions CI | [x] | 2026-10-08 | PR #2; first run green (python 1m48s, web 1m23s) |
 | 2.2 | Scheduled drift workflow | [ ] | | |
 | 2.3 | Expand test suite (≥70% coverage) | [ ] | | |
@@ -363,6 +363,54 @@ reason in the model card.
 - **Dependencies:** MLflow 3.x refuses the legacy `./mlruns` file store and
   crashed training; `tracking.py` now uses SQLite (`mlflow.db`) and is truly
   best-effort. Pin versions in 2.4.
+
+**Result (2026-10-08), branch `roadmap/1.8-followups`:**
+
+- **PD floor** `calibration.pd_floor: 0.0003` applied inside `Calibrator.transform`
+  (train, cross-fit and serving). Zero PDs: some → **none**; the "Prime"
+  preset went 0.0000% → 1.12%.
+- **Threshold:** new `decision.threshold_method` (default **`closed_form`** =
+  cost_fp / (cost_fp + cost_fn) = **0.0625**); the empirical calib minimum is
+  still computed and reported (`threshold_alternatives`, model card).
+- **Calibration isotonic → sigmoid (new finding).** Isotonic produced only 48
+  distinct PDs; one step held **23% of the test book**, and 16% sat on PD
+  0.0556 just under the cut-off, so approval jumped 63% ↔ 86% depending on
+  which side a step landed. Sigmoid on the same model: max band error 0.0235 →
+  **0.0185**, ECE 0.0081 → **0.0055**, largest tie 23% → **0.9%**, approval now
+  moves smoothly with the cut-off (76.8 / 80.7 / 84.1% at −10% / 0 / +10%), and
+  OOT Gini *rose* (ties had blurred the ranking).
+- **Censoring bias fixed (bug in 1.3).** The per-loan rule kept recent
+  defaulters but dropped their non-defaulting peers when the data ended
+  mid-window, which inflates recent default rates. Labels now also require the
+  loan's whole window to end by the data cutoff (last reporting month).
+  Covered by a new test case (late-vintage early default → censored).
+- **Generator v2** (`data_version: synthetic-v2`): `cure_rate: 0.25` (cures
+  return to current, 0 loss) and `data_cutoff: "2022-06"`. Silver resolves
+  cures via `lgd.cure_months: 6` months back at current. Result: 4,328 loans
+  censored (the 2021-07…12 vintages); 626 cures in the LGD population, so
+  the cure stage is a real two-class model again; 2,478 / 2,504 defaults
+  resolved (26 too close to the cutoff).
+- Tests 52 → 56, all pass; all CI gates pass. Fairness min DI 0.799 —
+  REVIEW, just under the 0.80 floor (feeds 5.6).
+
+| Metric (OOT) | After Phase 1 | After 1.8 |
+|---|---|---|
+| Data | synthetic-v1 | synthetic-v2 (cures, cutoff) |
+| Test loans | 17,108 | 12,780 (censored vintages removed) |
+| Gini scorecard / challenger | 0.4483 / 0.4327 | 0.4391 / 0.4278 |
+| KS challenger | 0.3209 | 0.3290 |
+| Calibration max band error | 0.0169 (isotonic) | 0.0185 (sigmoid) |
+| Threshold | 0.0344 (empirical) | 0.0625 (closed form) |
+| Approval rate / approved-loan default rate | 63.0% / 2.39% | 80.7% / 3.16% |
+| Min disparate-impact ratio | 0.677 | 0.799 |
+| LGD mean pred vs realized | 0.387 vs 0.377 | 0.282 vs 0.300 |
+| LGD MAE | 0.095 | 0.173 (bimodal now: cures at 0) |
+| Portfolio EL rate | 167 bps | 122 bps |
+| Min PD | 0 | 0.0003 |
+
+Numbers are not directly comparable across the two columns because the
+synthetic data changed (v1 → v2); the point is that every component now
+behaves sensibly on data with cures and censoring.
 
 ### Phase 1 summary (synthetic data, seed 42)
 

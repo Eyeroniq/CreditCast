@@ -6,7 +6,8 @@ import pandas as pd
 import pytest
 
 from creditcast.config import load_config
-from creditcast.governance.decision import default_threshold
+from creditcast.governance.decision import (closed_form_threshold, default_threshold,
+                                            empirical_threshold)
 from creditcast.models.calibration import cross_fit_transform
 
 
@@ -15,8 +16,25 @@ def test_threshold_minimizes_cost():
     # between costs 0; the chosen threshold must approve all goods.
     p = np.r_[np.full(90, 0.1), np.full(10, 0.9)]
     y = np.r_[np.zeros(90), np.ones(10)]
-    thr = default_threshold(p, y, load_config())
+    thr = empirical_threshold(p, y, load_config())
     assert 0.1 <= thr < 0.9
+
+
+def test_closed_form_threshold_is_cost_ratio():
+    cfg = load_config()
+    c_fn, c_fp = float(cfg.decision.cost_fn), float(cfg.decision.cost_fp)
+    assert closed_form_threshold(cfg) == pytest.approx(c_fp / (c_fp + c_fn))
+    assert default_threshold([0.5], [1], cfg, method="closed_form") == closed_form_threshold(cfg)
+
+
+def test_calibrated_pds_respect_floor():
+    from creditcast.models.calibration import fit_calibrator
+    cfg = load_config()
+    rng = np.random.default_rng(1)
+    raw = rng.random(3000)
+    y = (rng.random(3000) < raw ** 4 * 0.3).astype(int)   # many PDs near 0
+    out = fit_calibrator(raw, y, cfg).transform(raw)
+    assert out.min() >= float(cfg.calibration.pd_floor)
 
 
 def test_cross_fit_is_out_of_fold_and_in_range():
