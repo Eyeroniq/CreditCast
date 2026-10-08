@@ -25,6 +25,7 @@ export const api = {
   validation: () => get("/validation"),
   governance: () => get("/governance"),
   monitoring: () => get("/monitoring"),
+  thresholdCurve: () => get("/threshold-curve"),
   shapGlobal: () => get("/shap/global"),
   portfolio: (n = 400) => get(`/portfolio?n=${n}`),
   agentTeam: () => get("/agent/team"),
