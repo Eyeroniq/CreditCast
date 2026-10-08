@@ -1,5 +1,5 @@
 # ============================================================================
-# CreditCast / BONITAS — central configuration
+# CreditCast — central configuration
 # Single source of truth for thresholds, scaling, cutoffs, and run stamps.
 # Nothing in the modeling/validation code is hardcoded; it reads from here.
 # ============================================================================

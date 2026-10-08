@@ -1,5 +1,5 @@
 # ============================================================================
-# CreditCast — single-container deploy (HF Spaces / any Docker host).
+# CreditCast — single-container deploy (self-hosted at dhyyraj.in / any Docker host).
 # FastAPI serves the API under /api and the pre-built static Next.js cockpit at
 # /. Model artifacts are baked at build time by running the full pipeline once
 # in the trainer stage, then copied into a slim runtime image (no train at boot).
@@ -50,8 +50,8 @@ COPY --from=web /web/out/ ./static/
 
 ENV PYTHONPATH=/app \
     STATIC_DIR=/app/static \
-    PORT=7860
-EXPOSE 7860
+    PORT=8000
+EXPOSE 8000
 
-# HF Spaces routes traffic to port 7860 by default.
+# Serves API + cockpit on one port; put a TLS reverse proxy in front (see deploy/).
 CMD ["sh", "-c", "uvicorn app.api.main:app --host 0.0.0.0 --port ${PORT}"]

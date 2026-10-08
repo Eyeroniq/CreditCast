@@ -2,7 +2,7 @@
   "name": "creditcast-cockpit",
   "version": "0.1.0",
   "private": true,
-  "description": "CreditCast Risk Cockpit — Next.js dashboard for the BONITAS credit-risk platform",
+  "description": "CreditCast Risk Cockpit — Next.js dashboard for the CreditCast credit-risk platform",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
