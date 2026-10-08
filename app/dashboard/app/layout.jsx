@@ -3,7 +3,7 @@ import Sidebar from "@/components/Sidebar";
 
 export const metadata = {
   title: "CreditCast · Risk Cockpit",
-  description: "Bank-grade credit-risk modeling, validation, and monitoring (BONITAS).",
+  description: "Bank-grade credit-risk modeling, validation, and monitoring.",
 };
 
 export default function RootLayout({ children }) {

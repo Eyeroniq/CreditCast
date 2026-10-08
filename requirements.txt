@@ -1,4 +1,4 @@
-# ---- CreditCast / BONITAS :: Python dependencies ----
+# ---- CreditCast :: Python dependencies ----
 # Pinned loosely (>=) for free-tier reproducibility; lockfile via `pip freeze` in CI.
 
 # Data engineering
