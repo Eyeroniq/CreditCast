@@ -6,15 +6,15 @@ __pycache__/
 *.egg-info/
 
 # Data layers — regenerable from the seeded generator; never commit GSE data
-creditforge/data/bronze/*
-creditforge/data/silver/*
-creditforge/data/gold/*
-!creditforge/data/**/.gitkeep
+creditcast/data/bronze/*
+creditcast/data/silver/*
+creditcast/data/gold/*
+!creditcast/data/**/.gitkeep
 
 # Model + validation artifacts (regenerable)
-creditforge/artifacts/*
-!creditforge/artifacts/.gitkeep
-creditforge/reports/*.html
+creditcast/artifacts/*
+!creditcast/artifacts/.gitkeep
+creditcast/reports/*.html
 mlruns/
 
 # Node / Next.js

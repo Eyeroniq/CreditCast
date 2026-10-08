@@ -12,13 +12,13 @@ app/dashboard/.next
 app/dashboard/out
 
 # local data + artifacts (the trainer stage regenerates these in-image)
-creditforge/data/bronze
-creditforge/data/silver
-creditforge/data/gold
-creditforge/artifacts
-creditforge/reports/*.html
+creditcast/data/bronze
+creditcast/data/silver
+creditcast/data/gold
+creditcast/artifacts
+creditcast/reports/*.html
 
 # docs/CI not needed in the image
 .github
 *.md
-!creditforge/governance/model_card.md
+!creditcast/governance/model_card.md

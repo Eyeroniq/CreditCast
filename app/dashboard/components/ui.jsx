@@ -58,7 +58,7 @@ export function ApiError({ error }) {
       <p className="small muted">{error}</p>
       <p className="small mono">
         Start it with:&nbsp; uvicorn app.api.main:app --port 8001
-        <br />(after running: python -m creditforge.cli all)
+        <br />(after running: python -m creditcast.cli all)
       </p>
     </div>
   );

@@ -1,4 +1,4 @@
-"""CreditForge scoring API (FastAPI).
+"""CreditCast scoring API (FastAPI).
 
 Serves single-applicant scoring (PD/LGD/EL + decision + reason codes) and the
 precomputed report artifacts under `/api/*`, and (when present) the pre-built
@@ -20,11 +20,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from creditforge.config import load_config
-from creditforge.governance import decision
-from creditforge.serving import ModelBundle
+from creditcast.config import load_config
+from creditcast.governance import decision
+from creditcast.serving import ModelBundle
 
-app = FastAPI(title="CreditForge Scoring API", version="0.1.0")
+app = FastAPI(title="CreditCast Scoring API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -140,7 +140,7 @@ class AgentQuery(BaseModel):
 @router.get("/agent/team")
 def agent_team():
     """The specialist roster shown in the Copilot UI."""
-    from creditforge.agents.specialists import SPECIALISTS
+    from creditcast.agents.specialists import SPECIALISTS
     return {"llm_ready": bool(os.environ.get("GROQ_API_KEY")),
             "model": load_config().agents.model,
             "agents": [{"id": k, "title": v["title"],
@@ -150,8 +150,8 @@ def agent_team():
 @router.post("/agent/chat")
 def agent_chat(q: AgentQuery):
     """Route the question to the specialist team and return answer + charts + trace."""
-    from creditforge.agents import orchestrator
-    from creditforge.agents.llm import LLMNotConfigured
+    from creditcast.agents import orchestrator
+    from creditcast.agents.llm import LLMNotConfigured
     try:
         return orchestrator.run(q.question)
     except LLMNotConfigured as e:

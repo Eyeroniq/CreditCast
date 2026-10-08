@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from creditforge.models.el import expected_loss, portfolio_el
+from creditcast.models.el import expected_loss, portfolio_el
 
 
 def test_el_is_product():
