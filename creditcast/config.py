@@ -66,6 +66,29 @@ def set_global_seed(seed: int | None = None) -> int:
     return seed
 
 
+@lru_cache(maxsize=1)
+def git_sha() -> str:
+    """Short commit of the code that produced a run: $GIT_SHA (set in Docker /
+    CI builds, where .git isn't available) or `git rev-parse`, else "unknown"."""
+    env = os.environ.get("GIT_SHA", "").strip()
+    if env:
+        return env[:12]
+    try:
+        import subprocess
+
+        out = subprocess.run(
+            ["git", "rev-parse", "--short=12", "HEAD"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+        )
+        return out.stdout.strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
 def run_stamp() -> dict[str, Any]:
     """The reproducibility stamp attached to every run/artifact."""
     cfg = load_config()
@@ -73,4 +96,5 @@ def run_stamp() -> dict[str, Any]:
         "seed": cfg["run"]["seed"],
         "data_version": cfg["run"]["data_version"],
         "code_version": cfg["run"]["code_version"],
+        "git_sha": git_sha(),
     }

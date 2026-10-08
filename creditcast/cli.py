@@ -8,7 +8,10 @@ python -m creditcast.cli validate      # Gini/KS/calibration/PSI -> report
 python -m creditcast.cli governance    # SHAP, reason codes, fairness, card
 python -m creditcast.cli monitor       # PSI drift vs training baseline
 python -m creditcast.cli gates         # CI performance gates (exit code)
-python -m creditcast.cli all           # the whole thing, end to end
+python -m creditcast.cli all           # the whole thing; registers a version if gates pass
+python -m creditcast.cli register      # snapshot the current models as a new version
+python -m creditcast.cli models list   # registered versions + metrics (* = active)
+python -m creditcast.cli models use v0002   # roll back / forward to a version
 """
 
 from __future__ import annotations
@@ -18,6 +21,8 @@ import json
 import typer
 
 app = typer.Typer(add_completion=False, help="CreditCast lifecycle CLI")
+models_app = typer.Typer(add_completion=False, help="Registered model versions")
+app.add_typer(models_app, name="models")
 
 
 @app.command()
@@ -102,7 +107,73 @@ def run_all():
     monitor()
     from creditcast.eval.gates import main as gate_main
 
-    raise typer.Exit(code=gate_main())
+    code = gate_main()
+    if code == 0:  # only models that pass the gates become a version
+        register(note="cli all")
+    else:
+        typer.echo("[registry] gates failed - not registering this run")
+    raise typer.Exit(code=code)
+
+
+@app.command()
+def register(note: str = typer.Option("", help="Free-text note stored with the version")):
+    """Snapshot the current working models as a new registered version."""
+    from creditcast.eval.gates import run_gates
+    from creditcast.registry import register as do_register
+
+    try:
+        passed, _ = run_gates()
+    except FileNotFoundError:
+        passed = None  # no validation report yet
+    m = do_register(gates_passed=passed, note=note)
+    verb = "already registered as" if m.get("reused") else "registered"
+    typer.echo(
+        f"[registry] {verb} {m['version']} (fingerprint {m['fingerprint']}, "
+        f"gini {m['metrics'].get('gini') or float('nan'):.4f})"
+    )
+
+
+def _fmt(x, spec: str) -> str:
+    return format(x, spec) if isinstance(x, (int, float)) else "-"
+
+
+@models_app.command("list")
+def models_list():
+    """List registered versions with their headline metrics."""
+    from creditcast.registry import active_version, list_versions
+
+    versions, active = list_versions(), active_version()
+    if not versions:
+        typer.echo("no registered versions yet - run `python -m creditcast.cli all`")
+        return
+    typer.echo(
+        f"  {'version':8} {'created (UTC)':20} {'git':12} {'gini':>7} "
+        f"{'approval':>9} {'EL bps':>7}  gates"
+    )
+    for v in versions:
+        m = v["metrics"]
+        mark = "*" if v["version"] == active else " "
+        typer.echo(
+            f"{mark} {v['version']:8} {v['created_at'][:19]:20} {v['git_sha'][:12]:12} "
+            f"{_fmt(m.get('gini'), '7.4f')} {_fmt(m.get('approval_rate'), '9.1%')} "
+            f"{_fmt(m.get('el_rate_bps'), '7.1f')}  {v.get('gates_passed')}"
+        )
+
+
+@models_app.command("use")
+def models_use(version: str):
+    """Serve a registered version (restores its files; restart the API after)."""
+    from creditcast.registry import RegistryError, activate
+
+    try:
+        m = activate(version)
+    except RegistryError as e:
+        typer.echo(f"[registry] {e}", err=True)
+        raise typer.Exit(code=1) from e
+    typer.echo(
+        f"[registry] now serving {m['version']} (fingerprint {m['fingerprint']}). "
+        "Restart the API to load it."
+    )
 
 
 if __name__ == "__main__":

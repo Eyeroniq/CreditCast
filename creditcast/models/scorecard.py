@@ -78,9 +78,25 @@ def high_iv_review(scorecard: Scorecard, cfg: Config | None = None) -> list[str]
     return flagged
 
 
+def _strip_timings(scorecard: Scorecard) -> None:
+    """Zero optbinning's wall-clock diagnostics (`_time_*`) so the saved file
+    depends only on the fitted model: identical training then gives identical
+    bytes, and the registry fingerprint identifies the model, not the run time."""
+    objs = [
+        scorecard,
+        scorecard.binning_process_,
+        *scorecard.binning_process_._binned_variables.values(),
+    ]
+    for obj in objs:
+        for k in list(vars(obj)):
+            if k.startswith("_time"):
+                setattr(obj, k, 0.0)
+
+
 def save(scorecard: Scorecard, cfg: Config | None = None) -> Path:
     cfg = cfg or load_config()
     out = cfg.path("artifacts") / "scorecard.joblib"
+    _strip_timings(scorecard)
     joblib.dump({"model": scorecard, "stamp": run_stamp()}, out)
     return out
 
