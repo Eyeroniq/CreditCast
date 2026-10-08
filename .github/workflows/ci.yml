@@ -58,8 +58,8 @@ jobs:
 
       - name: All tests incl. artifact-dependent, with coverage
         run: |
-          python -m pytest -q --cov=creditcast --cov-report=term-missing:skip-covered \
-            --cov-report=xml
+          python -m pytest -q --cov=creditcast --cov=app --cov-report=term-missing:skip-covered \
+            --cov-report=xml --cov-fail-under=80
 
       - name: Job summary
         if: always()
