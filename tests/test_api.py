@@ -227,3 +227,21 @@ def test_ready_is_503_when_an_artifact_is_missing(client, monkeypatch, tmp_path)
     assert r.status_code == 503
     assert "artifacts/challenger.joblib" in r.json()["missing"]
     assert client.get("/api/health").status_code == 200       # still alive
+
+
+# ---- 6.2.2 what-if endpoint --------------------------------------------------------
+@needs_artifacts
+def test_whatif_endpoint(client):
+    high = {**GOOD, "fico": 645, "dti": 47.0, "ltv": 94, "orig_interest_rate": 5.6,
+            "orig_upb": 360000, "occupancy_status": "I", "loan_purpose": "C",
+            "property_type": "MH"}
+    for payload in (GOOD, high):
+        r = client.post("/api/whatif", json=payload)
+        assert r.status_code == 200
+        body = r.json()
+        assert {"already_approved", "options", "threshold"} <= body.keys()
+        assert body["already_approved"] or body["options"] or body["message"]
+
+
+def test_whatif_validates_input(client):
+    assert client.post("/api/whatif", json={**GOOD, "dti": -5}).status_code == 422

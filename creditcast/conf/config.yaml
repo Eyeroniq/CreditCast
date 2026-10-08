@@ -165,6 +165,7 @@ agents:
 api:
   rate_limits:
     score: "60/minute"
+    whatif: "30/minute"
     portfolio: "30/minute"
     agent_chat: "10/minute;100/day"   # protects the free Groq quota
   max_question_chars: 500

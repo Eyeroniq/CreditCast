@@ -102,7 +102,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.1.4 | Guided tour | [ ] | | |
 | 6.1.5 | Human-friendly decision card | [x] | 2026-10-08 | Done with 6.2.1 |
 | 6.2.1 | Live scoring with sliders | [x] | 2026-10-08 | |
-| 6.2.2 | What-if / counterfactual panel | [ ] | | Needs backend endpoint |
+| 6.2.2 | What-if / counterfactual panel | [x] | 2026-10-09 | `POST /api/whatif`, ~50 ms |
 | 6.2.3 | Compare applicants | [ ] | | |
 | 6.2.4 | Clickable drill-down charts | [ ] | | |
 | 6.2.5 | Interactive threshold slider | [ ] | | Needs backend endpoint |
@@ -908,6 +908,22 @@ API client `lib/api.js`.
   sliders.
 - **Done when:** every decline shows ≥ 1 path (or "no single change is
   enough").
+- **Result (2026-10-09):** `creditcast/governance/counterfactual.py` scans four
+  levers (lower DTI, bigger down payment / lower LTV, borrow less — which also
+  lowers LTV at the same home value — and higher credit score) on a coarse
+  grid, refines between the last failing and first passing point, rounds in
+  the applicant's favour, then re-scores to confirm (3 batched model calls via
+  the new `ModelBundle.pd_batch`, no SHAP; ~20–55 ms). Grid search rather than
+  binary search because the model isn't monotonic (e.g. DTI's U-shape). Up to
+  3 options, easiest first ("effort" = share of the lever's range). Interest
+  rate is excluded (set by the lender). `POST /api/whatif` (30/min, same
+  validation + API-key rules as `/score`). UI: a panel under declined
+  decisions with **Apply** buttons that move the sliders. Verified: Marginal →
+  credit score 690→708, LTV 82→74%, or borrow $272k (each confirmed to
+  approve via the full `score()`); clicking "Borrow less" re-scored to
+  Approved at 5.95%; High-risk → "No single change is enough". Tests:
+  `tests/test_counterfactual.py` (fake transparent model with known answers +
+  real model), API tests; suite 89 → 97.
 
 #### 6.2.3 Compare applicants
 - "Pin" button on a result; up to 3 pinned cards in a comparison drawer:
