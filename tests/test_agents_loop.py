@@ -1,5 +1,6 @@
 """Risk Copilot orchestration with a scripted fake LLM (ROADMAP 2.3): routing,
 the tool-calling loop, chart collection, fallbacks — no Groq key needed."""
+
 import json
 from types import SimpleNamespace as NS
 
@@ -11,7 +12,8 @@ from creditcast.config import load_config
 ART = load_config().path("artifacts")
 needs_artifacts = pytest.mark.skipif(
     not (ART / "test_scored.parquet").exists(),
-    reason="run the pipeline first (python -m creditcast.cli all)")
+    reason="run the pipeline first (python -m creditcast.cli all)",
+)
 
 
 def reply(text=None, tool=None, args="{}"):
@@ -29,8 +31,9 @@ class Script:
         self.calls = []
 
     def __call__(self, messages, tool_names=None, temperature=None, tool_choice="auto"):
-        self.calls.append({"tools": tool_names, "choice": tool_choice,
-                           "last": messages[-1]["role"]})
+        self.calls.append(
+            {"tools": tool_names, "choice": tool_choice, "last": messages[-1]["role"]}
+        )
         return self.responses.pop(0)
 
 
@@ -56,10 +59,20 @@ def test_question_is_routed_tools_called_and_charts_returned(monkeypatch):
 @needs_artifacts
 def test_multiple_specialists_are_composed_under_headings(monkeypatch):
     script = Script(
-        reply(json.dumps({"plan": [{"specialist": "analyst", "task": "a"},
-                                   {"specialist": "validator", "task": "b"}]})),
-        reply(tool="portfolio_summary"), reply("Book answer."),
-        reply(tool="validation_metrics"), reply("Model passes."),
+        reply(
+            json.dumps(
+                {
+                    "plan": [
+                        {"specialist": "analyst", "task": "a"},
+                        {"specialist": "validator", "task": "b"},
+                    ]
+                }
+            )
+        ),
+        reply(tool="portfolio_summary"),
+        reply("Book answer."),
+        reply(tool="validation_metrics"),
+        reply("Model passes."),
     )
     monkeypatch.setattr(llm, "complete", script)
     out = orchestrator.run("Is the book risky and is the model valid?")
@@ -68,17 +81,26 @@ def test_multiple_specialists_are_composed_under_headings(monkeypatch):
 
 
 def test_greeting_gets_a_direct_reply_without_tools(monkeypatch):
-    monkeypatch.setattr(llm, "complete", Script(
-        reply(json.dumps({"plan": [], "direct": "Hi! Ask me about the portfolio."}))))
+    monkeypatch.setattr(
+        llm,
+        "complete",
+        Script(reply(json.dumps({"plan": [], "direct": "Hi! Ask me about the portfolio."}))),
+    )
     out = orchestrator.run("hello")
     assert out["answer"].startswith("Hi!") and out["trace"] == [] and out["charts"] == []
 
 
 @needs_artifacts
 def test_unparseable_routing_falls_back_to_the_analyst(monkeypatch):
-    monkeypatch.setattr(llm, "complete", Script(
-        reply("I think the analyst should handle this"),     # not JSON
-        reply(tool="portfolio_summary"), reply("Fallback answer.")))
+    monkeypatch.setattr(
+        llm,
+        "complete",
+        Script(
+            reply("I think the analyst should handle this"),  # not JSON
+            reply(tool="portfolio_summary"),
+            reply("Fallback answer."),
+        ),
+    )
     out = orchestrator.run("what's up with the book")
     assert out["answer"] == "Fallback answer."
 
@@ -93,20 +115,25 @@ def test_unknown_specialists_are_dropped_and_capped(monkeypatch):
 @needs_artifacts
 def test_tool_loop_stops_at_the_iteration_cap(monkeypatch):
     cap = 2
-    script = Script(reply(tool="portfolio_summary"), reply(tool="top_exposures", args='{"n": 3}'),
-                    reply("Final summary."))
+    script = Script(
+        reply(tool="portfolio_summary"),
+        reply(tool="top_exposures", args='{"n": 3}'),
+        reply("Final summary."),
+    )
     monkeypatch.setattr(llm, "complete", script)
-    out = llm.run_tool_loop("system", "keep calling tools", ["portfolio_summary", "top_exposures"],
-                            max_iters=cap)
+    out = llm.run_tool_loop(
+        "system", "keep calling tools", ["portfolio_summary", "top_exposures"], max_iters=cap
+    )
     assert out["text"] == "Final summary."
     assert len(out["trace"]) == cap
-    assert script.calls[-1]["tools"] is None          # final synthesis has no tools
+    assert script.calls[-1]["tools"] is None  # final synthesis has no tools
 
 
 @needs_artifacts
 def test_malformed_tool_arguments_are_tolerated(monkeypatch):
-    monkeypatch.setattr(llm, "complete", Script(
-        reply(tool="portfolio_summary", args="not json"), reply("ok")))
+    monkeypatch.setattr(
+        llm, "complete", Script(reply(tool="portfolio_summary", args="not json"), reply("ok"))
+    )
     out = llm.run_tool_loop("s", "u", ["portfolio_summary"])
     assert out["trace"][0]["args"] == {}
 

@@ -11,13 +11,14 @@ The decision record never stores raw applicant fields — only a SHA-256 hash of
 the normalized inputs. Re-hashing the same application reproduces the hash, so
 a decision can be matched to its inputs without the log holding them.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -30,8 +31,11 @@ class JsonFormatter(logging.Formatter):
     """Render a log record as one JSON object; dict messages are merged in."""
 
     def format(self, record: logging.LogRecord) -> str:
-        entry = {"ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
-                 "level": record.levelname, "logger": record.name}
+        entry = {
+            "ts": datetime.now(UTC).isoformat(timespec="milliseconds"),
+            "level": record.levelname,
+            "logger": record.name,
+        }
         if isinstance(record.msg, dict):
             entry.update(record.msg)
         else:
@@ -55,12 +59,12 @@ def setup_logging() -> logging.Logger:
     decisions = logging.getLogger("creditcast.decisions")
     if not getattr(decisions, "_cc_configured", False):
         LOG_DIR.mkdir(parents=True, exist_ok=True)
-        fh = RotatingFileHandler(LOG_DIR / "decisions.jsonl",
-                                 maxBytes=10 * 1024 * 1024, backupCount=10,
-                                 encoding="utf-8")
+        fh = RotatingFileHandler(
+            LOG_DIR / "decisions.jsonl", maxBytes=10 * 1024 * 1024, backupCount=10, encoding="utf-8"
+        )
         fh.setFormatter(JsonFormatter())
         decisions.addHandler(fh)
-        decisions._cc_configured = True     # also propagates to stdout
+        decisions._cc_configured = True  # also propagates to stdout
     return decisions
 
 
@@ -70,8 +74,9 @@ def input_hash(applicant: dict) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def decision_record(*, request_id: str, model_version: dict, applicant: dict,
-                    result: dict, latency_ms: float) -> dict:
+def decision_record(
+    *, request_id: str, model_version: dict, applicant: dict, result: dict, latency_ms: float
+) -> dict:
     """The audit entry for one scoring decision (no raw applicant fields)."""
     return {
         "event": "score_decision",

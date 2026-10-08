@@ -9,6 +9,7 @@ values (a robustness win).
 Produces true PDs via `predict_proba` and a points score via `score` (higher
 score = lower risk). Calibration is handled separately (Part 3.2).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -46,8 +47,11 @@ def fit_scorecard(train: pd.DataFrame, cfg: Config | None = None) -> Scorecard:
     estimator = LogisticRegression(C=1.0, max_iter=1000, solver="lbfgs")
 
     # Points-to-double-odds scaling — the industry-standard scorecard scaling.
-    scaling = {"pdo": float(sc_cfg.pdo), "odds": float(sc_cfg.base_odds),
-               "scorecard_points": float(sc_cfg.base_score)}
+    scaling = {
+        "pdo": float(sc_cfg.pdo),
+        "odds": float(sc_cfg.base_odds),
+        "scorecard_points": float(sc_cfg.base_score),
+    }
     scorecard = Scorecard(
         binning_process=binning,
         estimator=estimator,
@@ -100,4 +104,5 @@ if __name__ == "__main__":
     save(sc)
     pd_hat = sc.predict_proba(split.test[feature_columns()])[:, 1]
     from sklearn.metrics import roc_auc_score
+
     print(f"[scorecard] OOT Gini = {2 * roc_auc_score(split.test['default_12m'], pd_hat) - 1:.4f}")

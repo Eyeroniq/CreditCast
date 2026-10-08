@@ -5,12 +5,14 @@ the table. Native categorical handling, class-imbalance via `scale_pos_weight`
 (not naive oversampling — Part 10.5), early stopping on the held-out **valid**
 vintages. Raw probabilities here are *uncalibrated*; calibration is Part 3.2.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import joblib
 import lightgbm as lgb
+import numpy as np
 import pandas as pd
 
 from creditcast.config import Config, load_config, run_stamp
@@ -25,8 +27,9 @@ def _as_model_frame(X: pd.DataFrame) -> pd.DataFrame:
     return X
 
 
-def fit_challenger(train: pd.DataFrame, valid: pd.DataFrame,
-                   cfg: Config | None = None) -> lgb.LGBMClassifier:
+def fit_challenger(
+    train: pd.DataFrame, valid: pd.DataFrame, cfg: Config | None = None
+) -> lgb.LGBMClassifier:
     cfg = cfg or load_config()
     c = cfg.challenger
 
@@ -54,7 +57,8 @@ def fit_challenger(train: pd.DataFrame, valid: pd.DataFrame,
         verbose=-1,
     )
     model.fit(
-        X, y,
+        X,
+        y,
         eval_set=[(Xv, yv)],
         eval_metric="auc",
         callbacks=[lgb.early_stopping(int(c.early_stopping_rounds), verbose=False)],
@@ -62,16 +66,23 @@ def fit_challenger(train: pd.DataFrame, valid: pd.DataFrame,
     return model
 
 
-def predict_pd(model: lgb.LGBMClassifier, X: pd.DataFrame) -> "pd.Series":
-    return model.predict_proba(_as_model_frame(X))[:, 1]
+def predict_pd(model: lgb.LGBMClassifier, X: pd.DataFrame) -> np.ndarray:
+    """Raw (uncalibrated) PD of the positive class, one per row."""
+    return np.asarray(model.predict_proba(_as_model_frame(X)))[:, 1]
 
 
 def save(model: lgb.LGBMClassifier, cfg: Config | None = None) -> Path:
     cfg = cfg or load_config()
     out = cfg.path("artifacts") / "challenger.joblib"
-    joblib.dump({"model": model, "stamp": run_stamp(),
-                 "features": feature_columns(),
-                 "categorical": categorical_columns()}, out)
+    joblib.dump(
+        {
+            "model": model,
+            "stamp": run_stamp(),
+            "features": feature_columns(),
+            "categorical": categorical_columns(),
+        },
+        out,
+    )
     return out
 
 

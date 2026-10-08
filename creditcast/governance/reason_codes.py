@@ -6,6 +6,7 @@ applicant be told *why*. We convert the top risk-increasing local SHAP
 contributions into plain-language reasons. The reasons come from SHAP, not from
 a language model — an optional LLM layer may only narrate them into a letter.
 """
+
 from __future__ import annotations
 
 import pandas as pd
@@ -44,12 +45,14 @@ def reason_codes(local_attr: pd.DataFrame, top_n: int = 4) -> list[dict]:
         feat, val = row.feature, row.value
         val = _DECODE.get(feat, {}).get(val, val)
         template = REASON_TEMPLATES.get(feat, f"{feat} contributes to elevated risk")
-        out.append({
-            "rank": rank,
-            "feature": feat,
-            "reason": template.format(value=val),
-            "contribution": round(float(row.shap), 4),
-        })
+        out.append(
+            {
+                "rank": rank,
+                "feature": feat,
+                "reason": template.format(value=val),
+                "contribution": round(float(row.shap), 4),
+            }
+        )
     return out
 
 
@@ -57,7 +60,9 @@ def narrate(reasons: list[dict], decision: str, lang: str = "en") -> str:
     """Plain-language adverse-action summary (deterministic; no LLM required)."""
     if decision == "approve":
         return "Application approved. No adverse-action reasons apply."
-    lead = ("Your application could not be approved at this time. The principal "
-            "factors in this decision were:")
+    lead = (
+        "Your application could not be approved at this time. The principal "
+        "factors in this decision were:"
+    )
     bullets = "\n".join(f"  {r['rank']}. {r['reason']}" for r in reasons)
     return f"{lead}\n{bullets}"

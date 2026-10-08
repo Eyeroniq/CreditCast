@@ -4,6 +4,7 @@ PSI on the score distribution between a baseline and a target population, and
 CSI per feature. Canonical thresholds: < 0.10 stable, 0.10-0.25 watch,
 > 0.25 unstable. The same PSI engine powers drift monitoring (Part 10.4).
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -31,8 +32,9 @@ def psi_status(value: float, watch: float = 0.10, unstable: float = 0.25) -> str
     return "unstable"
 
 
-def psi_by_vintage(df: pd.DataFrame, score_col: str, vintage_col: str = "vintage",
-                   bins: int = 10) -> pd.DataFrame:
+def psi_by_vintage(
+    df: pd.DataFrame, score_col: str, vintage_col: str = "vintage", bins: int = 10
+) -> pd.DataFrame:
     """PSI of the score distribution in each vintage vs the earliest vintage."""
     vintages = sorted(df[vintage_col].unique())
     baseline = df[df[vintage_col] == vintages[0]][score_col].to_numpy()
@@ -56,8 +58,9 @@ def csi(expected: pd.Series, actual: pd.Series, bins: int = 10) -> float:
     return psi(expected.to_numpy(), actual.to_numpy(), bins)
 
 
-def csi_by_feature(expected: pd.DataFrame, actual: pd.DataFrame,
-                   features: list[str], bins: int = 10) -> pd.DataFrame:
+def csi_by_feature(
+    expected: pd.DataFrame, actual: pd.DataFrame, features: list[str], bins: int = 10
+) -> pd.DataFrame:
     rows = []
     for f in features:
         val = csi(expected[f], actual[f], bins)
