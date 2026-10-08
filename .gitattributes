@@ -1,0 +1,4 @@
+# Shell scripts and lock files keep LF endings on every OS
+*.sh text eol=lf
+requirements*.txt text eol=lf
+requirements*.in text eol=lf

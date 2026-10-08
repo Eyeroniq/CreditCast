@@ -75,7 +75,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 2.1 | GitHub Actions CI | [x] | 2026-10-08 | PR #2; first run green (python 1m48s, web 1m23s) |
 | 2.2 | Scheduled drift workflow | [x] | 2026-10-08 | PR #5; forced test run opened issue #6 (closed) |
 | 2.3 | Expand test suite (≥70% coverage) | [ ] | | |
-| 2.4 | Lock dependencies | [ ] | | MLflow 3.x broke the old file store — fixed in Phase 1 branch; pinning still needed |
+| 2.4 | Lock dependencies | [x] | 2026-10-09 | uv-compiled, hash-checked; serve lock constrained by training lock; CI checks sync |
 | 2.5 | Model registry & versioning | [ ] | | |
 | 2.6 | Lint / format / types + pre-commit | [ ] | | |
 | 3.1 | Rate-limit Copilot | [x] | 2026-10-08 | Also /score and /portfolio; per real client IP behind Caddy |
@@ -510,6 +510,19 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   `uv pip compile` (or `pip-compile`) pinned with hashes; Dockerfile installs
   the pinned files; document "how to upgrade deps" in README.
 - **Done when:** two builds a month apart produce identical metrics.
+- **Result (2026-10-09):** loose lists moved to `requirements.in` /
+  `requirements-serve.in`; `scripts/lock-deps.sh` (uv 0.12.23, `--universal`,
+  Python 3.11 target, `--generate-hashes`) writes `requirements.txt` (150
+  packages) and `requirements-serve.txt`. The serve lock is compiled with
+  `--constraint requirements.txt`, so the Docker runtime unpickles models with
+  the exact numpy / pandas / scikit-learn / lightgbm / optbinning / shap
+  versions the trainer stage used (they were previously resolved independently
+  at build time). pip installs in hash-checking mode. New CI step regenerates
+  the locks and fails on any diff (re-running is a verified no-op).
+  `.gitattributes` keeps LF endings. README → "Dependencies" explains adding
+  and upgrading. The "a month apart" check can only be confirmed with time;
+  this PR's CI metrics match the previous unpinned runs exactly because the
+  locked versions are the ones those runs used.
 
 ### 2.5 Model registry & versioning
 
