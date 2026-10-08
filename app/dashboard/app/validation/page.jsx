@@ -4,7 +4,7 @@ import {
   Tooltip, ReferenceLine, Legend, CartesianGrid,
 } from "recharts";
 import { api, pct } from "@/lib/api";
-import { PageHead, Stat, Pill, useFetch, Loading, ApiError } from "@/components/ui";
+import { PageHead, Stat, Pill, useFetch, Loading, ApiError, CardTitle, TableWrap, InfoTip } from "@/components/ui";
 
 export default function ValidationPage() {
   const { data, error, loading } = useFetch(() => api.validation(), []);
@@ -23,9 +23,9 @@ export default function ValidationPage() {
     band: g.band, capture: g.cum_capture_rate, lift: g.lift, defaultRate: g.default_rate,
   }));
 
-  const Metric = ({ label, sc, ch, fmt = (x) => x.toFixed(4), pass }) => (
+  const Metric = ({ label, info, sc, ch, fmt = (x) => x.toFixed(4), pass }) => (
     <tr>
-      <td>{label}</td>
+      <td>{label}{info && <InfoTip k={info} />}</td>
       <td className="num">{fmt(sc)}</td>
       <td className="num">{fmt(ch)}</td>
       <td>{pass && <Pill status={pass(ch)}>{pass(ch) ? "pass" : "review"}</Pill>}</td>
@@ -36,17 +36,17 @@ export default function ValidationPage() {
     <>
       <Head />
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
-        <Stat label="Challenger Gini (OOT)" value={ch.discrimination.gini.toFixed(4)}
+        <Stat label="Gini (on unseen loans)" info="gini" value={ch.discrimination.gini.toFixed(4)}
           tone={ch.discrimination.gini >= t.gini_min ? "ok" : "bad"} sub={`min ${t.gini_min}`} />
-        <Stat label="KS statistic" value={ch.discrimination.ks.toFixed(4)}
+        <Stat label="KS statistic" info="ks" value={ch.discrimination.ks.toFixed(4)}
           tone={ch.discrimination.ks >= t.ks_min ? "ok" : "bad"} sub={`min ${t.ks_min}`} />
-        <Stat label="Calibration ECE" value={ch.calibration.ece.toFixed(4)} sub="lower is better" />
-        <Stat label="OOT loans" value={data.n_oot.toLocaleString()}
+        <Stat label="Calibration error (ECE)" info="ece" value={ch.calibration.ece.toFixed(4)} sub="lower is better" />
+        <Stat label="Test loans" info="oot" value={data.n_oot.toLocaleString()}
           sub={`default rate ${pct(data.oot_default_rate)}`} />
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3>Scorecard vs Challenger benchmark</h3>
+        <CardTitle info="scorecard_vs_challenger">Simple scorecard vs machine-learning challenger</CardTitle>
         <div className="grid cols-3" style={{ gap: 12, marginBottom: 6 }}>
           <Stat label="Scorecard Gini" value={b.scorecard_gini.toFixed(4)} />
           <Stat label="Challenger Gini" value={b.challenger_gini.toFixed(4)} />
@@ -57,22 +57,24 @@ export default function ValidationPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3>Discrimination & calibration (out-of-time)</h3>
+        <CardTitle info="oot">Accuracy and calibration on unseen loans</CardTitle>
+        <TableWrap>
         <table>
           <thead><tr><th>Metric</th><th className="num">Scorecard</th><th className="num">Challenger</th><th>Gate</th></tr></thead>
           <tbody>
-            <Metric label="Gini" sc={sc.discrimination.gini} ch={ch.discrimination.gini}
+            <Metric label="Gini" info="gini" sc={sc.discrimination.gini} ch={ch.discrimination.gini}
               pass={(x) => x >= t.gini_min} />
-            <Metric label="AUC" sc={sc.discrimination.auc} ch={ch.discrimination.auc} />
-            <Metric label="KS" sc={sc.discrimination.ks} ch={ch.discrimination.ks}
+            <Metric label="AUC" info="auc" sc={sc.discrimination.auc} ch={ch.discrimination.auc} />
+            <Metric label="KS" info="ks" sc={sc.discrimination.ks} ch={ch.discrimination.ks}
               pass={(x) => x >= t.ks_min} />
-            <Metric label="Calibration max band error" sc={sc.calibration.max_band_error}
+            <Metric label="Calibration: worst band error" info="calibration" sc={sc.calibration.max_band_error}
               ch={ch.calibration.max_band_error} pass={(x) => x <= t.calibration_max_band_error} />
-            <Metric label="ECE" sc={sc.calibration.ece} ch={ch.calibration.ece} />
-            <Metric label="Hosmer–Lemeshow p (informational)" sc={sc.calibration.hosmer_lemeshow.p_value}
+            <Metric label="ECE" info="ece" sc={sc.calibration.ece} ch={ch.calibration.ece} />
+            <Metric label="Hosmer–Lemeshow p (informational)" info="hosmer_lemeshow" sc={sc.calibration.hosmer_lemeshow.p_value}
               ch={ch.calibration.hosmer_lemeshow.p_value} />
           </tbody>
         </table>
+        </TableWrap>
         <p className="small muted" style={{ marginTop: 8 }}>
           Calibration is gated on the economically meaningful max band error / ECE; with ~{(data.n_oot/1000).toFixed(0)}k
           loans the Hosmer–Lemeshow test over-rejects on trivially small miscalibration, so it is shown as informational.
@@ -81,7 +83,7 @@ export default function ValidationPage() {
 
       <div className="grid cols-2">
         <div className="card">
-          <h3>Reliability curve — challenger (predicted vs observed)</h3>
+          <CardTitle info="calibration">Predicted vs actual default rate</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
             <ScatterChart margin={{ left: 8, right: 12, top: 8 }}>
               <CartesianGrid stroke="#1d2530" />
@@ -96,7 +98,7 @@ export default function ValidationPage() {
           </ResponsiveContainer>
         </div>
         <div className="card">
-          <h3>Cumulative gains — challenger</h3>
+          <CardTitle info="gains">Defaults caught, riskiest loans first</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={gains} margin={{ left: 8, right: 12, top: 8 }}>
               <CartesianGrid stroke="#1d2530" />
@@ -114,6 +116,6 @@ export default function ValidationPage() {
 }
 
 const Head = () => (
-  <PageHead title="Model Validation"
-    subtitle="The bank-credible centerpiece — Gini / KS, calibration, gains, and the scorecard-vs-challenger benchmark, all out-of-time." />
+  <PageHead title="Model quality"
+    subtitle="How accurate the model is on newer loans it never saw — and whether its percentages can be trusted." />
 );

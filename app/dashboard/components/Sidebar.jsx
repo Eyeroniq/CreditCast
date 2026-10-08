@@ -1,29 +1,41 @@
 "use client";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const NAV = [
-  { href: "/", label: "Score & Decision" },
-  { href: "/portfolio", label: "Portfolio Risk" },
-  { href: "/validation", label: "Model Validation" },
-  { href: "/monitoring", label: "Stability & Monitoring" },
-  { href: "/governance", label: "Governance" },
+  { href: "/", label: "Score an applicant" },
+  { href: "/portfolio", label: "Portfolio risk" },
+  { href: "/validation", label: "Model quality" },
+  { href: "/monitoring", label: "Stability & drift" },
+  { href: "/governance", label: "Fairness & explanations" },
   { href: "/copilot", label: "Risk Copilot", accent: true },
+  { href: "/glossary", label: "Glossary" },
 ];
 
 export default function Sidebar() {
   const path = usePathname();
+  const [open, setOpen] = useState(false);          // mobile menu
+  useEffect(() => setOpen(false), [path]);          // close after navigating
+
   return (
     <aside className="sidebar">
-      <div className="brand">
-        <span className="name">CreditCast</span>
-        <span className="tag">PD · LGD · EAD · Expected Loss</span>
+      <div className="sidebar-top">
+        <div className="brand">
+          <span className="name">CreditCast</span>
+          <span className="tag">Mortgage credit-risk cockpit</span>
+        </div>
+        <button type="button" className="menu-btn" aria-expanded={open}
+          aria-controls="main-nav" onClick={() => setOpen((o) => !o)}>
+          {open ? "✕ Close" : "☰ Menu"}
+        </button>
       </div>
-      <nav className="nav">
+      <nav id="main-nav" className={`nav ${open ? "open" : ""}`} aria-label="Main">
         {NAV.map((n) => {
           const active = n.href === "/" ? path === "/" : path.startsWith(n.href);
           return (
             <Link key={n.href} href={n.href} className={active ? "active" : ""}
+              aria-current={active ? "page" : undefined}
               style={n.accent && !active ? { color: "var(--accent)" } : undefined}>
               <span className="dot" /> {n.label}
               {n.accent && <span style={{ marginLeft: "auto", fontSize: 9, opacity: .8,
@@ -33,9 +45,8 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      <div style={{ position: "absolute", bottom: 18, left: 24, right: 24 }}
-           className="small muted mono">
-        out-of-time validated<br />free-tier · $0 infra
+      <div className="sidebar-foot small muted">
+        Tested on loans it never saw<br />(out-of-time validation)
       </div>
     </aside>
   );

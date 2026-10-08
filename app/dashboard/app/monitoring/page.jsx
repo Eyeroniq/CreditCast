@@ -3,7 +3,8 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, ReferenceLine,
 } from "recharts";
 import { api } from "@/lib/api";
-import { PageHead, Stat, Pill, useFetch, Loading, ApiError } from "@/components/ui";
+import { PageHead, Stat, Pill, useFetch, Loading, ApiError, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { featureLabel } from "@/lib/labels";
 
 const psiColor = (s) => (s === "stable" ? "#36d399" : s === "watch" ? "#fbbf24" : "#fb6f84");
 
@@ -25,16 +26,16 @@ export default function MonitoringPage() {
     <>
       <Head />
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
-        <Stat label="Max score PSI (vintages)" value={v.data.stability.max_score_psi.toFixed(4)}
+        <Stat label="Largest score shift (PSI)" info="psi" value={v.data.stability.max_score_psi.toFixed(4)}
           tone={v.data.stability.max_score_psi <= t.psi_watch ? "ok" : v.data.stability.max_score_psi <= t.psi_unstable ? "warn" : "bad"}
           sub={`watch ${t.psi_watch} · unstable ${t.psi_unstable}`} />
-        <Stat label="Max feature CSI" value={v.data.stability.max_feature_csi.toFixed(4)}
+        <Stat label="Largest input shift (CSI)" info="csi" value={v.data.stability.max_feature_csi.toFixed(4)}
           tone={v.data.stability.max_feature_csi <= t.psi_watch ? "ok" : "warn"} />
-        <Stat label="Live batch score PSI" value={mon.score_psi?.toFixed(4) ?? "—"}
+        <Stat label="Latest batch shift (PSI)" info="psi" value={mon.score_psi?.toFixed(4) ?? "—"}
           tone={mon.score_status === "stable" ? "ok" : mon.score_status === "watch" ? "warn" : "bad"}
           sub={`vs training baseline`} />
         <div className="card stat">
-          <div className="label">Monitoring status</div>
+          <div className="label">Drift monitor<InfoTip k="drift" /></div>
           <div style={{ marginTop: 10 }}>
             <Pill status={mon.healthy}>{mon.healthy ? "healthy" : `${mon.alerts.length} alert(s)`}</Pill>
           </div>
@@ -43,7 +44,7 @@ export default function MonitoringPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3>Score PSI across vintages (vs earliest cohort)</h3>
+        <CardTitle info="psi">Score shift by origination month</CardTitle>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={psiByVintage} margin={{ left: 4, right: 8 }}>
             <XAxis dataKey="vintage" stroke="#5c6b7e" interval={2} angle={-30} textAnchor="end" height={50} />
@@ -60,22 +61,24 @@ export default function MonitoringPage() {
 
       <div className="grid cols-2">
         <div className="card">
-          <h3>Characteristic Stability (CSI) by feature — train → test</h3>
+          <CardTitle info="csi">Which inputs shifted since training</CardTitle>
+          <TableWrap>
           <table>
             <thead><tr><th>Feature</th><th className="num">CSI</th><th>Status</th></tr></thead>
             <tbody>
               {csi.slice(0, 10).map((r) => (
                 <tr key={r.feature}>
-                  <td className="mono small">{r.feature}</td>
+                  <td className="small">{featureLabel(r.feature)}</td>
                   <td className="num">{r.csi.toFixed(4)}</td>
                   <td><Pill status={r.status}>{r.status}</Pill></td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </TableWrap>
         </div>
         <div className="card">
-          <h3>Drift alerts (live batch vs baseline)</h3>
+          <CardTitle info="drift">Drift alerts</CardTitle>
           {mon.alerts.length === 0 ? (
             <p className="ok small">No drift alerts — all signals within stable thresholds. The model is healthy on the monitored batch.</p>
           ) : (
@@ -83,7 +86,7 @@ export default function MonitoringPage() {
               <thead><tr><th>Signal</th><th className="num">PSI</th><th>Status</th></tr></thead>
               <tbody>
                 {mon.alerts.map((a, i) => (
-                  <tr key={i}><td className="mono small">{a.signal}</td>
+                  <tr key={i}><td className="small">{a.signal === "score" ? "Credit score" : featureLabel(a.signal)}</td>
                     <td className="num">{a.psi}</td><td><Pill status={a.status}>{a.status}</Pill></td></tr>
                 ))}
               </tbody>
@@ -100,6 +103,6 @@ export default function MonitoringPage() {
 }
 
 const Head = () => (
-  <PageHead title="Stability & Monitoring"
-    subtitle="Is the model still healthy — PSI/CSI over time with threshold bands and drift alerts against the training baseline." />
+  <PageHead title="Stability & drift"
+    subtitle="Do today's borrowers still look like the ones the model learned from? Shifts here mean the model may need review." />
 );
