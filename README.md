@@ -1,5 +1,7 @@
 # CreditCast · `BONITAS`
 
+[![CI](https://github.com/Eyeroniq/CreditCast/actions/workflows/ci.yml/badge.svg)](https://github.com/Eyeroniq/CreditCast/actions/workflows/ci.yml)
+
 **🌐 Live demo: https://huggingface.co/spaces/sidnov6/CreditForge**
 
 **🗺️ Improvement plan: see [ROADMAP.md](ROADMAP.md)**

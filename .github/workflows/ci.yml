@@ -1,0 +1,123 @@
+# CreditCast CI — every push and pull request.
+#
+#   python : unit tests -> full lifecycle (generate -> ... -> CI gates) -> all tests
+#            A failing performance gate (Gini / KS / calibration / PSI) fails the build.
+#   web    : build the static Risk Cockpit (Next.js export)
+#   docker : build the single-container image (main branch + manual runs only;
+#            the image's trainer stage re-runs the lifecycle, so it is slow)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: "1"
+
+jobs:
+  python:
+    name: Tests + lifecycle gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"          # matches the Dockerfile
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Unit tests (no artifacts needed)
+        run: python -m pytest -q
+
+      - name: Full lifecycle + CI performance gates
+        run: python -m creditcast.cli all
+
+      - name: All tests incl. artifact-dependent, with coverage
+        run: |
+          python -m pytest -q --cov=creditcast --cov-report=term-missing:skip-covered \
+            --cov-report=xml
+
+      - name: Job summary
+        if: always()
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          art = pathlib.Path("creditcast/artifacts")
+          try:
+              tm = json.loads((art / "train_metrics.json").read_text())
+              val = json.loads((art / "validation_report.json").read_text())
+              gov = json.loads((art / "governance_report.json").read_text())
+          except FileNotFoundError:
+              print("Lifecycle did not produce reports."); raise SystemExit
+          ch = val["models"][val.get("champion", "challenger")]
+          el = tm["expected_loss"]
+          print("### CreditCast model metrics (OOT)\n")
+          print("| Metric | Value |\n|---|---|")
+          print(f"| Champion | {val.get('champion', 'challenger')} |")
+          print(f"| Gini | {ch['discrimination']['gini']:.4f} |")
+          print(f"| KS | {ch['discrimination']['ks']:.4f} |")
+          print(f"| Calibration max band error | {ch['calibration']['max_band_error']:.4f} |")
+          print(f"| Threshold ({gov['decision'].get('threshold_source', '?')}) | {gov['decision']['threshold']:.4f} |")
+          print(f"| Approval rate | {gov['decision']['approval_rate']:.1%} |")
+          print(f"| Min disparate-impact ratio | {gov['fairness']['di_ratio_min_observed']:.3f} |")
+          print(f"| Portfolio EL rate | {el['el_rate_bps']:.1f} bps |")
+          EOF
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: creditcast-reports
+          path: |
+            creditcast/artifacts/*.json
+            creditcast/reports/*.html
+            creditcast/governance/model_card.md
+            coverage.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  web:
+    name: Dashboard build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app/dashboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"              # matches the Dockerfile
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+
+  docker:
+    name: Docker image build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [python, web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image (trainer stage runs the lifecycle + gates)
+        run: docker build -t creditcast:ci .

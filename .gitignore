@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 .venv/
 .pytest_cache/
+.coverage
+coverage.xml
 *.egg-info/
 
 # Data layers — regenerable from the seeded generator; never commit GSE data
