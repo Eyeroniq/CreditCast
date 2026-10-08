@@ -45,6 +45,21 @@ CC_ALLOWED_ORIGINS=http://localhost:3000 uvicorn app.api.main:app --reload --por
 cd app/dashboard && NEXT_PUBLIC_API_URL=http://localhost:8001 npm run dev
 ```
 
+## Code quality
+
+CI enforces the same checks you can run locally:
+
+```bash
+ruff check .            # lint (config in pyproject.toml)
+ruff format .           # format
+mypy                    # type-check the decision-making core
+python -m pytest        # 120+ tests incl. an in-process end-to-end lifecycle; 80% coverage floor
+cd app/dashboard && npm run lint
+```
+
+Optional git hooks: `pip install pre-commit && pre-commit install`. To skip the
+bulk-formatting commit in `git blame`: `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
 ## Dependencies
 
 Library versions are **locked**. Edit the loose lists `requirements.in` /

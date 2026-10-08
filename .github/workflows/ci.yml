@@ -50,6 +50,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Lint (ruff)
+        run: ruff check --output-format=github .
+
+      - name: Formatting (ruff format)
+        run: ruff format --check .
+
+      - name: Type check (mypy, typed core)
+        run: mypy
+
       - name: Unit tests (no artifacts needed)
         run: python -m pytest -q
 
@@ -117,6 +126,8 @@ jobs:
           cache-dependency-path: app/dashboard/package-lock.json
 
       - run: npm ci --no-audit --no-fund
+      - name: Lint (ESLint, next/core-web-vitals)
+        run: npm run lint
       - run: npm run build
 
   docker:
