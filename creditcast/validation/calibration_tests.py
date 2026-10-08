@@ -4,6 +4,7 @@ A model can have great Gini and terrible calibration; we check both. The
 Hosmer-Lemeshow test, a reliability curve, and per-band predicted-vs-observed
 default rates. Run on the out-of-time set.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -15,11 +16,12 @@ def reliability_curve(y_true, p_hat, n_bins: int = 10) -> pd.DataFrame:
     """Predicted vs observed default rate per probability bin."""
     df = pd.DataFrame({"y": np.asarray(y_true, float), "p": np.asarray(p_hat, float)})
     # equal-frequency bins on predicted PD
-    df["bin"] = pd.qcut(df["p"].rank(method="first"), q=n_bins,
-                        labels=range(1, n_bins + 1))
-    out = (df.groupby("bin", observed=True)
-             .agg(n=("y", "size"), predicted=("p", "mean"), observed=("y", "mean"))
-             .reset_index())
+    df["bin"] = pd.qcut(df["p"].rank(method="first"), q=n_bins, labels=range(1, n_bins + 1))
+    out = (
+        df.groupby("bin", observed=True)
+        .agg(n=("y", "size"), predicted=("p", "mean"), observed=("y", "mean"))
+        .reset_index()
+    )
     out["abs_error"] = (out["predicted"] - out["observed"]).abs()
     return out
 

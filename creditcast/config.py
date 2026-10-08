@@ -4,6 +4,7 @@ Every module reads thresholds/paths from `conf/config.yaml` via `load_config()`.
 This keeps the "no hardcoding" discipline (Part 10.7) and makes every run
 reproducible: seed, data_version, and code_version travel together.
 """
+
 from __future__ import annotations
 
 import os

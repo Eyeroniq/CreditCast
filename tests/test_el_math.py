@@ -1,4 +1,5 @@
 """Unit tests for the deterministic Expected-Loss arithmetic (Part 10.6)."""
+
 import numpy as np
 import pytest
 
@@ -22,11 +23,16 @@ def test_zero_pd_zero_loss():
     assert portfolio_el([0.0, 0.0], [0.9, 0.9], [1e6, 1e6]) == 0.0
 
 
-@pytest.mark.parametrize("pd_, lgd, ead", [
-    (-0.01, 0.5, 100), (1.2, 0.5, 100),     # PD out of range
-    (0.1, -0.1, 100), (0.1, 1.5, 100),      # LGD out of range
-    (0.1, 0.5, -5),                          # negative EAD
-])
+@pytest.mark.parametrize(
+    "pd_, lgd, ead",
+    [
+        (-0.01, 0.5, 100),
+        (1.2, 0.5, 100),  # PD out of range
+        (0.1, -0.1, 100),
+        (0.1, 1.5, 100),  # LGD out of range
+        (0.1, 0.5, -5),  # negative EAD
+    ],
+)
 def test_invalid_inputs_raise(pd_, lgd, ead):
     with pytest.raises(ValueError):
         expected_loss(pd_, lgd, ead)

@@ -28,6 +28,7 @@ This is the keystone of the whole platform. Disciplines enforced here:
    before they can poison training (Part 10.6).
 DuckDB does the heavy lifting straight off the Bronze parquet (no server).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -202,11 +203,15 @@ def build_silver(cfg: Config | None = None) -> Path:
     rate = silver_df["default_12m"].mean()
     n_def = int(silver_df["default_12m"].sum())
     n_res = int(silver_df["resolved"].sum())
-    print(f"[silver] {n_in:,} loans in, {n_censored:,} censored (incomplete "
-          f"{horizon}m window, policy={cfg.target.censoring}), {rejected:,} rejected "
-          f"by quality gate, {len(silver_df):,} out | 12m default rate {rate:.2%}")
-    print(f"[silver] {n_res:,}/{n_def:,} defaults resolved within the "
-          f"{workout}m workout window (LGD population)")
+    print(
+        f"[silver] {n_in:,} loans in, {n_censored:,} censored (incomplete "
+        f"{horizon}m window, policy={cfg.target.censoring}), {rejected:,} rejected "
+        f"by quality gate, {len(silver_df):,} out | 12m default rate {rate:.2%}"
+    )
+    print(
+        f"[silver] {n_res:,}/{n_def:,} defaults resolved within the "
+        f"{workout}m workout window (LGD population)"
+    )
     return out
 
 

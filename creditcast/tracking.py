@@ -5,6 +5,7 @@ out-of-time metrics, and the artifacts directory so any model version is
 re-instantiable. Tracking is best-effort: if MLflow misbehaves it must never
 break the training pipeline.
 """
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -31,8 +32,10 @@ def log_run(run_name: str, cfg: Config | None = None):
         run = mlflow.start_run(run_name=run_name)
         mlflow.set_tags(run_stamp())
     except Exception as exc:  # best-effort: never break the pipeline
-        print(f"[tracking] MLflow unavailable ({type(exc).__name__}: {exc}); "
-              "continuing without tracking")
+        print(
+            f"[tracking] MLflow unavailable ({type(exc).__name__}: {exc}); "
+            "continuing without tracking"
+        )
         yield None
         return
     try:
@@ -54,8 +57,7 @@ class _Logger:
 
     def metrics(self, **kwargs):
         try:
-            self._mlflow.log_metrics({k: float(v) for k, v in kwargs.items()
-                                      if v is not None})
+            self._mlflow.log_metrics({k: float(v) for k, v in kwargs.items() if v is not None})
         except Exception:
             pass
 
