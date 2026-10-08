@@ -19,6 +19,7 @@ FROM python:3.11-slim AS trainer
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
+# Pinned + hash-checked lock (generated from requirements.in by scripts/lock-deps.sh)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY creditcast/ ./creditcast/
@@ -35,6 +36,8 @@ FROM python:3.11-slim AS runtime
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
+# Serve lock is constrained by the training lock: the runtime unpickles the
+# models with exactly the library versions that trained them.
 COPY requirements-serve.txt .
 RUN pip install --no-cache-dir -r requirements-serve.txt
 
