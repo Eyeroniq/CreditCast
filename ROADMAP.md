@@ -74,7 +74,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 1.8 | Phase 1 follow-ups (PD floor, threshold stability, generator cures/cutoff) | [x] | 2026-10-08 | Also fixed a censoring bias in 1.3 and switched calibration to sigmoid |
 | 2.1 | GitHub Actions CI | [x] | 2026-10-08 | PR #2; first run green (python 1m48s, web 1m23s) |
 | 2.2 | Scheduled drift workflow | [x] | 2026-10-08 | PR #5; forced test run opened issue #6 (closed) |
-| 2.3 | Expand test suite (≥70% coverage) | [ ] | | |
+| 2.3 | Expand test suite (≥70% coverage) | [x] | 2026-10-09 | 89% coverage, 122 tests in ~9 s; CI floor 80% |
 | 2.4 | Lock dependencies | [x] | 2026-10-09 | uv-compiled, hash-checked; serve lock constrained by training lock; CI checks sync |
 | 2.5 | Model registry & versioning | [ ] | | |
 | 2.6 | Lint / format / types + pre-commit | [ ] | | |
@@ -499,6 +499,27 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
 | `conftest.py` | session fixture that runs a **small** pipeline (`n_loans: 3000`) into a temp dir so tests are fast and isolated |
 
 - **Done when:** `pytest --cov=creditcast` ≥ 70%; whole suite < 3 minutes.
+- **Result (2026-10-09):** coverage (creditcast + app) **53% → 89%**; 99 →
+  **122 tests**, whole suite **~9 s**. Most of the table above was already done in
+  Phases 1–6. New here:
+  - `tests/test_lifecycle.py`: runs `creditcast.cli all` **in-process** on a
+    4,000-loan config in a temp folder (~5 s). It checks every stage's outputs,
+    report coherence, gates, serving with the fresh models, the `split` CLI, and
+    that the real model card is untouched. Enabled by `CREDITCAST_CONFIG`
+    (config override), `paths.model_card` and `tracking.enabled`. Generate,
+    train, validation, governance, drift, gates and CLI were all at 0% before.
+  - `tests/test_metrics.py`: Gini/AUC/KS/gains, calibration (ECE, band error,
+    Hosmer–Lemeshow), fairness (DI, equal opportunity, privileged-group
+    fallback), on data with known answers.
+  - `tests/test_agents_loop.py`: Copilot routing, tool loop, chart collection,
+    iteration cap, malformed arguments, missing key and rate-limit fallback,
+    driven by a scripted fake LLM (no Groq key needed).
+  - **Bug found and fixed:** when the router model replied without JSON, the
+    intended fallback to the analyst never ran (the slice produced `"{}"`), so
+    real questions got the canned "I focus on this platform…" reply. Unusable
+    routing now falls back to the analyst; an explicit `{"plan": [], "direct": …}`
+    is still respected.
+  - CI now measures `creditcast` + `app` and fails below **80%** coverage.
 
 ### 2.4 Lock dependencies
 

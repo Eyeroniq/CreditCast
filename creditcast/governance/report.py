@@ -170,7 +170,9 @@ def _write_model_card(gov: dict, tm: dict, val: dict, cfg: Config) -> None:
   monitoring vs the training baseline. MLflow tracking + model registry for
   reproducibility. Every artifact stamped with code+data version and seed.
 """
-    out = Path(__file__).resolve().parent / "model_card.md"
+    out = (cfg.path("model_card") if "model_card" in cfg["paths"]
+           else Path(__file__).resolve().parent / "model_card.md")
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(card, encoding="utf-8")
 
 
@@ -181,7 +183,7 @@ if __name__ == "__main__":
           f"approval={r['decision']['approval_rate']:.1%} | "
           f"min DI={f['di_ratio_min_observed']:.3f} "
           f"-> {'PASS' if f['passes_four_fifths'] else 'REVIEW'}")
-    print(f"[governance] model card -> creditcast/governance/model_card.md")
+    print(f"[governance] model card -> {load_config().path('model_card')}")
     if r["adverse_action_example"]:
         print("[governance] sample adverse-action reasons:")
         for c in r["adverse_action_example"]["reason_codes"]:

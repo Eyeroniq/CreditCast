@@ -34,11 +34,16 @@ def _route(question: str, max_specialists: int) -> dict:
         [{"role": "system", "content": _ROUTER_SYSTEM},
          {"role": "user", "content": question}],
         temperature=0.0)
-    raw = resp.choices[0].message.content or "{}"
-    raw = raw[raw.find("{"): raw.rfind("}") + 1] or "{}"
+    raw = resp.choices[0].message.content or ""
+    start, end = raw.find("{"), raw.rfind("}")
     try:
-        plan = json.loads(raw)
+        plan = json.loads(raw[start:end + 1]) if 0 <= start < end else None
     except json.JSONDecodeError:
+        plan = None
+    # Unusable routing (no JSON, bad JSON, or no "plan" key): answer the question
+    # with the analyst rather than deflecting it. An explicit empty plan with a
+    # "direct" reply (greetings, off-topic) is respected.
+    if not isinstance(plan, dict) or "plan" not in plan:
         plan = {"plan": [{"specialist": "analyst", "task": question}]}
     valid = [p for p in plan.get("plan", []) if p.get("specialist") in SPECIALISTS]
     plan["plan"] = valid[:max_specialists]
