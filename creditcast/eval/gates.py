@@ -19,8 +19,9 @@ import sys
 from creditcast.config import Config, load_config
 
 
-def run_gates(cfg: Config | None = None, champion: str = "challenger") -> tuple[bool, list[dict]]:
+def run_gates(cfg: Config | None = None, champion: str | None = None) -> tuple[bool, list[dict]]:
     cfg = cfg or load_config()
+    champion = champion or str(cfg.decision.champion)
     art = cfg.path("artifacts")
     val = json.loads((art / "validation_report.json").read_text())
     t = val["thresholds"]
@@ -46,7 +47,7 @@ def run_gates(cfg: Config | None = None, champion: str = "challenger") -> tuple[
 def main() -> int:
     cfg = load_config()
     passed, results = run_gates(cfg)
-    print(f"\n  CreditCast CI gates (champion=challenger) — data={cfg.run.data_version}\n")
+    print(f"\n  CreditCast CI gates (champion={cfg.decision.champion}) — data={cfg.run.data_version}\n")
     for r in results:
         status = "PASS" if r["passed"] else "FAIL"
         print(f"   [{status}] {r['check']:34s} {r['value']:>8} {r['op']} {r['threshold']}")

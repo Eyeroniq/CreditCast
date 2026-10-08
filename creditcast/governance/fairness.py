@@ -77,8 +77,9 @@ if __name__ == "__main__":
 
     cfg = load_config()
     scored = pd.read_parquet(cfg.path("artifacts") / "test_scored.parquet")
-    thr = default_threshold(scored["pd_challenger"], scored["default_12m"], cfg)
-    rep = fairness_report(scored, "pd_challenger", thr, cfg)
+    calib = pd.read_parquet(cfg.path("artifacts") / "calib_scored.parquet")
+    thr = default_threshold(calib["pd_champion"], calib["default_12m"], cfg)
+    rep = fairness_report(scored, "pd_champion", thr, cfg)
     print(f"[fairness] threshold={thr:.4f} | min disparate-impact ratio="
           f"{rep['di_ratio_min_observed']:.3f} (4/5ths floor {rep['di_ratio_floor']}) "
           f"-> {'PASS' if rep['passes_four_fifths'] else 'REVIEW'}")

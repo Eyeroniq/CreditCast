@@ -84,7 +84,7 @@ export default function PortfolioPage() {
               <tr key={r.loan_id}>
                 <td className="mono">{r.loan_id}</td>
                 <td className="mono">{r.vintage}</td>
-                <td className="num">{pct(r.pd_challenger)}</td>
+                <td className="num">{pct(r.pd_champion)}</td>
                 <td className="num">{r.credit_score.toFixed(0)}</td>
                 <td><Band grade={r.risk_band} /></td>
                 <td className="num">{pct(r.lgd_hat)}</td>

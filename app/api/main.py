@@ -101,13 +101,13 @@ def portfolio(n: int = 500):
     thr = bundle().threshold
     bands = decision.assign_band(scored["credit_score"].to_numpy(), cfg)
     scored = scored.assign(risk_band=bands,
-                           decision=decision.decide(scored["pd_challenger"].to_numpy(), thr))
+                           decision=decision.decide(scored["pd_champion"].to_numpy(), thr))
     band_order = [b["name"] for b in cfg.decision.bands]
     band_dist = (scored["risk_band"].value_counts().reindex(band_order).fillna(0)
                  .astype(int).to_dict())
     el_by_band = (scored.groupby("risk_band")["expected_loss"].sum()
                   .reindex(band_order).fillna(0).round(2).to_dict())
-    sample_cols = ["loan_id", "vintage", "pd_challenger", "credit_score",
+    sample_cols = ["loan_id", "vintage", "pd_champion", "credit_score",
                    "risk_band", "lgd_hat", "ead", "expected_loss", "decision",
                    "default_12m"]
     return {
@@ -115,11 +115,11 @@ def portfolio(n: int = 500):
         "portfolio_el": float(scored["expected_loss"].sum()),
         "total_ead": float(scored["ead"].sum()),
         "el_rate_bps": float(scored["expected_loss"].sum() / scored["ead"].sum() * 1e4),
-        "mean_pd": float(scored["pd_challenger"].mean()),
+        "mean_pd": float(scored["pd_champion"].mean()),
         "approval_rate": float((scored["decision"] == "approve").mean()),
         "band_distribution": band_dist,
         "el_by_band": el_by_band,
-        "pd_histogram": _histogram(scored["pd_challenger"], 25),
+        "pd_histogram": _histogram(scored["pd_champion"], 25),
         "sample": scored.sort_values("expected_loss", ascending=False)
                         .head(n)[sample_cols].to_dict(orient="records"),
     }

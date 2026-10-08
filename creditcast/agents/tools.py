@@ -39,7 +39,7 @@ def _scored() -> pd.DataFrame:
                              "first_time_homebuyer") if c in gold.columns]
     s = s.merge(gold[["loan_id", *feat_cols]], on="loan_id", how="left")
     s["risk_band"] = decision.assign_band(s["credit_score"].to_numpy(), cfg)
-    s["decision"] = decision.decide(s["pd_challenger"].to_numpy(), _b().threshold)
+    s["decision"] = decision.decide(s["pd_champion"].to_numpy(), _b().threshold)
     return s
 
 
@@ -90,7 +90,7 @@ def portfolio_summary() -> dict:
         "portfolio_expected_loss": round(float(s["expected_loss"].sum()), 0),
         "total_ead": round(float(s["ead"].sum()), 0),
         "el_rate_bps": round(float(s["expected_loss"].sum() / s["ead"].sum() * 1e4), 1),
-        "mean_pd": round(float(s["pd_challenger"].mean()), 4),
+        "mean_pd": round(float(s["pd_champion"].mean()), 4),
         "approval_rate": round(float((s["decision"] == "approve").mean()), 4),
         "band_distribution": band.to_dict(),
     }, "_chart": chart}
@@ -114,7 +114,7 @@ def portfolio_slice(by: str, metric: str = "default_rate") -> dict:
     g = s.groupby(by, observed=True).agg(
         count=("loan_id", "size"),
         default_rate=("default_12m", "mean"),
-        mean_pd=("pd_challenger", "mean"),
+        mean_pd=("pd_champion", "mean"),
         expected_loss=("expected_loss", "sum")).reset_index()
     g = g[g["count"] >= 20] if by == "vintage" else g
     fmt = {"default_rate": "pct", "mean_pd": "pct",
@@ -133,9 +133,9 @@ def portfolio_slice(by: str, metric: str = "default_rate") -> dict:
 def top_exposures(n: int = 10) -> dict:
     """The largest Expected-Loss exposures in the book."""
     s = _scored().sort_values("expected_loss", ascending=False).head(min(n, 25))
-    cols = ["loan_id", "vintage", "pd_challenger", "credit_score", "risk_band",
+    cols = ["loan_id", "vintage", "pd_champion", "credit_score", "risk_band",
             "lgd_hat", "ead", "expected_loss", "decision"]
-    rows = s[cols].round({"pd_challenger": 4, "credit_score": 0, "lgd_hat": 4,
+    rows = s[cols].round({"pd_champion": 4, "credit_score": 0, "lgd_hat": 4,
                           "ead": 0, "expected_loss": 0}).to_dict(orient="records")
     return {"summary": {"top_exposures": rows}}
 

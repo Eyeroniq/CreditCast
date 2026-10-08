@@ -14,10 +14,12 @@ import pandas as pd
 
 from creditcast.config import Config, load_config, run_stamp
 from creditcast.dataset import feature_columns
-from creditcast.governance import decision, fairness, reason_codes, shap_explain
+from creditcast.governance import decision, explain, fairness, reason_codes, shap_explain
 from creditcast.pipeline.split import make_split
 
-CHAMPION_PD = "pd_challenger"
+CHAMPION_PD = "pd_champion"   # the configured champion's calibrated PD (train.py)
+CHAMPION_LABEL = {"challenger": "challenger (LightGBM, isotonic-calibrated)",
+                  "scorecard": "scorecard (WoE logistic, isotonic-calibrated)"}
 
 
 def build_governance(cfg: Config | None = None) -> dict:
@@ -27,7 +29,10 @@ def build_governance(cfg: Config | None = None) -> dict:
     train_metrics = json.loads((art / "train_metrics.json").read_text())
     validation = json.loads((art / "validation_report.json").read_text())
 
-    thr = decision.default_threshold(scored[CHAMPION_PD], scored["default_12m"], cfg)
+    # The cut-off is a *decision*, so it is chosen on the calibration slice
+    # (cross-fitted PDs) — never on the OOT test outcomes it is reported on.
+    calib = pd.read_parquet(art / "calib_scored.parquet")
+    thr = decision.default_threshold(calib[CHAMPION_PD], calib["default_12m"], cfg)
     dec_summary = decision.decision_summary(scored, CHAMPION_PD, thr, cfg)
     fair = fairness.fairness_report(scored, CHAMPION_PD, thr, cfg)
 
@@ -44,8 +49,7 @@ def build_governance(cfg: Config | None = None) -> dict:
     example = None
     if len(declined):
         row = declined.iloc[[len(declined) // 2]]   # a median-risk decline
-        expl = shap_explain.build_explainer(cfg=cfg)
-        local = shap_explain.local_attribution(expl, row[feature_columns()])
+        local = explain.local_drivers(row[feature_columns()], cfg)
         codes = reason_codes.reason_codes(local, top_n=4)
         example = {
             "loan_id": int(row["loan_id"].iloc[0]),
@@ -59,8 +63,8 @@ def build_governance(cfg: Config | None = None) -> dict:
 
     report = {
         "stamp": run_stamp(),
-        "champion_model": "challenger (LightGBM, isotonic-calibrated)",
-        "decision": dec_summary,
+        "champion_model": CHAMPION_LABEL[str(cfg.decision.champion)],
+        "decision": {**dec_summary, "threshold_source": "calib (cross-fitted)"},
         "fairness": fair,
         "shap_global": shap_global,
         "adverse_action_example": example,
@@ -91,6 +95,9 @@ def _write_model_card(gov: dict, tm: dict, val: dict, cfg: Config) -> None:
   (EL = PD × LGD × EAD) for a residential-mortgage portfolio.
 - **Models:** (A) regulatory **WoE/IV logistic scorecard**; (B) **LightGBM
   challenger**, isotonic-calibrated. Champion for EL/decisioning: **{gov['champion_model']}**.
+- **Decision threshold:** approve if PD ≤ {gov['decision']['threshold']:.4f} (cost-minimizing,
+  FN:FP = {cfg.decision.cost_fn:g}:{cfg.decision.cost_fp:g}), chosen on the calibration slice —
+  never on the OOT test outcomes it is evaluated on.
 - **Methodology:** Global Basel/IRB framework (jurisdiction-agnostic). Data is the
   Freddie Mac Single-Family schema (synthetic generator standing in for the GSE
   files; real files drop into the same pipeline).
@@ -133,7 +140,11 @@ def _write_model_card(gov: dict, tm: dict, val: dict, cfg: Config) -> None:
 ## 6. Limitations
 - Synthetic data calibrated to plausible mortgage behaviour, not a specific
   institution's book. Macro scenarios are implicit in vintages, not modelled
-  explicitly. LGD trained on a modest defaulted population.
+  explicitly.
+- LGD is trained only on *resolved* defaults ({tm['lgd_population']['train_resolved_defaults']:,} of {tm['lgd_population']['train_defaults']:,}
+  training defaults; workout window {cfg.lgd.workout_window_months} months).
+- Labels are right-censoring-aware (policy: `{cfg.target.censoring}`).
+- EAD is the scheduled amortized balance after {cfg.ead.expected_default_month} payments.
 
 ## 7. Monitoring & governance
 - CI performance gates (Gini / calibration / PSI). Scheduled PSI/CSI drift
@@ -141,7 +152,7 @@ def _write_model_card(gov: dict, tm: dict, val: dict, cfg: Config) -> None:
   reproducibility. Every artifact stamped with code+data version and seed.
 """
     out = Path(__file__).resolve().parent / "model_card.md"
-    out.write_text(card)
+    out.write_text(card, encoding="utf-8")
 
 
 if __name__ == "__main__":

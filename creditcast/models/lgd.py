@@ -36,6 +36,9 @@ class LGDModel:
         self.features = feature_columns()
         self.categorical = categorical_columns()
         self._cat_maps: dict[str, list] = {}
+        # Set when the resolved defaults hold only one outcome (e.g. every
+        # default ended in a loss): the cure stage is then that constant rate.
+        self._p_loss_const: float | None = None
 
     def _encode(self, X: pd.DataFrame) -> pd.DataFrame:
         """Ordinal-encode categoricals (stable codes for cure logit + severity)."""
@@ -50,22 +53,29 @@ class LGDModel:
 
     def fit(self, defaults: pd.DataFrame) -> "LGDModel":
         d = defaults.copy()
-        d["loss_occurred"] = (d["lgd"].fillna(0) > 0).astype(int)
+        d["loss_occurred"] = (d["lgd"] > 0).astype(int)
         X = self._encode(d)
-        self.cure.fit(X, d["loss_occurred"])
+        if d["loss_occurred"].nunique() < 2:
+            self._p_loss_const = float(d["loss_occurred"].iloc[0])
+        else:
+            self.cure.fit(X, d["loss_occurred"])
         loss = d[d["loss_occurred"] == 1]
         self.severity.fit(self._encode(loss), loss["lgd"].clip(1e-3, 1))
         return self
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         Xe = self._encode(X)
-        p_loss = self.cure.predict_proba(Xe)[:, 1]
+        p_loss = (np.full(len(Xe), self._p_loss_const)
+                  if self._p_loss_const is not None
+                  else self.cure.predict_proba(Xe)[:, 1])
         sev = np.clip(self.severity.predict(Xe), 0, 1)
         return np.clip(p_loss * sev, 0, 1)
 
 
 def _defaulted(df: pd.DataFrame) -> pd.DataFrame:
-    return df[(df["default_12m"] == 1) & df["ead"].fillna(0).gt(0)].copy()
+    """Resolved defaults only — the population where the final loss is known.
+    (`lgd` is NaN for unresolved defaults by construction in Gold.)"""
+    return df[(df["default_12m"] == 1) & df["lgd"].notna()].copy()
 
 
 def fit_lgd(train: pd.DataFrame, cfg: Config | None = None) -> LGDModel:
@@ -93,7 +103,7 @@ if __name__ == "__main__":
     save(model)
     test_def = _defaulted(split.test)
     pred = model.predict(test_def)
-    obs = test_def["lgd"].fillna(0).to_numpy()
+    obs = test_def["lgd"].to_numpy()
     print(f"[lgd] fit on {len(_defaulted(split.train)):,} train defaults | "
           f"OOT defaults={len(test_def):,} | mean realized LGD={obs.mean():.3f} "
           f"pred={pred.mean():.3f} | MAE={mean_absolute_error(obs, pred):.3f}")
