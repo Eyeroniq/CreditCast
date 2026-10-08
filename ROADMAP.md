@@ -111,7 +111,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.2.8 | Better Copilot chat | [ ] | | |
 | 6.3.1 | Responsive / mobile layout | [x] | 2026-10-08 | No sideways scroll at 375 px on all 7 pages |
 | 6.3.2 | Light / dark theme toggle | [ ] | | |
-| 6.3.3 | Loading, empty & error states | [ ] | | |
+| 6.3.3 | Loading, empty & error states | [x] | 2026-10-09 | Skeletons, typed friendly errors, Retry |
 | 6.3.4 | Accessibility (WCAG AA) | [~] | 2026-10-08 | Focus rings, ARIA on tooltips/sliders/nav, ✓/✗ icons, reduced motion; Lighthouse audit still to do |
 | 6.3.5 | Component library migration | [ ] | | Part of 6.0 |
 | 6.3.6 | PDF downloads | [ ] | | |
@@ -1020,6 +1020,21 @@ API client `lib/api.js`.
   maps HTTP codes to messages (404 artifacts missing, 422 invalid input,
   429 slow down, 503 Copilot not configured).
 - **Done when:** no raw error string ever reaches the screen.
+- **Result (2026-10-09):** `lib/api.js` throws a typed `ApiError` (status, kind,
+  request id, raw detail); network failures become "offline". Plain messages
+  per kind (offline, 404 "not generated yet", 422, 429, 401, 503, 5xx);
+  server `detail` is kept where it is written for people (429, 422, 500 with
+  request id) and replaced for 404 developer hints. `useFetch` gains `retry`.
+  `PageSkeleton` (shimmer, reduced-motion aware, `role="status"`) replaces the
+  "loading…" text on Portfolio, Model quality, Stability and Fairness, shaped
+  like each page. `ErrorState` card: friendly title, message, **Try again**,
+  link home, technical details folded away. The approval-limit explorer has
+  its own skeleton/error so the rest of the page keeps working. Route and
+  root error boundaries rewritten in plain language. Verified in the browser:
+  missing monitoring report → "Not available yet", then Try again loaded the
+  page without a reload; 31 quick portfolio calls → "Slow down a moment";
+  simulated network failure → "Can't reach CreditCast"; slowed network →
+  skeleton matching the layout.
 
 #### 6.3.4 Accessibility (WCAG AA)
 - Labels/ARIA on all inputs; charts get `aria-label` summaries + a "View as

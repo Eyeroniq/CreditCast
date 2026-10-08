@@ -4,12 +4,12 @@ import {
   Tooltip, ReferenceLine, Legend, CartesianGrid,
 } from "recharts";
 import { api, pct } from "@/lib/api";
-import { PageHead, Stat, Pill, useFetch, Loading, ApiError, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { PageHead, Stat, Pill, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
 
 export default function ValidationPage() {
-  const { data, error, loading } = useFetch(() => api.validation(), []);
-  if (loading) return (<><Head /><Loading what="validation report" /></>);
-  if (error) return (<><Head /><ApiError error={error} /></>);
+  const { data, error, loading, retry } = useFetch(() => api.validation(), []);
+  if (loading) return (<><Head /><PageSkeleton stats={4} charts={2} label="Loading model quality report" /></>);
+  if (error) return (<><Head /><ErrorState error={error} onRetry={retry} /></>);
 
   const t = data.thresholds;
   const sc = data.models.scorecard, ch = data.models.challenger;
