@@ -401,6 +401,13 @@ button.chip:disabled { opacity: .45; cursor: default; }
 @media (max-width: 1100px) {
   .grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
 }
+/* Laptop widths: the full bar doesn't fit, so the status pill shrinks to its
+   dot (text kept for screen readers) and the nav pills tighten. */
+@media (min-width: 901px) and (max-width: 1180px) {
+  .topbar { padding: 0 14px; gap: 10px; }
+  .nav a { padding: 8px 11px; font-size: 13px; }
+  .status-pill { font-size: 0; gap: 0; padding: 14px; }
+}
 @media (max-width: 900px) {
   .topbar { top: 10px; margin-top: 10px; padding: 0 14px; }
   .status-pill, .tour-btn { display: none; }
