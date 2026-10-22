@@ -6,6 +6,8 @@ import {
 import { api, pct, money } from "@/lib/api";
 import { CATEGORY_LABELS, featureLabel } from "@/lib/labels";
 import { PageHead, Stat, Band, InfoTip, SliderField, CardTitle } from "@/components/ui";
+import { PrintButton } from "@/components/Print";
+import DecisionLetter from "@/components/DecisionLetter";
 
 const PRESETS = {
   "Prime borrower": { fico: 790, dti: 22, ltv: 60, orig_interest_rate: 3.1, orig_upb: 250000, orig_loan_term: 360, occupancy_status: "P", loan_purpose: "P", property_type: "SF", first_time_homebuyer: "N", vintage: "2021-06" },
@@ -82,6 +84,9 @@ export default function ScorePage() {
 
   return (
     <>
+      {/* On paper this page is the decision letter only (6.3.6). */}
+      {res && <DecisionLetter res={res} form={form} whatif={whatif} />}
+      <div className="screen-only">
       <PageHead title="Score an applicant"
         subtitle="Move the sliders and the decision updates instantly — probability of default, expected loss, and the reasons behind it." />
 
@@ -142,6 +147,7 @@ export default function ScorePage() {
           )}
         </div>
       </div>
+      </div>
     </>
   );
 }
@@ -174,6 +180,10 @@ function Result({ res, busy, whatif, onApply }) {
           <GradeScale grade={res.risk_band} />
         </div>
         <RiskMeter pd={res.pd} threshold={res.threshold} />
+        <div style={{ marginTop: 14 }}>
+          <PrintButton label="⤓ Download decision letter (PDF)"
+            filename={`CreditCast decision ${res.request_id || ""}`.trim()} />
+        </div>
       </div>
 
       {!approved && <WhatIf data={whatif} onApply={onApply} />}

@@ -114,7 +114,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.3.3 | Loading, empty & error states | [x] | 2026-10-09 | Skeletons, typed friendly errors, Retry |
 | 6.3.4 | Accessibility (WCAG AA) | [~] | 2026-10-08 | Focus rings, ARIA on tooltips/sliders/nav, ✓/✗ icons, reduced motion; Lighthouse audit still to do |
 | 6.3.5 | Component library migration | [ ] | | Part of 6.0 |
-| 6.3.6 | PDF downloads | [ ] | | |
+| 6.3.6 | PDF downloads | [x] | 2026-10-22 | Decision letter (1 page), two reports (2 pages each); real PDFs checked |
 | 6.3.7 | Frontend tests (Vitest + Playwright) | [ ] | | |
 
 ---
@@ -1178,6 +1178,31 @@ API client `lib/api.js`.
   print-optimized CSS + `window.print()` first (zero dependencies); move to
   `@react-pdf/renderer` only if layout needs it.
 - **Done when:** each of the three screens exports a clean one-to-two-page PDF.
+- **Result (2026-10-22):** print CSS + `window.print()` ("Save as PDF"), no
+  dependency.
+  - **Score:** `components/DecisionLetter.jsx`, a formal one-page letter built
+    from the live result: date, reference (request id), model fingerprint,
+    application summary in plain labels, decision, PD vs limit, grade, expected
+    loss, principal reasons, "what could change the outcome" (the what-if
+    options), and a demo disclaimer. On paper the Score page prints only the
+    letter.
+  - **Model quality and Fairness:** a "Download report (PDF)" button and a
+    print-only header (title, date, data/code version, git sha, demo note).
+  - **Print styles:** always the light palette; menu, buttons, sliders,
+    tooltips and filters hidden; cards never split; A4 page.
+
+  Two problems found by rendering real PDFs (headless Edge, then pages
+  rasterised and inspected):
+  1. Animated charts printed **empty** (captured on their first frame). Chart
+     animation is now off on all printable pages.
+  2. Charts were laid out for the screen and **shrunk** onto paper (tiny axis
+     labels). The button now switches to a `print-layout` (content exactly A4
+     wide, 186 mm = 703 px), waits for charts to redraw, then prints;
+     `#print` in the URL opens the same layout.
+
+  Result: letter 1 page; model-quality and fairness reports 2 pages each, with
+  readable charts. The button was verified in the browser (layout and filename
+  applied during print, restored afterwards).
 
 #### 6.3.7 Frontend tests
 - Vitest + React Testing Library for components (labels, verdict rules,

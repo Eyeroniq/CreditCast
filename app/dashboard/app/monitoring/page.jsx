@@ -52,7 +52,7 @@ export default function MonitoringPage() {
             <Tooltip formatter={(val) => val.toFixed(4)} />
             <ReferenceLine y={t.psi_watch} stroke="var(--amber)" strokeDasharray="4 4" label={{ value: "watch", fill: "var(--amber)", fontSize: 10, position: "right" }} />
             <ReferenceLine y={t.psi_unstable} stroke="var(--red)" strokeDasharray="4 4" label={{ value: "unstable", fill: "var(--red)", fontSize: 10, position: "right" }} />
-            <Bar dataKey="psi" radius={3}>
+            <Bar isAnimationActive={false} dataKey="psi" radius={3}>
               {psiByVintage.map((d, i) => <Cell key={i} fill={psiColor(d.status)} />)}
             </Bar>
           </BarChart>
