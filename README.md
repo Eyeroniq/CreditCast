@@ -55,6 +55,10 @@ ruff format .           # format
 mypy                    # type-check the decision-making core
 python -m pytest        # 120+ tests incl. an in-process end-to-end lifecycle; 80% coverage floor
 cd app/dashboard && npm run lint
+cd app/dashboard && npm test        # component tests (Vitest)
+# end-to-end (Playwright), against a running app on :8000 with trained models;
+# PW_CHANNEL=msedge (or chrome) uses an installed browser instead of a download
+cd app/dashboard && E2E_BASE_URL=http://127.0.0.1:8000 npx playwright test
 ```
 
 Optional git hooks: `pip install pre-commit && pre-commit install`. To skip the

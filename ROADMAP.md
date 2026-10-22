@@ -115,7 +115,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.3.4 | Accessibility (WCAG AA) | [~] | 2026-10-08 | Focus rings, ARIA on tooltips/sliders/nav, ✓/✗ icons, reduced motion; Lighthouse audit still to do |
 | 6.3.5 | Component library migration | [ ] | | Part of 6.0 |
 | 6.3.6 | PDF downloads | [x] | 2026-10-22 | Decision letter (1 page), two reports (2 pages each); real PDFs checked |
-| 6.3.7 | Frontend tests (Vitest + Playwright) | [ ] | | |
+| 6.3.7 | Frontend tests (Vitest + Playwright) | [x] | 2026-10-22 | 21 component + 24 e2e tests (desktop + phone); new CI job |
 
 ---
 
@@ -1210,6 +1210,32 @@ API client `lib/api.js`.
   container: open each page, score each preset, check a decision renders, run
   at desktop and 375 px widths. Add to CI (2.1 `web` job).
 - **Done when:** UI tests green in CI.
+- **Result (2026-10-22):**
+  - **Component tests** (Vitest 5.0.3 + Testing Library in jsdom,
+    `app/dashboard/__tests__`, 21 tests, about 3 s): plain labels and
+    formatters; the friendly API errors (404 hides the developer hint, 429 and
+    422 keep readable text, 500 keeps the request id, network failure =
+    offline, an aborted request is not "offline"); loan table sorting,
+    filtering, chips, the empty state and the CSV containing exactly the
+    filtered rows; theme toggle cycle and persistence; InfoTip ARIA wiring;
+    ErrorState titles and retry; decision letter for a decline and an approval.
+  - **End-to-end** (Playwright 1.64.0, `app/dashboard/e2e`, 24 tests = 12 ×
+    desktop 1280 px and phone 375 px): every page loads with data, no error
+    state, no page errors and no sideways scroll; sample applicants score
+    live, and a what-if **Apply** turns the marginal decline into an approval;
+    typing a credit score re-scores; a grade bar filters the loan table; the
+    theme survives a reload; the tour starts on a first visit and closes with
+    Esc. All 24 pass locally against the real API (about 30 s; installed Edge
+    via `PW_CHANNEL=msedge`).
+  - **CI:** the dashboard job runs `npm test`; a new **e2e** job trains the
+    models, builds the cockpit, starts the server, waits for `/api/ready`,
+    runs Playwright in Chromium, and uploads the report and server log on
+    failure. The Docker job now waits for it.
+  - **Toolchain:** npm 10 crashes resolving vitest's optional peer
+    dependencies ("edgesOut", on both vitest 5 and 4), so CI and the Docker
+    web stage moved from Node 20 to **Node 24 LTS** (npm 11, the same as local),
+    and the lockfile was regenerated with npm 11. All new dev dependencies are
+    pinned to releases at least two weeks old.
 
 ### Target screen map after Phase 6
 
