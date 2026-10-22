@@ -6,7 +6,7 @@
 # ============================================================================
 
 # ---- Stage 1: build the static Next.js cockpit -----------------------------
-FROM node:20-slim AS web
+FROM node:24-slim AS web
 WORKDIR /web
 COPY app/dashboard/package.json app/dashboard/package-lock.json ./
 RUN npm ci

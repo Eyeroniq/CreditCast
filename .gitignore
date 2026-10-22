@@ -26,6 +26,10 @@ node_modules/
 .next/
 out/
 
+# Frontend test output
+app/dashboard/test-results/
+app/dashboard/playwright-report/
+
 # OS / editor
 .DS_Store
 .env
