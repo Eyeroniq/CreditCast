@@ -86,11 +86,26 @@ export function SliderField({ id, label, info, value, onChange, min, max, step =
   );
 }
 
-export function PageHead({ title, subtitle }) {
+// Small mono "eyebrow" shown above each page title.
+const EYEBROWS = {
+  "Score an applicant": "Live decisioning",
+  "Portfolio risk": "Out-of-time book",
+  "Model quality": "Validation",
+  "Stability & drift": "Monitoring",
+  "Fairness & explanations": "Governance",
+  "Risk Copilot": "AI agent team",
+  "Glossary": "Plain language",
+};
+
+/** Hero page heading: eyebrow pill, display title with the brand's mint dot,
+ *  and a ruled subtitle. The dot is decorative (not part of the heading name). */
+export function PageHead({ title, subtitle, eyebrow }) {
+  const kicker = eyebrow || EYEBROWS[title];
   return (
     <div className="page-head">
-      <h1>{title}</h1>
-      {subtitle && <p>{subtitle}</p>}
+      {kicker && <div className="eyebrow"><span className="dot" aria-hidden="true" />{kicker}</div>}
+      <h1>{title}<span className="title-dot" aria-hidden="true" /></h1>
+      {subtitle && <p className="lede"><span className="rule" aria-hidden="true" />{subtitle}</p>}
     </div>
   );
 }

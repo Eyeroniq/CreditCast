@@ -52,7 +52,7 @@ export default function GovernancePage() {
               <XAxis type="number" stroke="var(--muted-2)" />
               <YAxis type="category" dataKey="feature" width={150} stroke="var(--muted-2)" tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => v.toFixed(4)} />
-              <Bar isAnimationActive={false} dataKey="imp" fill="var(--accent)" radius={3} />
+              <Bar isAnimationActive={false} dataKey="imp" fill="var(--series)" radius={3} />
             </BarChart>
           </ResponsiveContainer>
         </div>

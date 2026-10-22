@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 const KEY = "cc-theme";
 const MODES = ["system", "light", "dark"];
 const LABEL = { system: "◐ Theme: System", light: "☀ Theme: Light", dark: "☾ Theme: Dark" };
+const ICON = { system: "◐", light: "☀", dark: "☾" };
 
 export const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem("${KEY}");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}`;
 
@@ -22,7 +23,8 @@ function apply(mode) {
   }
 }
 
-export default function ThemeToggle() {
+/** `compact`: icon-only round button (top bar); otherwise icon + words. */
+export default function ThemeToggle({ compact = false }) {
   const [mode, setMode] = useState("system");
   useEffect(() => {
     const t = document.documentElement.dataset.theme;
@@ -36,9 +38,9 @@ export default function ThemeToggle() {
   };
 
   return (
-    <button type="button" className="theme-toggle" onClick={next}
-      aria-label={`Colour theme: ${mode}. Click to change.`}>
-      {LABEL[mode]}
+    <button type="button" className={compact ? "icon-btn" : "theme-toggle"} onClick={next}
+      aria-label={`Colour theme: ${mode}. Click to change.`} title={LABEL[mode]}>
+      {compact ? ICON[mode] : LABEL[mode]}
     </button>
   );
 }

@@ -7,7 +7,7 @@ import { api, pct, money, moneyShort, num } from "@/lib/api";
 import { PageHead, Stat, useFetch, PageSkeleton, ErrorState, CardTitle } from "@/components/ui";
 import LoanTable, { EMPTY_FILTERS } from "@/components/LoanTable";
 
-const BAND_COLOR = { AAA: "var(--green)", AA: "var(--green)", A: "var(--green)", BBB: "var(--accent)", BB: "var(--amber)", B: "var(--red)" };
+const BAND_COLOR = { AAA: "var(--green)", AA: "var(--green)", A: "var(--green)", BBB: "var(--series)", BB: "var(--amber)", B: "var(--red)" };
 const SAMPLE = 1000;   // API cap (config api.portfolio_max_rows)
 
 export default function PortfolioPage() {
@@ -56,7 +56,7 @@ export default function PortfolioPage() {
               <Bar isAnimationActive={false} dataKey="count" radius={4} cursor="pointer"
                 onClick={(d) => { pickBand(d.band); scrollToTable(); }}>
                 {bandData.map((d, i) => (
-                  <Cell key={i} fill={BAND_COLOR[d.band] || "var(--accent)"}
+                  <Cell key={i} fill={BAND_COLOR[d.band] || "var(--series)"}
                     fillOpacity={dim(!filters.band || filters.band === d.band)} />
                 ))}
               </Bar>
@@ -73,7 +73,7 @@ export default function PortfolioPage() {
               <Bar isAnimationActive={false} dataKey="el" radius={4} cursor="pointer"
                 onClick={(d) => { pickBand(d.band); scrollToTable(); }}>
                 {bandData.map((d, i) => (
-                  <Cell key={i} fill={BAND_COLOR[d.band] || "var(--accent)"}
+                  <Cell key={i} fill={BAND_COLOR[d.band] || "var(--series)"}
                     fillOpacity={dim(!filters.band || filters.band === d.band)} />
                 ))}
               </Bar>
@@ -93,7 +93,7 @@ export default function PortfolioPage() {
             <Bar isAnimationActive={false} dataKey="count" radius={2} cursor="pointer"
               onClick={(d) => { pickPd(d); scrollToTable(); }}>
               {hist.map((h, i) => (
-                <Cell key={i} fill="var(--accent)"
+                <Cell key={i} fill="var(--series)"
                   fillOpacity={dim(!filters.pdRange || filters.pdRange[0] === h.lo)} />
               ))}
             </Bar>
