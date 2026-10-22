@@ -1250,8 +1250,9 @@ type with spaced mono labels, and smooth loading and scrolling animations.
     fallback where blur isn't supported); a single mint accent with a soft glow;
     a separate `--series` blue for neutral chart data, so the BBB grade no
     longer shares the "good" green. Light theme: white frosted glass on soft
-    grey. Fonts are self-hosted by `next/font` (no requests to Google from
-    visitors): Space Grotesk (display and numbers), Inter (body), JetBrains
+    grey. Fonts ship inside the app from pinned Fontsource packages via
+    `next/font/local`, so neither the build nor visitors contact Google
+    (fetching from Google at build time broke CI): Space Grotesk (display and numbers), Inter (body), JetBrains
     Mono (labels).
   - **Layout:** the sidebar is replaced by a floating top bar: the
     `CREDITCAST●` brand, a glass pill nav, a live status pill
