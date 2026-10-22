@@ -4,6 +4,7 @@ import {
 } from "recharts";
 import { api, pct } from "@/lib/api";
 import { PageHead, Stat, Pill, Band, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { PrintButton, PrintHeader } from "@/components/Print";
 import { featureLabel } from "@/lib/labels";
 import ThresholdExplorer from "@/components/ThresholdExplorer";
 
@@ -19,7 +20,9 @@ export default function GovernancePage() {
 
   return (
     <>
+      <PrintHeader title="Fairness and explanations report" stamp={data.stamp} />
       <Head />
+      <div className="page-actions"><PrintButton label="⤓ Download report (PDF)" filename="CreditCast fairness and explanations report" /></div>
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Champion model"
           value={(data.champion_model || "challenger").split(" ")[0].replace(/^./, (c) => c.toUpperCase())}
@@ -49,7 +52,7 @@ export default function GovernancePage() {
               <XAxis type="number" stroke="var(--muted-2)" />
               <YAxis type="category" dataKey="feature" width={150} stroke="var(--muted-2)" tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => v.toFixed(4)} />
-              <Bar dataKey="imp" fill="var(--accent)" radius={3} />
+              <Bar isAnimationActive={false} dataKey="imp" fill="var(--accent)" radius={3} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -62,7 +65,7 @@ export default function GovernancePage() {
               <Tooltip formatter={(v) => v.toFixed(3)} />
               <ReferenceLine y={f.di_ratio_floor} stroke="var(--red)" strokeDasharray="4 4"
                 label={{ value: "4/5ths floor", fill: "var(--red)", fontSize: 10, position: "insideTopRight" }} />
-              <Bar dataKey="disparate_impact" radius={3}>
+              <Bar isAnimationActive={false} dataKey="disparate_impact" radius={3}>
                 {groups.map((g, i) => (
                   <Cell key={i} fill={g.disparate_impact >= f.di_ratio_floor ? "var(--green)" : "var(--red)"} />
                 ))}

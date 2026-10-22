@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import { api, pct } from "@/lib/api";
 import { PageHead, Stat, Pill, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { PrintButton, PrintHeader } from "@/components/Print";
 
 export default function ValidationPage() {
   const { data, error, loading, retry } = useFetch(() => api.validation(), []);
@@ -34,7 +35,9 @@ export default function ValidationPage() {
 
   return (
     <>
+      <PrintHeader title="Model quality report" stamp={data.stamp} />
       <Head />
+      <div className="page-actions"><PrintButton label="⤓ Download report (PDF)" filename="CreditCast model quality report" /></div>
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Gini (on unseen loans)" info="gini" value={ch.discrimination.gini.toFixed(4)}
           tone={ch.discrimination.gini >= t.gini_min ? "ok" : "bad"} sub={`min ${t.gini_min}`} />
@@ -93,7 +96,7 @@ export default function ValidationPage() {
                 domain={[0, maxRel]} tickFormatter={(v) => pct(v, 0)} />
               <Tooltip formatter={(v) => pct(v)} />
               <ReferenceLine segment={[{ x: 0, y: 0 }, { x: maxRel, y: maxRel }]} stroke="var(--border-bright)" strokeDasharray="4 4" />
-              <Scatter data={rel} fill="var(--accent)" />
+              <Scatter isAnimationActive={false} data={rel} fill="var(--accent)" />
             </ScatterChart>
           </ResponsiveContainer>
         </div>
@@ -105,7 +108,7 @@ export default function ValidationPage() {
               <XAxis dataKey="band" stroke="var(--muted-2)" label={{ value: "risk decile", position: "insideBottom", offset: -2, fill: "var(--muted-2)", fontSize: 11 }} />
               <YAxis stroke="var(--muted-2)" tickFormatter={(v) => pct(v, 0)} />
               <Tooltip formatter={(v) => pct(v)} />
-              <Line type="monotone" dataKey="capture" stroke="var(--green)" strokeWidth={2} dot={false}
+              <Line isAnimationActive={false} type="monotone" dataKey="capture" stroke="var(--green)" strokeWidth={2} dot={false}
                 name="cumulative defaults captured" />
             </LineChart>
           </ResponsiveContainer>
