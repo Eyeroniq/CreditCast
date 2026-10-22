@@ -45,7 +45,9 @@ test("sample applicants score live, and Apply on a what-if gets a decline approv
   await page.getByRole("button", { name: "Marginal borrower" }).click();
   await expect(verdict).toHaveText(/Declined/);
   const apply = page.getByRole("button", { name: /^Apply:/ }).first();
-  await expect(apply).toBeVisible();
+  // The what-if search runs after scoring; under parallel test load on a small
+  // machine the pair can take several seconds, so allow extra time here.
+  await expect(apply).toBeVisible({ timeout: 25_000 });
   await apply.click();
   await expect(verdict).toHaveText(/Approved/);
 });

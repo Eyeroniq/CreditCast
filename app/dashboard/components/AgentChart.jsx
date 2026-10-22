@@ -19,7 +19,7 @@ const fmt = (v, kind) => {
 };
 
 const AXIS = "var(--muted-2)";
-const GREEN = "var(--green)", RED = "var(--red)", ACCENT = "var(--accent)";
+const GREEN = "var(--green)", RED = "var(--red)", ACCENT = "var(--series)";
 
 export default function AgentChart({ spec }) {
   if (!spec) return null;

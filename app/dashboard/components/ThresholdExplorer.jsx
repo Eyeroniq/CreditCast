@@ -90,7 +90,7 @@ export default function ThresholdExplorer() {
             <ReferenceLine x={+(policy.threshold * 100).toFixed(2)} stroke="var(--muted)" strokeDasharray="2 4"
               label={{ value: "policy", fill: "var(--muted)", fontSize: 10, position: "top" }} />
             <ReferenceLine x={+(cur.threshold * 100).toFixed(2)} stroke="var(--accent)" strokeWidth={2} />
-            <Line type="monotone" dataKey="approval" stroke="var(--accent)" dot={false} strokeWidth={2} isAnimationActive={false} />
+            <Line type="monotone" dataKey="approval" stroke="var(--series)" dot={false} strokeWidth={2} isAnimationActive={false} />
             <Line type="monotone" dataKey="fairness" stroke="var(--green)" dot={false} strokeWidth={2} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>

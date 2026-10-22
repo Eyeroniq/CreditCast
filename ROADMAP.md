@@ -116,6 +116,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.3.5 | Component library migration | [ ] | | Part of 6.0 |
 | 6.3.6 | PDF downloads | [x] | 2026-10-22 | Decision letter (1 page), two reports (2 pages each); real PDFs checked |
 | 6.3.7 | Frontend tests (Vitest + Playwright) | [x] | 2026-10-22 | 21 component + 24 e2e tests (desktop + phone); new CI job |
+| 6.4 | Glass visual refresh | [x] | 2026-10-22 | Graphite + frosted glass + mint accent, top pill nav, motion; user request |
 
 ---
 
@@ -1236,6 +1237,47 @@ API client `lib/api.js`.
     web stage moved from Node 20 to **Node 24 LTS** (npm 11, the same as local),
     and the lockfile was regenerated with npm 11. All new dev dependencies are
     pinned to releases at least two weeks old.
+
+### 6.4 Glass visual refresh (added 2026-10-22 at the user's request)
+
+Restyle to a reference design the user supplied: a graphite gradient, Apple-style
+frosted glass, one mint accent, a floating pill navigation, a bold display
+type with spaced mono labels, and smooth loading and scrolling animations.
+
+- **Result (2026-10-22):**
+  - **Tokens:** graphite gradient background (a lit corner fading to near-black)
+    with a slow ambient light drift; glass surfaces (`backdrop-filter`, a solid
+    fallback where blur isn't supported); a single mint accent with a soft glow;
+    a separate `--series` blue for neutral chart data, so the BBB grade no
+    longer shares the "good" green. Light theme: white frosted glass on soft
+    grey. Fonts are self-hosted by `next/font` (no requests to Google from
+    visitors): Space Grotesk (display and numbers), Inter (body), JetBrains
+    Mono (labels).
+  - **Layout:** the sidebar is replaced by a floating top bar: the
+    `CREDITCAST●` brand, a glass pill nav, a live status pill
+    ("● models live · v0001" from `/api/health`), tour and compact theme
+    buttons. On phones: brand · theme · ☰ Menu opening a glass dropdown.
+  - **Hero headings:** a mono eyebrow pill per page, a big display title ending
+    in the mint dot (decorative, outside the heading's accessible name), and a
+    mint rule before the subtitle. Cards have mono uppercase section labels
+    with a mint lead line, and display-font stat values. Primary buttons are
+    outlined mint pills with a glow on hover; chips are glass pills.
+  - **Motion:** the top bar drops in; each page's heading rises in on
+    navigation (`app/template.jsx`); cards fade and rise into place as they
+    scroll into view, staggered (`components/ScrollReveal.jsx`, with a safety
+    net that shows everything if the observer never fires); the status and
+    brand dots pulse; smooth scrolling. Everything is off under
+    `prefers-reduced-motion`, and print always shows all content.
+  - **Contrast:** every text colour was computed against the darkest and
+    lightest background, with and without a glass panel. The first draft
+    failed on the lit corner, so the gradient was capped and the muted, data
+    and red colours brightened; all now pass AA (lowest 4.53:1).
+  - **Verified:** the Score and Portfolio pages in dark and light;
+    phone menu; no sideways scroll at 375 px; 21 component and 24 end-to-end
+    tests pass (one e2e wait was lengthened: under 4 parallel browsers on a
+    small machine, scoring plus the what-if search took several seconds);
+    PDFs still print clean (letter 1 page, report 2 pages). Fixed: the letter
+    tables lost their last row border to a general table rule.
 
 ### Target screen map after Phase 6
 

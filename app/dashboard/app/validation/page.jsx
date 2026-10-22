@@ -96,7 +96,7 @@ export default function ValidationPage() {
                 domain={[0, maxRel]} tickFormatter={(v) => pct(v, 0)} />
               <Tooltip formatter={(v) => pct(v)} />
               <ReferenceLine segment={[{ x: 0, y: 0 }, { x: maxRel, y: maxRel }]} stroke="var(--border-bright)" strokeDasharray="4 4" />
-              <Scatter isAnimationActive={false} data={rel} fill="var(--accent)" />
+              <Scatter isAnimationActive={false} data={rel} fill="var(--series)" />
             </ScatterChart>
           </ResponsiveContainer>
         </div>
