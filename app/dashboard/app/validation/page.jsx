@@ -4,7 +4,7 @@ import {
   Tooltip, ReferenceLine, Legend, CartesianGrid,
 } from "recharts";
 import { api, pct } from "@/lib/api";
-import { PageHead, Stat, Pill, VerdictBanner, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { PageHead, Stat, Pill, VerdictBanner, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip, ChartFrame } from "@/components/ui";
 import { validationVerdict } from "@/lib/verdicts";
 import { PrintButton, PrintHeader } from "@/components/Print";
 
@@ -20,6 +20,7 @@ export default function ValidationPage() {
   // reliability curve (challenger) — predicted vs observed, with diagonal
   const rel = ch.calibration.reliability.map((r) => ({ predicted: r.predicted, observed: r.observed }));
   const maxRel = Math.max(...rel.flatMap((r) => [r.predicted, r.observed]), 0.05);
+  const worstRel = rel.reduce((a, r) => (Math.abs(r.observed - r.predicted) > Math.abs(a.observed - a.predicted) ? r : a));
   // gains capture curve (challenger)
   const gains = ch.discrimination.gains.map((g) => ({
     band: g.band, capture: g.cum_capture_rate, lift: g.lift, defaultRate: g.default_rate,
@@ -89,6 +90,8 @@ export default function ValidationPage() {
       <div className="grid cols-2">
         <div className="card">
           <CardTitle info="calibration">Predicted vs actual default rate</CardTitle>
+          <ChartFrame summary={`${rel.length} score bands plotted as predicted against actual default rate. `
+            + `Largest gap: predicted ${pct(worstRel.predicted)}, actual ${pct(worstRel.observed)}.`}>
           <ResponsiveContainer width="100%" height={260}>
             <ScatterChart margin={{ left: 8, right: 12, top: 8 }}>
               <CartesianGrid stroke="var(--border)" />
@@ -101,9 +104,12 @@ export default function ValidationPage() {
               <Scatter isAnimationActive={false} data={rel} fill="var(--series)" />
             </ScatterChart>
           </ResponsiveContainer>
+          </ChartFrame>
         </div>
         <div className="card">
           <CardTitle info="gains">Defaults caught, riskiest loans first</CardTitle>
+          <ChartFrame summary={`Share of defaults caught when loans are ranked riskiest first: `
+            + `${pct(gains[0].capture, 0)} in the riskiest tenth, ${pct(gains[2].capture, 0)} in the riskiest three tenths.`}>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={gains} margin={{ left: 8, right: 12, top: 8 }}>
               <CartesianGrid stroke="var(--border)" />
@@ -114,6 +120,7 @@ export default function ValidationPage() {
                 name="cumulative defaults captured" />
             </LineChart>
           </ResponsiveContainer>
+          </ChartFrame>
         </div>
       </div>
     </>

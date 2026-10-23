@@ -61,9 +61,21 @@ export function CardTitle({ children, info }) {
   return <h3>{children}{info && <InfoTip k={info} />}</h3>;
 }
 
-/** Tables scroll sideways inside their card on narrow screens. */
+/** A chart with a one-sentence text equivalent (6.3.4). Screen readers get the
+ *  summary; the SVG internals (hundreds of unlabeled shapes) are hidden. */
+export function ChartFrame({ summary, children }) {
+  return (
+    <figure className="chart-frame">
+      <figcaption className="sr-only">{summary}</figcaption>
+      <div aria-hidden="true">{children}</div>
+    </figure>
+  );
+}
+
+/** Tables scroll sideways inside their card on narrow screens; tabIndex lets
+ *  keyboard users focus the region and scroll it with the arrow keys. */
 export function TableWrap({ children }) {
-  return <div className="table-wrap">{children}</div>;
+  return <div className="table-wrap" tabIndex={0}>{children}</div>;
 }
 
 /** Slider + exact number box (ROADMAP 6.2.1). `zones` colours the track by

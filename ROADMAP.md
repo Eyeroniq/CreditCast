@@ -112,7 +112,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.3.1 | Responsive / mobile layout | [x] | 2026-10-08 | No sideways scroll at 375 px on all 7 pages |
 | 6.3.2 | Light / dark theme toggle | [x] | 2026-10-09 | System/Light/Dark; all text ≥ 4.5:1; fixed a dark-theme contrast failure |
 | 6.3.3 | Loading, empty & error states | [x] | 2026-10-09 | Skeletons, typed friendly errors, Retry |
-| 6.3.4 | Accessibility (WCAG AA) | [~] | 2026-10-08 | Focus rings, ARIA on tooltips/sliders/nav, ✓/✗ icons, reduced motion; Lighthouse audit still to do |
+| 6.3.4 | Accessibility (WCAG AA) | [x] | 2026-10-23 | axe (Lighthouse's engine) gate in CI: 0 WCAG A/AA violations, 7 pages × 2 themes × 2 sizes; keyboard walkthrough test |
 | 6.3.5 | Component library migration | [ ] | | Part of 6.0 |
 | 6.3.6 | PDF downloads | [x] | 2026-10-22 | Decision letter (1 page), two reports (2 pages each); real PDFs checked |
 | 6.3.7 | Frontend tests (Vitest + Playwright) | [x] | 2026-10-22 | 21 component + 24 e2e tests (desktop + phone); new CI job |
@@ -1205,6 +1205,28 @@ API client `lib/api.js`.
   respects `prefers-reduced-motion`.
 - **Done when:** Lighthouse accessibility ≥ 90 on every page; keyboard-only
   walkthrough works.
+- **Result (2026-10-23):** `e2e/a11y.spec.mjs` runs axe-core
+  (`@axe-core/playwright` 4.13.0, the engine Lighthouse's accessibility score
+  is built on) against WCAG 2.0/2.1 A + AA on all 7 pages, in dark and light,
+  at desktop and phone sizes (28 scans), plus the open states (tour dialog,
+  compare card, phone menu). Any violation fails CI and is listed with the
+  elements involved. It found and we fixed:
+  - Score: the ⓘ button sat inside the SHAP `<summary>` (nested
+    interactive); moved into the panel.
+  - Quality: Recharts gives every scatter point `role="img"` with no label.
+    New `ChartFrame` (in `components/ui.jsx`) hides chart internals from
+    screen readers and gives a one-sentence text equivalent; used on both
+    Quality charts.
+  - Phones: sideways-scrolling tables weren't keyboard reachable;
+    `TableWrap` is now focusable (arrow keys scroll it).
+  - Keyboard walkthrough (new test) caught the slider focus ring being
+    invisible (a generic `input:focus` glow on a 6px track); range inputs now
+    get an outline plus a thumb halo.
+  The walkthrough: tab to the credit-score slider, press End to turn a
+  decline into an approval, then open Portfolio from the nav with Enter.
+  Lighthouse itself isn't added as a dependency: its automated accessibility
+  audits are axe rules, which this gate already runs on every page and state. Still open from the
+  original wish list: a "View as table" toggle on every chart.
 
 #### 6.3.5 Component library migration
 - Part of 6.0; finish by removing all inline `style={{...}}` blocks from

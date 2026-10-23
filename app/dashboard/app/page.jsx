@@ -239,8 +239,9 @@ function Result({ res, busy, whatif, pinState, onPin, onApply }) {
           </p>
         )}
         <details className="more">
-          <summary>Show detailed breakdown (SHAP)<InfoTip k="shap" /></summary>
-          <p className="small muted">Red bars raised the default risk; green bars lowered it.</p>
+          {/* No buttons inside <summary> (nested-interactive): the ⓘ sits in the panel. */}
+          <summary>Show detailed breakdown (SHAP)</summary>
+          <p className="small muted">Red bars raised the default risk; green bars lowered it.<InfoTip k="shap" /></p>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={drivers} layout="vertical" margin={{ left: 10, right: 16 }}>
               <XAxis type="number" stroke="var(--muted-2)" />
