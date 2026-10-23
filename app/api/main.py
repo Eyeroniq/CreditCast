@@ -39,7 +39,7 @@ from typing import Literal
 import pandas as pd
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from slowapi import Limiter
@@ -379,6 +379,36 @@ def agent_chat(request: Request, q: AgentQuery):
         raise HTTPException(503, str(e)) from e
     except Exception as e:
         raise _internal_error(request, "answering") from e
+
+
+@router.post("/agent/chat/stream", dependencies=[Depends(require_api_key)])
+@limiter.limit(LIMITS.agent_chat)
+def agent_chat_stream(request: Request, q: AgentQuery):
+    """Same as /agent/chat, streamed as server-sent events (6.2.8): `plan`,
+    then `agent_start` / `agent_done` per specialist, then `done` (the full
+    result) — or a single `error` event if something fails mid-answer."""
+    from creditcast.agents import llm, orchestrator
+    from creditcast.agents.llm import LLMNotConfigured
+
+    try:
+        llm.ensure_configured()  # a missing key is a plain 503, before streaming starts
+    except LLMNotConfigured as e:
+        raise HTTPException(503, str(e)) from e
+
+    def events():
+        try:
+            for ev in orchestrator.run_events(q.question):
+                yield f"data: {json.dumps(ev, default=str)}\n\n"
+        except Exception:
+            err = _internal_error(request, "answering")
+            yield f"data: {json.dumps({'type': 'error', 'detail': err.detail})}\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        # no proxy buffering (Caddy/nginx), so each event reaches the browser at once
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 # Register the API, then (in the container) serve the static Next.js export at /.

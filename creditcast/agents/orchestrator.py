@@ -9,6 +9,7 @@ returned for the cockpit to render.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 
 from creditcast.agents import llm
 from creditcast.agents.specialists import SPECIALISTS, run_specialist
@@ -62,12 +63,18 @@ def _compose(findings: list[dict]) -> str:
     return "\n\n".join(f"**{f['title']}**\n\n{f['text']}" for f in findings)
 
 
-def run(question: str) -> dict:
+def run_events(question: str) -> Iterator[dict]:
+    """The same flow as `run`, as progress events for a streamed answer (6.2.8):
+
+    plan -> (agent_start, agent_done with that specialist's section)* -> done.
+    `done` carries the full result, identical to what `run` returns.
+    """
     cfg = load_config()
     plan = _route(question, int(cfg.agents.max_specialists))
 
     if not plan["plan"]:
-        return {
+        yield {
+            "type": "done",
             "answer": plan.get(
                 "direct",
                 "I focus on this credit-risk platform — "
@@ -78,14 +85,38 @@ def run(question: str) -> dict:
             "trace": [],
             "agents": [],
         }
+        return
 
+    yield {
+        "type": "plan",
+        "agents": [
+            {"specialist": s["specialist"], "title": SPECIALISTS[s["specialist"]]["title"]}
+            for s in plan["plan"]
+        ],
+    }
     findings, charts, trace, agents = [], [], [], []
     for step in plan["plan"]:
+        title = SPECIALISTS[step["specialist"]]["title"]
+        yield {"type": "agent_start", "specialist": step["specialist"], "title": title}
         out = run_specialist(step["specialist"], step["task"])
         findings.append(out)
         charts.extend(out["charts"])
         agents.append({"specialist": out["specialist"], "title": out["title"]})
-        trace.extend({"agent": out["title"], **t} for t in out["trace"])
+        steps = [{"agent": out["title"], **t} for t in out["trace"]]
+        trace.extend(steps)
+        yield {
+            "type": "agent_done",
+            "specialist": out["specialist"],
+            "title": out["title"],
+            "text": out["text"],
+            "charts": out["charts"],
+            "trace": steps,
+        }
 
     answer = findings[0]["text"] if len(findings) == 1 else _compose(findings)
-    return {"answer": answer, "charts": charts, "trace": trace, "agents": agents}
+    yield {"type": "done", "answer": answer, "charts": charts, "trace": trace, "agents": agents}
+
+
+def run(question: str) -> dict:
+    *_, done = run_events(question)
+    return {k: v for k, v in done.items() if k != "type"}
