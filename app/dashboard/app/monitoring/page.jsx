@@ -1,7 +1,8 @@
 "use client";
 import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, ReferenceLine,
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, ReferenceLine, Brush,
 } from "recharts";
+import { useState } from "react";
 import { api } from "@/lib/api";
 import { PageHead, Stat, Pill, VerdictBanner, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
 import { monitoringVerdict } from "@/lib/verdicts";
@@ -10,6 +11,7 @@ import { featureLabel } from "@/lib/labels";
 const psiColor = (s) => (s === "stable" ? "var(--green)" : s === "watch" ? "var(--amber)" : "var(--red)");
 
 export default function MonitoringPage() {
+  const [zoom, setZoom] = useState(null);   // { startIndex, endIndex } of the brushed range (6.2.4)
   const v = useFetch(() => api.validation(), []);
   const m = useFetch(() => api.monitoring(), []);
   if (v.loading || m.loading) return (<><Head /><PageSkeleton stats={4} charts={1} table label="Loading stability metrics" /></>);
@@ -46,10 +48,18 @@ export default function MonitoringPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <CardTitle info="psi">Score shift by origination month</CardTitle>
-        <ResponsiveContainer width="100%" height={250}>
+        <div className="card-head">
+          <CardTitle info="psi">Score shift by origination month</CardTitle>
+          <span className="small muted no-print">
+            {zoom ? <>
+              {psiByVintage[zoom.startIndex].vintage} to {psiByVintage[zoom.endIndex].vintage}{" "}
+              <button type="button" className="link-btn" onClick={() => setZoom(null)}>Reset zoom</button>
+            </> : "Drag the handles under the chart to zoom"}
+          </span>
+        </div>
+        <ResponsiveContainer width="100%" height={290}>
           <BarChart data={psiByVintage} margin={{ left: 4, right: 8 }}>
-            <XAxis dataKey="vintage" stroke="var(--muted-2)" interval={2} angle={-30} textAnchor="end" height={50} />
+            <XAxis dataKey="vintage" stroke="var(--muted-2)" interval={zoom ? 0 : 2} angle={-30} textAnchor="end" height={50} />
             <YAxis stroke="var(--muted-2)" />
             <Tooltip formatter={(val) => val.toFixed(4)} />
             <ReferenceLine y={t.psi_watch} stroke="var(--amber)" strokeDasharray="4 4" label={{ value: "watch", fill: "var(--amber)", fontSize: 10, position: "right" }} />
@@ -57,6 +67,11 @@ export default function MonitoringPage() {
             <Bar isAnimationActive={false} dataKey="psi" radius={3}>
               {psiByVintage.map((d, i) => <Cell key={i} fill={psiColor(d.status)} />)}
             </Bar>
+            <Brush dataKey="vintage" height={22} travellerWidth={10} stroke="transparent"
+              tickFormatter={() => ""}
+              startIndex={zoom?.startIndex ?? 0} endIndex={zoom?.endIndex ?? psiByVintage.length - 1}
+              onChange={({ startIndex, endIndex }) => setZoom(
+                startIndex === 0 && endIndex === psiByVintage.length - 1 ? null : { startIndex, endIndex })} />
           </BarChart>
         </ResponsiveContainer>
       </div>

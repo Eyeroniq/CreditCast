@@ -125,3 +125,21 @@ for (const [path, title] of PAGES.filter(([p]) => !["/", "/glossary/"].includes(
     await expect(verdict).toHaveText(/\w.{20,}\./);
   });
 }
+
+test("dragging the drift chart's handle zooms in, and Reset zoom restores it", async ({ page, isMobile }) => {
+  test.skip(isMobile, "mouse drag; the phone run covers the page without it");
+  await page.goto("/monitoring/");
+  const handle = page.locator(".recharts-brush-traveller").first();
+  await handle.scrollIntoViewIfNeeded();
+  const bars = page.locator(".recharts-bar-rectangle");
+  const all = await bars.count();
+  const box = await handle.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 300, box.y + box.height / 2, { steps: 10 });
+  await page.mouse.up();
+  await expect(page.getByRole("button", { name: "Reset zoom" })).toBeVisible();
+  expect(await bars.count()).toBeLessThan(all);
+  await page.getByRole("button", { name: "Reset zoom" }).click();
+  await expect(bars).toHaveCount(all);
+});

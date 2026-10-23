@@ -104,7 +104,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.2.1 | Live scoring with sliders | [x] | 2026-10-08 | |
 | 6.2.2 | What-if / counterfactual panel | [x] | 2026-10-09 | `POST /api/whatif`, ~50 ms |
 | 6.2.3 | Compare applicants | [x] | 2026-10-22 | Up to 3 pins, best/worst per row highlighted; client-side only |
-| 6.2.4 | Clickable drill-down charts | [~] | 2026-10-09 | Portfolio charts filter the table; Monitoring brush/zoom still open |
+| 6.2.4 | Clickable drill-down charts | [x] | 2026-10-23 | Portfolio charts filter the table; Monitoring drift chart zooms with a brush |
 | 6.2.5 | Interactive threshold slider | [x] | 2026-10-09 | Precomputed 99-point curve; no API calls while scrubbing |
 | 6.2.6 | Searchable loan table + CSV | [x] | 2026-10-09 | Client-side, 1,000 rows, no new dependency |
 | 6.2.7 | Stress-test playground | [ ] | | Depends on 5.2 |
@@ -1069,6 +1069,13 @@ API client `lib/api.js`.
   page scrolls to the table; active filters show as removable chips with
   "Clear all". Verified: clicking BB → 389 BB loans. Every chart already had
   hover tooltips. Still open: brush/zoom on the Monitoring time series.
+- **Result (2026-10-23, complete):** the Stability page's "Score shift by
+  origination month" chart has a Recharts brush under it: drag either handle
+  (or the middle) to zoom into a range of months. The title row then shows
+  the range ("2020-05 to 2021-06") and a "Reset zoom" link, and every month
+  gets an axis label. The brush is styled in CSS (SVG fill attributes can't
+  read theme variables) and hidden when printing. Playwright drags the
+  handle, checks fewer bars show, then resets.
 
 #### 6.2.5 Interactive threshold slider
 - **Backend:** `GET /api/threshold-sim?thr=` → for the scored OOT set returns
