@@ -98,7 +98,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.0 | UI foundation (Tailwind/shadcn, tokens, layout) | [~] | 2026-10-08 | Shared components + responsive shell done on the existing CSS; Tailwind/shadcn migration deferred (see 6.0 result) |
 | 6.1.1 | Plain-language labels | [x] | 2026-10-08 | |
 | 6.1.2 | Tooltips + Glossary page | [x] | 2026-10-08 | 25 terms |
-| 6.1.3 | Page verdict summaries | [ ] | | |
+| 6.1.3 | Page verdict summaries | [x] | 2026-10-23 | 5 report pages; limits read from the API, never hardcoded |
 | 6.1.4 | Guided tour | [x] | 2026-10-09 | 8 steps across 4 pages; built in-house (no library) |
 | 6.1.5 | Human-friendly decision card | [x] | 2026-10-08 | Done with 6.2.1 |
 | 6.2.1 | Live scoring with sliders | [x] | 2026-10-08 | |
@@ -929,6 +929,27 @@ API client `lib/api.js`.
     ≥ 0.80)."*
 - Status chips: ✓ green / ⚠ amber / ✗ red, always with icon + text.
 - **Done when:** all six pages show a one-sentence verdict.
+- **Result (2026-10-23):** `lib/verdicts.js` holds one pure rule per page and
+  `VerdictBanner` (in `components/ui.jsx`) shows it under the page heading:
+  ✓ green / ⚠ amber / ✗ red / ℹ blue, always icon + text, `role="status"`.
+  Every limit is read from the API response (validation thresholds, PSI
+  watch/unstable levels, the four-fifths floor), so the banner can't disagree
+  with the CI gates. On the current synthetic data:
+  - Quality: "✓ Model quality is good: Gini 0.43 (min 0.35), worst
+    calibration error 1.8% (max 3%)."
+  - Stability: "✓ No drift: the score and all 13 inputs match training
+    (largest shift PSI 0.03, watch level 0.1)." With alerts it names the
+    drifting inputs in plain words; red if any is unstable.
+  - Fairness: "⚠ Fairness review needed: Black applicants are approved at
+    0.799× the rate of White applicants (rule: at least 0.8)." The ratio uses
+    3 decimals so 0.7986 never reads as a passing "0.80".
+  - Portfolio (ℹ, informational): approval rate and expected loss as a share
+    of the amount lent.
+  - Copilot: online, or offline because the server has no LLM key.
+  - Score and Glossary have no banner: the decision card is the Score page's
+    verdict, and the Glossary is reference.
+  Tests: 10 Vitest cases for the rules (pass/warn/fail, plain-word feature
+  names, no rounding up to the floor) and a Playwright check on all 5 pages.
 
 #### 6.1.4 Guided tour
 - `react-joyride` (or `driver.js`) tour across the 6 screens, ~8 steps;

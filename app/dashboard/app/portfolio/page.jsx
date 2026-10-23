@@ -4,7 +4,8 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from "recharts";
 import { api, pct, money, moneyShort, num } from "@/lib/api";
-import { PageHead, Stat, useFetch, PageSkeleton, ErrorState, CardTitle } from "@/components/ui";
+import { PageHead, Stat, VerdictBanner, useFetch, PageSkeleton, ErrorState, CardTitle } from "@/components/ui";
+import { portfolioVerdict } from "@/lib/verdicts";
 import LoanTable, { EMPTY_FILTERS } from "@/components/LoanTable";
 
 const BAND_COLOR = { AAA: "var(--green)", AA: "var(--green)", A: "var(--green)", BBB: "var(--series)", BB: "var(--amber)", B: "var(--red)" };
@@ -33,6 +34,7 @@ export default function PortfolioPage() {
   return (
     <>
       <Head />
+      <VerdictBanner verdict={portfolioVerdict(data)} />
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Loans in the test book" info="oot" value={num(data.n_loans)} />
         <Stat label="Expected loss" info="el" value={moneyShort(data.portfolio_el)}

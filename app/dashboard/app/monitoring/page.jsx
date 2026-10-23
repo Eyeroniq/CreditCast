@@ -3,7 +3,8 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, ReferenceLine,
 } from "recharts";
 import { api } from "@/lib/api";
-import { PageHead, Stat, Pill, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { PageHead, Stat, Pill, VerdictBanner, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { monitoringVerdict } from "@/lib/verdicts";
 import { featureLabel } from "@/lib/labels";
 
 const psiColor = (s) => (s === "stable" ? "var(--green)" : s === "watch" ? "var(--amber)" : "var(--red)");
@@ -25,6 +26,7 @@ export default function MonitoringPage() {
   return (
     <>
       <Head />
+      <VerdictBanner verdict={monitoringVerdict(mon, v.data)} />
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Largest score shift (PSI)" info="psi" value={v.data.stability.max_score_psi.toFixed(4)}
           tone={v.data.stability.max_score_psi <= t.psi_watch ? "ok" : v.data.stability.max_score_psi <= t.psi_unstable ? "warn" : "bad"}

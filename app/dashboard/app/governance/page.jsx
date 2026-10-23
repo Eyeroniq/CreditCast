@@ -3,7 +3,8 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, ReferenceLine,
 } from "recharts";
 import { api, pct } from "@/lib/api";
-import { PageHead, Stat, Pill, Band, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { PageHead, Stat, Pill, VerdictBanner, Band, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { governanceVerdict } from "@/lib/verdicts";
 import { PrintButton, PrintHeader } from "@/components/Print";
 import { featureLabel } from "@/lib/labels";
 import ThresholdExplorer from "@/components/ThresholdExplorer";
@@ -22,6 +23,7 @@ export default function GovernancePage() {
     <>
       <PrintHeader title="Fairness and explanations report" stamp={data.stamp} />
       <Head />
+      <VerdictBanner verdict={governanceVerdict(data)} />
       <div className="page-actions"><PrintButton label="⤓ Download report (PDF)" filename="CreditCast fairness and explanations report" /></div>
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Champion model"
