@@ -103,7 +103,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.1.5 | Human-friendly decision card | [x] | 2026-10-08 | Done with 6.2.1 |
 | 6.2.1 | Live scoring with sliders | [x] | 2026-10-08 | |
 | 6.2.2 | What-if / counterfactual panel | [x] | 2026-10-09 | `POST /api/whatif`, ~50 ms |
-| 6.2.3 | Compare applicants | [ ] | | |
+| 6.2.3 | Compare applicants | [x] | 2026-10-22 | Up to 3 pins, best/worst per row highlighted; client-side only |
 | 6.2.4 | Clickable drill-down charts | [~] | 2026-10-09 | Portfolio charts filter the table; Monitoring brush/zoom still open |
 | 6.2.5 | Interactive threshold slider | [x] | 2026-10-09 | Precomputed 99-point curve; no API calls while scrubbing |
 | 6.2.6 | Searchable loan table + CSV | [x] | 2026-10-09 | Client-side, 1,000 rows, no new dependency |
@@ -1022,6 +1022,16 @@ API client `lib/api.js`.
   decision, PD, score, grade, EL, top 3 reasons side by side; differences
   highlighted.
 - **Done when:** compare works with presets and custom inputs.
+- **Result (2026-10-22):** "⊕ Pin to compare" on the decision card snapshots
+  the exact inputs and result behind it (pinning waits for the latest score,
+  and the same applicant can't be pinned twice). A "Compare applicants" card
+  under the form shows up to 3 pins side by side: decision, default risk,
+  model score, grade, expected loss, the five main inputs and the top 3
+  reasons. When pins differ, each row's best value is green (with a dot) and
+  the worst red. Each column can be loaded back into the form or unpinned;
+  "Clear all" empties it. Presets keep their names, custom inputs become
+  "Applicant N". No API changes. Tests: 5 Vitest (row highlighting, render,
+  unpin) and 1 Playwright flow (pin Prime + High-risk, load, clear).
 
 #### 6.2.4 Clickable drill-down charts
 - Portfolio: click a risk band bar or EL-by-band bar → filters the loan table
