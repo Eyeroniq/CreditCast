@@ -196,6 +196,8 @@ a { color: inherit; text-decoration: none; }
 
 /* semantic */
 .ok { color: var(--green); } .warn { color: var(--amber); } .bad { color: var(--red); }
+.chart-frame { margin: 0; }
+
 /* card title with a note or control on the right (6.2.4 zoom) */
 .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 16px; flex-wrap: wrap; }
 /* SVG fill attributes can't read CSS variables, so the brush is styled here. */
@@ -312,6 +314,11 @@ input[type="range"]::-moz-range-thumb {
   width: 14px; height: 14px; border-radius: 50%; background: var(--text);
   border: 3px solid var(--bg);
 }
+/* Keyboard focus: a clear ring around the track and a halo on the thumb (the
+   generic input:focus glow is invisible on a 6px track). */
+input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; box-shadow: none; }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--accent-dim), 0 0 0 1px var(--accent); }
+input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px var(--accent-dim); }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 button.chip {
   background: var(--panel); color: var(--muted); border: 1px solid var(--glass-edge);
