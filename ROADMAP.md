@@ -108,7 +108,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.2.5 | Interactive threshold slider | [x] | 2026-10-09 | Precomputed 99-point curve; no API calls while scrubbing |
 | 6.2.6 | Searchable loan table + CSV | [x] | 2026-10-09 | Client-side, 1,000 rows, no new dependency |
 | 6.2.7 | Stress-test playground | [ ] | | Depends on 5.2 |
-| 6.2.8 | Better Copilot chat | [ ] | | |
+| 6.2.8 | Better Copilot chat | [x] | 2026-10-23 | SSE progress stream, history, copy, trace, rate-limit countdown |
 | 6.3.1 | Responsive / mobile layout | [x] | 2026-10-08 | No sideways scroll at 375 px on all 7 pages |
 | 6.3.2 | Light / dark theme toggle | [x] | 2026-10-09 | System/Light/Dark; all text ≥ 4.5:1; fixed a dark-theme contrast failure |
 | 6.3.3 | Loading, empty & error states | [x] | 2026-10-09 | Skeletons, typed friendly errors, Retry |
@@ -1140,6 +1140,32 @@ API client `lib/api.js`.
 - Friendly states: LLM key missing → explain + link to setup; rate-limited
   (3.1) → countdown.
 - **Done when:** first question is one click away; answers stream.
+- **Result (2026-10-23):**
+  - **Backend:** `orchestrator.run_events()` yields `plan` → per specialist
+    `agent_start` / `agent_done` (with that specialist's section, charts and
+    trace) → `done` (the full result; `run()` now just takes the last event).
+    `POST /api/agent/chat/stream` sends these as server-sent events, with the
+    same validation and rate limit as `/agent/chat`. A missing key is a plain
+    503 before streaming starts; a failure mid-answer is one `error` event
+    carrying the request id (no internals). `X-Accel-Buffering: no` so proxies
+    don't hold events back.
+  - **Streaming granularity:** progress and each specialist's section stream
+    as they finish; tokens within a section don't. Each section comes from a
+    forced tool call, and the free-tier Groq models aren't streamed token by
+    token here, which keeps the grounding logic unchanged.
+  - **UI:** six suggested questions (first answer is one click); live rows
+    ("Fairness Officer is calling tools…" → ✓); sections fade in as they
+    arrive; "How I got this · N tool calls" (collapsible trace); "Copy
+    answer"; history in `localStorage` (try/catch, last 30 messages) with
+    "＋ New chat"; a 429 shows the API's message plus a countdown from
+    `Retry-After` that blocks asking until it ends; no key → explanation with
+    a link to console.groq.com. A stream that closes early says the answer
+    was cut off instead of spinning.
+  - **Tests:** pytest for the event order and that `run()` matches the final
+    event, the 503 / SSE / mid-stream error paths, and input bounds;
+    Playwright (with the agent endpoints mocked, the real page and stream
+    parser) for a streamed answer with trace, an axe scan of it, history
+    after reload, New chat, the rate-limit countdown and the no-key state.
 
 ### 6.3 Look & feel, accessibility, quality
 

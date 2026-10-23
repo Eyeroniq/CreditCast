@@ -5,32 +5,50 @@ import { PageHead, Pill, VerdictBanner } from "@/components/ui";
 import { copilotVerdict } from "@/lib/verdicts";
 import AgentChart from "@/components/AgentChart";
 
+// First question is one click away (6.2.8).
 const SUGGESTIONS = [
-  "Summarize the portfolio's risk and Expected Loss",
-  "Which FICO bands default the most?",
+  "Is the model fair?",
+  "Which segment drives most loss?",
+  "Why would FICO 645, DTI 47%, LTV 94%, investment property, cash-out be declined?",
   "Is the model valid? Show Gini and calibration.",
-  "Is the model fair across racial groups, and how would we mitigate it?",
-  "Score a borrower: FICO 650, DTI 46, LTV 93, investment property, cash-out",
   "Why is the 2021 vintage riskier, and is the model still stable?",
+  "Summarize the portfolio's risk and expected loss",
 ];
+
+// Chat history survives a reload; storage can be blocked, so never rely on it.
+const HISTORY_KEY = "cc-copilot-history";
+const MAX_SAVED = 30;
+function loadHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(saved) ? saved : [];
+  } catch { return []; }
+}
+function saveHistory(messages) {
+  try {
+    const done = messages.filter((m) => !m.pending);
+    if (done.length) localStorage.setItem(HISTORY_KEY, JSON.stringify(done.slice(-MAX_SAVED)));
+    else localStorage.removeItem(HISTORY_KEY);
+  } catch { /* storage blocked: history just isn't kept */ }
+}
 
 // minimal markdown: **bold**, bullets, paragraphs
 function RichText({ text }) {
   const blocks = (text || "").split("\n");
   return (
-    <div>
+    <div className="rich">
       {blocks.map((ln, i) => {
         const bullet = /^\s*[-*]\s+/.test(ln);
         const html = ln.replace(/^\s*[-*]\s+/, "")
           .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
-          .replace(/`(.+?)`/g, '<code>$1</code>');
-        if (!ln.trim()) return <div key={i} style={{ height: 6 }} />;
+          .replace(/`(.+?)`/g, "<code>$1</code>");
+        if (!ln.trim()) return <div key={i} className="rich-gap" />;
         return bullet
-          ? <div key={i} style={{ display: "flex", gap: 8 }}>
-              <span className="accent">•</span>
+          ? <div key={i} className="rich-bullet">
+              <span className="accent" aria-hidden="true">•</span>
               <span dangerouslySetInnerHTML={{ __html: html }} />
             </div>
-          : <p key={i} style={{ margin: "4px 0" }} dangerouslySetInnerHTML={{ __html: html }} />;
+          : <p key={i} dangerouslySetInnerHTML={{ __html: html }} />;
       })}
     </div>
   );
@@ -38,7 +56,7 @@ function RichText({ text }) {
 
 function AgentChips({ team, active }) {
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div className="chips">
       {team.map((a) => {
         const on = active?.some((x) => x.specialist === a.id);
         return (
@@ -50,26 +68,100 @@ function AgentChips({ team, active }) {
   );
 }
 
+/** "How I got this": which specialist called which tool, with what. */
 function Trace({ trace }) {
-  const [open, setOpen] = useState(false);
   if (!trace?.length) return null;
   return (
-    <div style={{ marginTop: 8 }}>
-      <button className="pill neutral" style={{ cursor: "pointer" }} onClick={() => setOpen(!open)}>
-        {open ? "▾" : "▸"} agent trace · {trace.length} tool call{trace.length > 1 ? "s" : ""}
-      </button>
-      {open && (
-        <div className="mono small" style={{ marginTop: 8, borderLeft: "2px solid var(--border-bright)", paddingLeft: 12 }}>
-          {trace.map((t, i) => (
-            <div key={i} style={{ marginBottom: 4 }}>
-              <span className="accent">{t.agent}</span>
-              <span className="muted"> → </span>{t.tool}
-              <span className="muted">({Object.entries(t.args || {}).map(([k, v]) => `${k}=${v}`).join(", ")})</span>
-              {t.chart && <span className="ok"> ▣ chart</span>}
-            </div>
-          ))}
+    <details className="more trace">
+      <summary>How I got this · {trace.length} tool call{trace.length > 1 ? "s" : ""}</summary>
+      <ol className="trace-list mono small">
+        {trace.map((t, i) => (
+          <li key={i}>
+            <span className="accent">{t.agent}</span>
+            <span className="muted"> → </span>{t.tool}
+            <span className="muted">({Object.entries(t.args || {}).map(([k, v]) => `${k}=${v}`).join(", ")})</span>
+            {t.chart && <span className="ok"> ▣ chart</span>}
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard blocked: nothing to do */ }
+  };
+  return (
+    <button type="button" className="link-btn" onClick={copy} aria-live="polite">
+      {copied ? "✓ Copied" : "Copy answer"}
+    </button>
+  );
+}
+
+/** Live progress while the specialists work: one row per agent. */
+function Progress({ steps }) {
+  if (!steps.length) return <p className="small muted progress-row"><span className="spinner" aria-hidden="true" />Routing your question…</p>;
+  return (
+    <ul className="progress-list small">
+      {steps.map((s) => (
+        <li key={s.specialist} className={s.status}>
+          {s.status === "done" ? <span className="ok" aria-hidden="true">✓</span>
+            : s.status === "working" ? <span className="spinner" aria-hidden="true" />
+            : <span className="muted" aria-hidden="true">○</span>}
+          {s.title}{s.status === "working" ? " is calling tools…" : s.status === "done" ? " finished" : " (queued)"}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Counts down a rate-limit wait, then calls onDone. */
+function Countdown({ until, onDone }) {
+  const [left, setLeft] = useState(Math.max(0, Math.ceil((until - Date.now()) / 1000)));
+  useEffect(() => {
+    const t = setInterval(() => {
+      const s = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      setLeft(s);
+      if (s === 0) { clearInterval(t); onDone(); }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [until, onDone]);
+  return <span className="mono">{left}s</span>;
+}
+
+function Message({ m, team }) {
+  if (m.role === "user") {
+    return <div className="msg user"><div className="bubble">{m.text}</div></div>;
+  }
+  return (
+    <div className="msg assistant" aria-busy={m.pending || undefined}>
+      {m.agents?.length > 0 && <AgentChips team={team} active={m.agents} />}
+      {m.pending && <Progress steps={m.steps} />}
+      {m.error ? (
+        <div className="bad"><RichText text={m.text} /></div>
+      ) : m.pending ? (
+        m.sections.map((s) => (
+          <div key={s.title} className="section-in">
+            {m.steps.length > 1 && <p><b>{s.title}</b></p>}
+            <RichText text={s.text} />
+          </div>
+        ))
+      ) : (
+        <RichText text={m.text} />
+      )}
+      {m.charts?.map((c) => <AgentChart key={c.id} spec={c} />)}
+      {!m.pending && !m.error && (
+        <div className="msg-actions">
+          <CopyButton text={m.text} />
         </div>
       )}
+      {!m.pending && <Trace trace={m.trace} />}
     </div>
   );
 }
@@ -81,28 +173,72 @@ export default function CopilotPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(null);   // epoch ms until the rate limit lifts
   const endRef = useRef(null);
+  const inflight = useRef(null);
 
   useEffect(() => {
+    setMessages(loadHistory());
     api.agentTeam().then((t) => { setTeam(t.agents); setReady(t.llm_ready); setModel(t.model); })
       .catch(() => setReady(false));
+    return () => inflight.current?.abort();
   }, []);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
+  useEffect(() => { saveHistory(messages); }, [messages]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [messages]);
+
+  // Update the in-progress answer (always the last message); a no-op once it's
+  // finished or the chat was cleared, so late events can't land anywhere else.
+  const patchLast = (fn) => setMessages((ms) => {
+    const last = ms[ms.length - 1];
+    return last?.pending ? [...ms.slice(0, -1), fn(last)] : ms;
+  });
 
   const ask = async (q) => {
     const question = (q ?? input).trim();
-    if (!question || busy) return;
+    if (!question || busy || cooldown) return;
     setInput("");
-    setMessages((m) => [...m, { role: "user", text: question }]);
+    setMessages((ms) => [...ms, { role: "user", text: question },
+      { role: "assistant", pending: true, steps: [], sections: [], charts: [] }]);
     setBusy(true);
+    const ctrl = new AbortController();
+    inflight.current = ctrl;
     try {
-      const r = await api.agentChat(question);
-      setMessages((m) => [...m, { role: "assistant", text: r.answer,
-        agents: r.agents, charts: r.charts, trace: r.trace }]);
+      await api.agentChatStream(question, {
+        signal: ctrl.signal,
+        onEvent: (ev) => {
+          if (ev.type === "plan") {
+            patchLast((m) => ({ ...m, steps: ev.agents.map((a) => ({ ...a, status: "queued" })) }));
+          } else if (ev.type === "agent_start") {
+            patchLast((m) => ({ ...m, steps: m.steps.map((s) =>
+              s.specialist === ev.specialist ? { ...s, status: "working" } : s) }));
+          } else if (ev.type === "agent_done") {
+            patchLast((m) => ({ ...m,
+              steps: m.steps.map((s) => (s.specialist === ev.specialist ? { ...s, status: "done" } : s)),
+              sections: [...m.sections, { title: ev.title, text: ev.text }],
+              charts: [...m.charts, ...ev.charts] }));
+          } else if (ev.type === "done") {
+            patchLast(() => ({ role: "assistant", text: ev.answer, agents: ev.agents,
+              charts: ev.charts, trace: ev.trace }));
+          } else if (ev.type === "error") {
+            patchLast(() => ({ role: "assistant", error: true, text: ev.detail }));
+          }
+        },
+      });
+      // The connection closed without a final event (e.g. a proxy timeout).
+      patchLast(() => ({ role: "assistant", error: true,
+        text: "The answer was cut off before it finished. Please ask again." }));
     } catch (e) {
-      setMessages((m) => [...m, { role: "assistant", error: true, text: e.message }]);
-    } finally { setBusy(false); }
+      if (e.name === "AbortError") return;
+      if (e.kind === "busy") setCooldown(Date.now() + (e.retryAfter || 60) * 1000);
+      if (e.kind === "unavailable") setReady(false);
+      patchLast(() => ({ role: "assistant", error: true, text: e.message }));
+    } finally {
+      if (inflight.current === ctrl) setBusy(false);
+    }
   };
+
+  const newChat = () => { inflight.current?.abort(); setBusy(false); setMessages([]); };
+  const blocked = busy || ready === false || Boolean(cooldown);
 
   return (
     <>
@@ -110,9 +246,9 @@ export default function CopilotPage() {
         subtitle="Ask the specialist agent team — they call the real PD/LGD/EL tools and answer with live charts." />
       <VerdictBanner verdict={copilotVerdict(ready)} />
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <h3 style={{ margin: 0 }}>Agent team</h3>
+      <div className="card copilot-team">
+        <div className="card-head">
+          <h3>Agent team</h3>
           <span className="small mono muted">
             {ready === null ? "…" : ready
               ? <>orchestrator · {model} <Pill status={true}>online</Pill></>
@@ -121,65 +257,53 @@ export default function CopilotPage() {
         </div>
         <AgentChips team={team} active={null} />
         {ready === false && (
-          <p className="small muted" style={{ marginTop: 10 }}>
-            Set a free <span className="mono">GROQ_API_KEY</span> (console.groq.com) on the
-            server to enable the agents. The charts and metrics on the other screens work without it.
+          <p className="small muted">
+            To switch the agents on, create a free key at{" "}
+            <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com</a>{" "}
+            and set <span className="mono">GROQ_API_KEY</span> on the server. The charts and metrics
+            on every other page work without it.
           </p>
         )}
       </div>
 
-      <div className="card" style={{ minHeight: 320 }}>
+      <div className="card chat">
+        <div className="card-head">
+          <h3>Conversation</h3>
+          {messages.length > 0 && (
+            <button type="button" className="chip" onClick={newChat}>＋ New chat</button>
+          )}
+        </div>
         {messages.length === 0 && (
-          <div className="muted" style={{ marginBottom: 14 }}>
-            <p style={{ marginTop: 0 }}>Try one of these — each answer is produced by the agents calling real tools, with charts:</p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="muted">
+            <p>Try one of these — each answer comes from the agents calling real tools, with charts:</p>
+            <div className="chips" role="group" aria-label="Suggested questions">
               {SUGGESTIONS.map((s) => (
-                <button key={s} className="pill neutral" style={{ cursor: "pointer" }}
-                  onClick={() => ask(s)} disabled={busy}>{s}</button>
+                <button key={s} type="button" className="chip" onClick={() => ask(s)} disabled={blocked}>{s}</button>
               ))}
             </div>
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div key={i} style={{ marginBottom: 18 }}>
-            {m.role === "user" ? (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <div className="card" style={{ background: "var(--accent-dim)", padding: "8px 14px", maxWidth: "80%" }}>
-                  {m.text}
-                </div>
-              </div>
-            ) : (
-              <div className="card" style={{ background: "var(--panel-2)" }}>
-                {m.agents?.length > 0 && (
-                  <div style={{ marginBottom: 10 }}><AgentChips team={team} active={m.agents} /></div>
-                )}
-                <div className={m.error ? "bad" : ""}><RichText text={m.text} /></div>
-                {m.charts?.map((c) => <AgentChart key={c.id} spec={c} />)}
-                <Trace trace={m.trace} />
-              </div>
-            )}
-          </div>
-        ))}
-
-        {busy && (
-          <div className="card" style={{ background: "var(--panel-2)" }}>
-            <span className="mono small accent">agents analyzing</span>
-            <span className="mono small muted dots"> · routing → calling tools → synthesizing…</span>
-          </div>
+        <div className="messages" aria-live="polite">
+          {messages.map((m, i) => <Message key={i} m={m} team={team} />)}
+        </div>
+        {cooldown && (
+          <p className="small warn" role="status">
+            Too many questions in a short time. You can ask again in{" "}
+            <Countdown until={cooldown} onDone={() => setCooldown(null)} />.
+          </p>
         )}
         <div ref={endRef} />
       </div>
 
-      <div data-tour="copilot" style={{ display: "flex", gap: 10, marginTop: 14 }}>
-        <input style={{ flex: 1, fontFamily: "var(--sans)" }}
-          placeholder="Ask the risk team… (e.g. what drives Expected Loss in the book?)"
-          value={input} onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && ask()} disabled={busy || ready === false} />
-        <button className="primary" onClick={() => ask()} disabled={busy || ready === false}>
+      <form data-tour="copilot" className="ask-row" onSubmit={(e) => { e.preventDefault(); ask(); }}>
+        <label htmlFor="copilot-q" className="sr-only">Ask the risk team</label>
+        <input id="copilot-q" placeholder="Ask the risk team… (e.g. what drives expected loss in the book?)"
+          value={input} onChange={(e) => setInput(e.target.value)} disabled={blocked} />
+        <button type="submit" className="primary" disabled={blocked || !input.trim()}>
           {busy ? "…" : "Ask"}
         </button>
-      </div>
+      </form>
     </>
   );
 }

@@ -18,13 +18,21 @@ class LLMNotConfigured(RuntimeError):
     pass
 
 
+_NO_KEY = (
+    "GROQ_API_KEY is not set. Get a free key at https://console.groq.com "
+    "and export GROQ_API_KEY=... on the server."
+)
+
+
+def ensure_configured() -> None:
+    """Fail fast (e.g. before a streamed response starts) when there's no key."""
+    if not os.environ.get("GROQ_API_KEY"):
+        raise LLMNotConfigured(_NO_KEY)
+
+
 def _client():
-    key = os.environ.get("GROQ_API_KEY")
-    if not key:
-        raise LLMNotConfigured(
-            "GROQ_API_KEY is not set. Get a free key at https://console.groq.com "
-            "and export GROQ_API_KEY=... (or add it as a Space secret)."
-        )
+    ensure_configured()
+    key = os.environ["GROQ_API_KEY"]
     from groq import Groq
 
     return Groq(api_key=key)

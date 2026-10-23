@@ -6,10 +6,10 @@ export const API = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
 /** An API failure the UI can explain (ROADMAP 6.3.3). `kind` drives the
  *  friendly title; `message` is safe to show; `detail` is the raw server text. */
 export class ApiError extends Error {
-  constructor(message, { status = 0, kind = "error", detail = null, requestId = null } = {}) {
+  constructor(message, { status = 0, kind = "error", detail = null, requestId = null, retryAfter = null } = {}) {
     super(message);
     this.name = "ApiError";
-    Object.assign(this, { status, kind, detail, requestId });
+    Object.assign(this, { status, kind, detail, requestId, retryAfter });
   }
 }
 
@@ -41,7 +41,8 @@ async function errorFrom(r) {
   const kind = KIND(r.status);
   const message = kind === "missing" || !detail ? FALLBACK[kind] : detail;
   return new ApiError(message, { status: r.status, kind, detail,
-                                 requestId: r.headers.get("x-request-id") });
+                                 requestId: r.headers.get("x-request-id"),
+                                 retryAfter: Number(r.headers.get("retry-after")) || null });
 }
 
 /** fetch() that turns network failures into a friendly "offline" ApiError. */
@@ -77,6 +78,32 @@ export const api = {
     });
     if (!r.ok) throw await errorFrom(r);
     return r.json();
+  },
+  /** Streamed Copilot answer (6.2.8): calls onEvent for each server-sent
+   *  event (plan, agent_start, agent_done, done, error) as it arrives. */
+  agentChatStream: async (question, { onEvent, signal } = {}) => {
+    const r = await request(`${API}/agent/chat/stream`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "text/event-stream" },
+      body: JSON.stringify({ question }),
+      signal,
+    });
+    if (!r.ok) throw await errorFrom(r);
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let cut;
+      while ((cut = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, cut);
+        buf = buf.slice(cut + 2);
+        const data = chunk.split("\n").filter((l) => l.startsWith("data: ")).map((l) => l.slice(6)).join("\n");
+        if (data) onEvent?.(JSON.parse(data));
+      }
+    }
   },
   // `signal` lets live scoring cancel a request that a newer slider move replaced.
   whatif: async (applicant, { signal } = {}) => {

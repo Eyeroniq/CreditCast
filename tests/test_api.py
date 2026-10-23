@@ -278,3 +278,59 @@ def test_whatif_endpoint(client):
 
 def test_whatif_validates_input(client):
     assert client.post("/api/whatif", json={**GOOD, "dti": -5}).status_code == 422
+
+
+# ---- 6.2.8 streamed Copilot answers ---------------------------------------------
+def _sse(r):
+    import json as _json
+
+    return [_json.loads(line[6:]) for line in r.text.splitlines() if line.startswith("data: ")]
+
+
+def test_stream_without_llm_key_is_a_plain_503(client, monkeypatch):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    r = client.post("/api/agent/chat/stream", json={"question": "Is the model fair?"})
+    assert r.status_code == 503
+    assert "GROQ_API_KEY" in r.json()["detail"]
+
+
+def test_stream_sends_progress_events_then_done(client, monkeypatch):
+    from creditcast.agents import orchestrator
+
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    events = [
+        {"type": "plan", "agents": [{"specialist": "fairness", "title": "Fairness Auditor"}]},
+        {"type": "agent_start", "specialist": "fairness", "title": "Fairness Auditor"},
+        {
+            "type": "agent_done",
+            "specialist": "fairness",
+            "title": "Fairness Auditor",
+            "text": "Approval ratio 0.80.",
+            "charts": [],
+            "trace": [],
+        },
+        {"type": "done", "answer": "Approval ratio 0.80.", "charts": [], "trace": [], "agents": []},
+    ]
+    monkeypatch.setattr(orchestrator, "run_events", lambda q: iter(events))
+    r = client.post("/api/agent/chat/stream", json={"question": "Is the model fair?"})
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/event-stream")
+    assert _sse(r) == events
+
+
+def test_stream_failure_mid_answer_is_an_error_event_with_request_id(client, monkeypatch):
+    from creditcast.agents import orchestrator
+
+    def broken(q):
+        yield {"type": "plan", "agents": []}
+        raise RuntimeError("tool exploded")
+
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(orchestrator, "run_events", broken)
+    got = _sse(client.post("/api/agent/chat/stream", json={"question": "Is the model fair?"}))
+    assert [e["type"] for e in got] == ["plan", "error"]
+    assert "request id" in got[1]["detail"] and "exploded" not in got[1]["detail"]
+
+
+def test_stream_question_length_is_bounded(client):
+    assert client.post("/api/agent/chat/stream", json={"question": ""}).status_code == 422

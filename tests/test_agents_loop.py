@@ -163,3 +163,32 @@ def test_rate_limit_falls_back_to_the_lighter_model(monkeypatch):
     out = llm.complete([{"role": "user", "content": "hi"}])
     assert used == ["big-model", llm.FALLBACK_MODEL]
     assert out.choices[0].message.content == "from fallback"
+
+
+@needs_artifacts
+def test_run_events_streams_progress_then_the_same_result_as_run(monkeypatch):
+    def script():
+        return Script(
+            reply(json.dumps({"plan": [{"specialist": "analyst", "task": "Summarize the book"}]})),
+            reply(tool="portfolio_summary"),
+            reply("Expected loss is concentrated in grades BB and B."),
+        )
+
+    monkeypatch.setattr(llm, "complete", script())
+    events = list(orchestrator.run_events("How risky is the portfolio?"))
+    assert [e["type"] for e in events] == ["plan", "agent_start", "agent_done", "done"]
+    assert events[0]["agents"] == [{"specialist": "analyst", "title": "Portfolio Analyst"}]
+    assert "grades BB and B" in events[2]["text"] and events[2]["charts"]
+
+    monkeypatch.setattr(llm, "complete", script())
+    done, out = events[-1], orchestrator.run("How risky is the portfolio?")
+    assert "type" not in out
+    assert out["answer"] == done["answer"] and out["agents"] == done["agents"]
+    # chart ids are random per run; everything else matches
+    assert [c["title"] for c in out["charts"]] == [c["title"] for c in done["charts"]]
+    assert [t["tool"] for t in out["trace"]] == [t["tool"] for t in done["trace"]]
+
+
+def test_run_events_answers_off_topic_directly(monkeypatch):
+    monkeypatch.setattr(llm, "complete", Script(reply('{"plan": [], "direct": "Hello!"}')))
+    assert [e["type"] for e in orchestrator.run_events("hi")] == ["done"]
