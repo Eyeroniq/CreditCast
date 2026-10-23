@@ -39,6 +39,19 @@ export function Pill({ status, children }) {
   return <span className={`pill ${cls}`}>{children}</span>;
 }
 
+const VERDICT_ICONS = { ok: "✓", warn: "⚠", bad: "✗", info: "ℹ" };
+
+/** One-sentence page verdict (6.1.3): icon + text, never colour alone. */
+export function VerdictBanner({ verdict }) {
+  if (!verdict) return null;
+  return (
+    <p className={`verdict-banner ${verdict.tone}`} role="status">
+      <span className="verdict-icon" aria-hidden="true">{VERDICT_ICONS[verdict.tone]}</span>
+      <span>{verdict.text}</span>
+    </p>
+  );
+}
+
 export function Band({ grade }) {
   return <span className={`band ${grade}`}>{grade}</span>;
 }

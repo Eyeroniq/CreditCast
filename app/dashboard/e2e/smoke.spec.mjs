@@ -115,3 +115,13 @@ test("pinning two applicants compares them side by side", async ({ page }) => {
   await compare.getByRole("button", { name: "Clear all" }).click();
   await expect(compare).toHaveCount(0);
 });
+
+for (const [path, title] of PAGES.filter(([p]) => !["/", "/glossary/"].includes(p))) {
+  test(`${title}: shows a one-sentence verdict with an icon`, async ({ page }) => {
+    await page.goto(path);
+    const verdict = page.locator(".verdict-banner");
+    await expect(verdict).toBeVisible();
+    await expect(verdict.locator(".verdict-icon")).toHaveText(/[✓⚠✗ℹ]/);
+    await expect(verdict).toHaveText(/\w.{20,}\./);
+  });
+}

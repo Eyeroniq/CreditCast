@@ -4,7 +4,8 @@ import {
   Tooltip, ReferenceLine, Legend, CartesianGrid,
 } from "recharts";
 import { api, pct } from "@/lib/api";
-import { PageHead, Stat, Pill, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { PageHead, Stat, Pill, VerdictBanner, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip } from "@/components/ui";
+import { validationVerdict } from "@/lib/verdicts";
 import { PrintButton, PrintHeader } from "@/components/Print";
 
 export default function ValidationPage() {
@@ -37,6 +38,7 @@ export default function ValidationPage() {
     <>
       <PrintHeader title="Model quality report" stamp={data.stamp} />
       <Head />
+      <VerdictBanner verdict={validationVerdict(data)} />
       <div className="page-actions"><PrintButton label="⤓ Download report (PDF)" filename="CreditCast model quality report" /></div>
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Gini (on unseen loans)" info="gini" value={ch.discrimination.gini.toFixed(4)}

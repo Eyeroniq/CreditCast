@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { PageHead, Pill } from "@/components/ui";
+import { PageHead, Pill, VerdictBanner } from "@/components/ui";
+import { copilotVerdict } from "@/lib/verdicts";
 import AgentChart from "@/components/AgentChart";
 
 const SUGGESTIONS = [
@@ -107,6 +108,7 @@ export default function CopilotPage() {
     <>
       <PageHead title="Risk Copilot"
         subtitle="Ask the specialist agent team — they call the real PD/LGD/EL tools and answer with live charts." />
+      <VerdictBanner verdict={copilotVerdict(ready)} />
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
