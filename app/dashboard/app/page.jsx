@@ -8,6 +8,7 @@ import { CATEGORY_LABELS, featureLabel } from "@/lib/labels";
 import { PageHead, Stat, Band, InfoTip, SliderField, CardTitle } from "@/components/ui";
 import { PrintButton } from "@/components/Print";
 import DecisionLetter from "@/components/DecisionLetter";
+import Compare, { MAX_PINS } from "@/components/Compare";
 
 const PRESETS = {
   "Prime borrower": { fico: 790, dti: 22, ltv: 60, orig_interest_rate: 3.1, orig_upb: 250000, orig_loan_term: 360, occupancy_status: "P", loan_purpose: "P", property_type: "SF", first_time_homebuyer: "N", vintage: "2021-06" },
@@ -46,10 +47,25 @@ export default function ScorePage() {
   const [preset, setPreset] = useState("Marginal borrower");
   const [form, setForm] = useState(PRESETS["Marginal borrower"]);
   const [res, setRes] = useState(null);
+  const [scored, setScored] = useState(null);   // the exact inputs behind `res`
   const [whatif, setWhatif] = useState(null);   // paths to approval (6.2.2)
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const inflight = useRef(null);
+  const [pins, setPins] = useState([]);         // compare applicants (6.2.3)
+  const pinCount = useRef(0);
+
+  // A pin snapshots the inputs that produced the shown result; the same
+  // applicant can't be pinned twice.
+  const key = scored && JSON.stringify(scored);
+  const pinned = key && pins.some((p) => p.key === key);
+  const pin = () => {
+    if (!res || pinned || pins.length >= MAX_PINS) return;
+    pinCount.current += 1;
+    const label = Object.keys(PRESETS).find((n) => JSON.stringify(PRESETS[n]) === key)
+      || `Applicant ${pinCount.current}`;
+    setPins((ps) => [...ps, { id: pinCount.current, key, label, form: scored, res }]);
+  };
 
   const set = (k, v) => { setPreset(null); setForm((f) => ({ ...f, [k]: v })); };
 
@@ -67,6 +83,7 @@ export default function ScorePage() {
         INTEGER_FIELDS.forEach((k) => (payload[k] = Math.round(Number(payload[k]))));
         const r = await api.score(payload, { signal: ctrl.signal });
         setRes(r);
+        setScored(payload);
         setErr(null);
         // For a decline, also ask: what single change would get it approved?
         setWhatif(r.decision === "decline"
@@ -143,16 +160,27 @@ export default function ScorePage() {
             <div className="card"><p className="muted">{busy ? "Scoring…" : "Adjust the applicant to see a decision."}</p></div>
           ) : (
             <Result res={res} busy={busy} whatif={whatif}
+              pinState={pinned ? "pinned" : pins.length >= MAX_PINS ? "full" : busy ? "busy" : "ready"}
+              onPin={pin}
               onApply={(app) => { setPreset(null); setForm({ ...form, ...app }); }} />
           )}
         </div>
       </div>
+
+      <Compare pins={pins}
+        onRemove={(id) => setPins((ps) => ps.filter((p) => p.id !== id))}
+        onLoad={(p) => { setPreset(PRESETS[p.label] ? p.label : null); setForm(p.form); }}
+        onClear={() => setPins([])} />
       </div>
     </>
   );
 }
 
-function Result({ res, busy, whatif, onApply }) {
+const PIN_LABELS = {
+  ready: "⊕ Pin to compare", busy: "⊕ Pin to compare", pinned: "✓ Pinned", full: `Compare is full (${MAX_PINS})`,
+};
+
+function Result({ res, busy, whatif, pinState, onPin, onApply }) {
   const approved = res.decision === "approve";
   const reasons = res.reason_codes || [];
   const why = approved
@@ -180,7 +208,11 @@ function Result({ res, busy, whatif, onApply }) {
           <GradeScale grade={res.risk_band} />
         </div>
         <RiskMeter pd={res.pd} threshold={res.threshold} />
-        <div style={{ marginTop: 14 }}>
+        <div className="chips" style={{ marginTop: 14 }}>
+          <button type="button" className="chip" onClick={onPin} disabled={pinState !== "ready"}
+            title={pinState === "full" ? "Unpin an applicant to add another" : undefined}>
+            {PIN_LABELS[pinState]}
+          </button>
           <PrintButton label="⤓ Download decision letter (PDF)"
             filename={`CreditCast decision ${res.request_id || ""}`.trim()} />
         </div>

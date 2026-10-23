@@ -90,3 +90,28 @@ test("the tour starts on a first visit and closes with Esc", async ({ page }) =>
   await page.keyboard.press("Escape");
   await expect(card).toHaveCount(0);
 });
+
+test("pinning two applicants compares them side by side", async ({ page }) => {
+  await page.goto("/");
+  const verdict = page.locator(".verdict");
+  const pin = page.getByRole("button", { name: /Pin to compare/ });
+
+  await page.getByRole("button", { name: "Prime borrower" }).click();
+  await expect(verdict).toHaveText(/Approved/);
+  await pin.click();
+  await expect(page.getByRole("button", { name: "✓ Pinned" })).toBeDisabled();
+
+  await page.getByRole("button", { name: "High-risk borrower" }).click();
+  await expect(verdict).toHaveText(/Declined/);
+  await pin.click();
+
+  const compare = page.locator(".compare");
+  await expect(compare.getByRole("columnheader", { name: /Prime borrower/ })).toBeVisible();
+  await expect(compare.getByRole("columnheader", { name: /High-risk borrower/ })).toBeVisible();
+  await expect(compare.locator("td.best", { hasText: "Approved" })).toBeVisible();
+
+  await compare.getByRole("button", { name: "Load Prime borrower into the form" }).click();
+  await expect(verdict).toHaveText(/Approved/);
+  await compare.getByRole("button", { name: "Clear all" }).click();
+  await expect(compare).toHaveCount(0);
+});
