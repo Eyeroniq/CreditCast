@@ -11,6 +11,7 @@ import { START_TOUR_EVENT } from "@/components/Tour";
 const NAV = [
   { href: "/", label: "Score", full: "Score an applicant" },
   { href: "/portfolio", label: "Portfolio", full: "Portfolio risk" },
+  { href: "/stress", label: "Stress", full: "Stress test" },
   { href: "/validation", label: "Quality", full: "Model quality" },
   { href: "/monitoring", label: "Stability", full: "Stability & drift" },
   { href: "/governance", label: "Fairness", full: "Fairness & explanations" },

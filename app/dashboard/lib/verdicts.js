@@ -83,6 +83,21 @@ export function portfolioVerdict(p) {
   };
 }
 
+/** The configured worst case, in one sentence (5.2 / 6.2.7). */
+export function stressVerdict(report) {
+  const sc = Object.values(report.scenarios);
+  const base = report.scenarios.baseline;
+  const worst = sc.reduce((a, b) => (b.expected_loss > a.expected_loss ? b : a));
+  const sign = (v) => (v > 0 ? `+${v}` : `${v}`);
+  return {
+    tone: "info",
+    text: `In the ${worst.label.toLowerCase()} scenario (unemployment ${sign(worst.unemployment_pts)} pts, house prices `
+      + `${sign(worst.hpi_change_pct)}%), expected loss rises from ${base.el_bps.toFixed(0)} to `
+      + `${worst.el_bps.toFixed(0)} bps of the amount lent and approvals fall from `
+      + `${pct(base.approval_rate, 0)} to ${pct(worst.approval_rate, 0)}.`,
+  };
+}
+
 /** `ready` is null while loading, then true/false from /api/agent/team. */
 export function copilotVerdict(ready) {
   if (ready === null) return null;

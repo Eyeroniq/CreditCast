@@ -107,7 +107,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.2.4 | Clickable drill-down charts | [x] | 2026-10-23 | Portfolio charts filter the table; Monitoring drift chart zooms with a brush |
 | 6.2.5 | Interactive threshold slider | [x] | 2026-10-09 | Precomputed 99-point curve; no API calls while scrubbing |
 | 6.2.6 | Searchable loan table + CSV | [x] | 2026-10-09 | Client-side, 1,000 rows, no new dependency |
-| 6.2.7 | Stress-test playground | [ ] | | Depends on 5.2 |
+| 6.2.7 | Stress-test playground | [x] | 2026-10-30 | /stress page; ~0.25 s per change; no rate-shock slider (no rate channel) |
 | 6.2.8 | Better Copilot chat | [x] | 2026-10-23 | SSE progress stream, history, copy, trace, rate-limit countdown |
 | 6.3.1 | Responsive / mobile layout | [x] | 2026-10-08 | No sideways scroll at 375 px on all 7 pages |
 | 6.3.2 | Light / dark theme toggle | [x] | 2026-10-09 | System/Light/Dark; all text ≥ 4.5:1; fixed a dark-theme contrast failure |
@@ -1214,6 +1214,28 @@ API client `lib/api.js`.
   readouts for portfolio EL, EL rate (bps), band mix chart, approval rate;
   baseline vs scenario side by side.
 - **Done when:** results render in < 1 s per change.
+- **Result (2026-10-30):** new **Stress** page (`app/stress/page.jsx`, in the
+  top nav after Portfolio) on the 5.2 engine. Preset buttons (Baseline /
+  Adverse / Severely adverse, from the configured scenarios) and two sliders
+  (unemployment −2…+10 pts, house prices −40…+20%) re-run `POST /api/stress`
+  0.3 s after the last change, cancelling superseded calls. Readouts show
+  scenario vs baseline: expected loss (with % change), loss rate in bps,
+  average default risk, approval rate at the same limit; a grouped bar chart
+  compares average PD per risk grade (with a text summary for screen
+  readers), and "How the stress test works" explains the satellite with its
+  fitted coefficients. Verdict banner: the worst configured scenario in one
+  sentence.
+  - **Speed:** about 0.25 s per change on the API (0.54 s for the first),
+    within the 1 s target.
+  - **No rate-shock slider:** the engine has no interest-rate channel (5.1
+    deliberately left out a mortgage-rate series), so a slider would do
+    nothing; it can come with a rate feature later.
+  - **Band mix:** grades come from the scorecard, which ignores economic
+    inputs, so the mix doesn't change; the chart shows PD per grade instead.
+  - **Tests:** Playwright (presets update approvals 62% → 27% → 82%; a typed
+    unemployment value re-runs and deselects the preset), the stress page in
+    the smoke and axe scans (both themes, desktop and phone), and a Vitest
+    case for the verdict sentence.
 
 #### 6.2.8 Better Copilot chat
 - Suggested question chips ("Is the model fair?", "Which segment drives most

@@ -67,6 +67,18 @@ export const api = {
   governance: () => get("/governance"),
   monitoring: () => get("/monitoring"),
   thresholdCurve: () => get("/threshold-curve"),
+  stressScenarios: () => get("/stress"),
+  // Custom macro shock (5.2 / 6.2.7); `signal` cancels a superseded request.
+  stressRun: async (shock, { signal } = {}) => {
+    const r = await request(`${API}/stress`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(shock),
+      signal,
+    });
+    if (!r.ok) throw await errorFrom(r);
+    return r.json();
+  },
   shapGlobal: () => get("/shap/global"),
   portfolio: (n = 400) => get(`/portfolio?n=${n}`),
   agentTeam: () => get("/agent/team"),
