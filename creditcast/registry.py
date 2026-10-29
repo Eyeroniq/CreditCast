@@ -29,7 +29,7 @@ from creditcast.config import Config, git_sha, load_config, run_stamp
 REGISTRY_DIR = "registry"
 ACTIVE_FILE = "active.json"
 # Files from the gold layer the models depend on (snapshot alongside them).
-GOLD_FILES = ["feature_manifest.json", "rate_benchmark.parquet"]
+GOLD_FILES = ["feature_manifest.json", "rate_benchmark.parquet", "macro_features.parquet"]
 # Model files whose bytes identify a version (same list as serving's fingerprint).
 FINGERPRINTED = [
     "scorecard.joblib",

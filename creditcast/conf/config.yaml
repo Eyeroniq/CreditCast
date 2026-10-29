@@ -6,13 +6,14 @@
 
 run:
   seed: 42                      # global determinism
-  data_version: "synthetic-v2"  # bump when the generator schema changes (v2: cures + data cutoff)
+  data_version: "synthetic-v3"  # bump when the generator schema changes (v2: cures + data cutoff; v3: property state + macro series)
   code_version: "0.1.0"
 
 paths:
   bronze: "creditcast/data/bronze"
   silver: "creditcast/data/silver"
   gold:   "creditcast/data/gold"
+  macro:  "creditcast/data/macro"   # monthly state unemployment + house-price index (5.1)
   artifacts: "creditcast/artifacts"
   reports:   "creditcast/reports"
   model_card: "creditcast/governance/model_card.md"   # committed; copied into the image
@@ -39,6 +40,19 @@ generator:
   cure_rate: 0.25               # share of defaults that cure (back to current, 0 loss)
   data_cutoff: "2022-06"        # last reporting month in the panel (like a real data drop);
                                 # recent vintages are right-censored by it
+  # Property state mix (Freddie's property_state). Used only to look up macro
+  # conditions; state itself is never a model input (geography can proxy for
+  # protected groups — redlining).
+  state_weights: {CA: 0.18, TX: 0.14, FL: 0.12, NY: 0.09, IL: 0.08, PA: 0.08, OH: 0.08, GA: 0.08, NC: 0.08, MI: 0.07}
+  # How origination-time macro conditions move the latent default logit
+  # (per point of unemployment / per point of 12m change / per % of 12m HPI growth).
+  macro_effect: {unemp_rate: 0.05, unemp_chg_12m: 0.03, hpi_chg_12m: -0.015}
+
+# ---- Macro-economic features (ROADMAP 5.1) -----------------------------------
+macro:
+  lag_months: 1                 # a loan in month M sees macro values from M-1 (published by then)
+  source: synthetic             # synthetic: the generator writes seeded series; files: use real CSVs in data/macro
+  features: [unemp_rate, unemp_chg_12m, hpi_chg_12m]
 
 # ---- Target definition (leakage discipline) ---------------------------------
 target:

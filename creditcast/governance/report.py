@@ -45,11 +45,9 @@ def build_governance(cfg: Config | None = None) -> dict:
     dec_summary = decision.decision_summary(scored, CHAMPION_PD, thr, cfg)
     fair = fairness.fairness_report(scored, CHAMPION_PD, thr, cfg)
 
-    # Global SHAP drivers (precomputed artifact, refresh if missing)
-    shap_path = art / "shap_global.json"
-    if not shap_path.exists():
-        shap_explain.save_global(cfg)
-    shap_global = json.loads(shap_path.read_text())
+    # Global SHAP drivers, recomputed every run: the model changes with every
+    # retrain, so a cached file would describe an older model.
+    shap_global = json.loads(shap_explain.save_global(cfg).read_text())
 
     # Worked adverse-action example: a representative declined applicant
     test = make_split(cfg=cfg).test
@@ -167,8 +165,13 @@ def _write_model_card(gov: dict, tm: dict, val: dict, cfg: Config) -> None:
 
 ## 6. Limitations
 - Synthetic data calibrated to plausible mortgage behaviour, not a specific
-  institution's book. Macro scenarios are implicit in vintages, not modelled
-  explicitly.
+  institution's book.
+- Macro features (state unemployment, its 12-month change, 12-month house-price
+  growth; lagged {cfg.macro.lag_months} month) come from synthetic series. Training
+  vintages saw only calm conditions, so tree-model PDs flatten beyond that range
+  (e.g. 2020 unemployment): stress scenarios need a separate macro sensitivity.
+  Macro features are never cited as adverse-action reasons, and property state
+  is used only to look them up, never as a model input.
 - LGD is trained only on *resolved* defaults ({tm["lgd_population"]["train_resolved_defaults"]:,} of {tm["lgd_population"]["train_defaults"]:,}
   training defaults; workout window {cfg.lgd.workout_window_months} months).
 - Labels are right-censoring-aware (policy: `{cfg.target.censoring}`).

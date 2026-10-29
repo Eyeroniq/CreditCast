@@ -126,6 +126,12 @@ export const GLOSSARY = {
     long: "Shows which borrower characteristics are drifting.",
     good: "Same bands as PSI.",
   },
+  macro: {
+    term: "Economic conditions (macro features)", group: "Stability",
+    short: "Local unemployment and house-price growth in the month before the loan was made.",
+    long: "Looked up from the property's state, using only figures already published when the loan was made. They help the model price risk in weaker or stronger economies, but they are never given to a declined applicant as a reason, because they say nothing about the applicant.",
+    good: "Expected to shift over time; a large shift means the model is working in conditions it saw little of in training.",
+  },
   drift: {
     term: "Drift monitoring", group: "Stability",
     short: "A weekly check that the borrowers being scored still look like the training data.",

@@ -9,12 +9,18 @@ production (train/serve skew).
 benchmark**: the average note rate of loans originated in the trailing
 `window` months *strictly before* the loan's month. A lender knows that number
 on the origination date; it never uses the loan's own month or anything later.
+
+Macro features (5.1) follow the same rule: `creditcast.pipeline.macro` builds a
+(state, month) table from series lagged at least one month, and `engineer`
+looks each loan up in it.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+
+from creditcast.pipeline.macro import lookup_macro
 
 BENCHMARK_WINDOW_MONTHS = 3
 
@@ -52,8 +58,11 @@ def lookup_benchmark(vintages: pd.Series, benchmark: pd.DataFrame) -> np.ndarray
     return vintages.astype("object").map(table).astype(float).fillna(latest).to_numpy()
 
 
-def engineer(df: pd.DataFrame, benchmark: pd.DataFrame) -> pd.DataFrame:
-    """Add the engineered features. Used verbatim by Gold and by serving."""
+def engineer(
+    df: pd.DataFrame, benchmark: pd.DataFrame, macro: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    """Add the engineered features. Used verbatim by Gold and by serving.
+    `macro` is the point-in-time table from `pipeline.macro.macro_table`."""
     df = df.copy()
     # LTV x DTI interaction: thin-equity AND stretched borrower compound risk
     df["ltv_dti"] = (df["ltv"] * df["dti"] / 100.0).round(2)
@@ -65,4 +74,6 @@ def engineer(df: pd.DataFrame, benchmark: pd.DataFrame) -> pd.DataFrame:
     ).round(3)
     # High-LTV flag (regulatory PMI boundary at 80)
     df["high_ltv"] = (df["ltv"] > 80).astype(int)
+    if macro is not None:
+        df[list(macro.columns.drop(["state", "vintage"]))] = lookup_macro(df, macro)
     return df

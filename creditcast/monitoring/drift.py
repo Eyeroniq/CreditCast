@@ -46,7 +46,10 @@ def monitor_batch(batch: pd.DataFrame, cfg: Config | None = None) -> dict:
         else None
     )
     feats = [f for f in (numeric_columns() + categorical_columns()) if f in batch]
-    csi = stab.csi_by_feature(baseline, batch, feats, bins)
+    all_csi = stab.csi_by_feature(baseline, batch, feats, bins)
+    # Macro inputs (5.1) follow the economy by design: reported, never alerts.
+    is_macro = all_csi["feature"].isin(list(cfg.macro.features))
+    csi, macro_csi = all_csi[~is_macro], all_csi[is_macro]
     alerts = []
     if score_psi is not None and stab.psi_status(score_psi) != "stable":
         alerts.append(
@@ -63,6 +66,7 @@ def monitor_batch(batch: pd.DataFrame, cfg: Config | None = None) -> dict:
         "score_psi": (round(float(score_psi), 4) if score_psi is not None else None),
         "score_status": (stab.psi_status(score_psi) if score_psi is not None else None),
         "feature_csi": csi.to_dict(orient="records"),
+        "macro_csi": macro_csi.to_dict(orient="records"),
         "alerts": alerts,
         "healthy": len(alerts) == 0,
     }

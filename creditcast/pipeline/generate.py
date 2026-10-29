@@ -5,8 +5,9 @@ an **origination** table (one row per loan, attributes known at origination)
 and a **monthly performance** panel (one row per loan-month, with delinquency
 status, current balance, zero-balance disposition codes, and realized net loss).
 
-Defaults are driven by a latent logit of the real risk features, so a model has
-genuine signal to learn. Losses (for LGD) and the monthly delinquency march are
+Defaults are driven by a latent logit of the real risk features and of the
+macro conditions at origination (state unemployment, house-price growth; see
+`creditcast.pipeline.macro`), so a model has genuine signal to learn. Losses (for LGD) and the monthly delinquency march are
 simulated consistently. Everything is seeded -> bit-for-bit reproducible.
 
 Real Freddie/Fannie files drop into Silver unchanged: they carry the same
@@ -21,6 +22,7 @@ import numpy as np
 import pandas as pd
 
 from creditcast.config import Config, load_config, set_global_seed
+from creditcast.pipeline import macro
 
 # --- Schema (subset of the Freddie Mac data dictionary we actually model) ----
 ORIG_SCHEMA = [
@@ -37,6 +39,7 @@ ORIG_SCHEMA = [
     "loan_purpose",
     "property_type",
     "first_time_homebuyer",
+    "property_state",  # for macro lookups only — never a model input itself
     "borrower_race",  # protected attribute for fairness — NEVER a model input
 ]
 PERF_SCHEMA = [
@@ -101,6 +104,8 @@ def _origination(cfg: Config, rng: np.random.Generator) -> pd.DataFrame:
     purpose = rng.choice(_PURPOSE, n, p=[0.55, 0.20, 0.25])
     prop = rng.choice(_PROPERTY, n, p=[0.70, 0.14, 0.13, 0.03])
     fthb = rng.choice(["Y", "N"], n, p=[0.22, 0.78])
+    weights = dict(cfg.generator.state_weights)
+    state = rng.choice(list(weights), n, p=np.array(list(weights.values())) / sum(weights.values()))
 
     df = pd.DataFrame(
         {
@@ -117,6 +122,7 @@ def _origination(cfg: Config, rng: np.random.Generator) -> pd.DataFrame:
             "loan_purpose": purpose,
             "property_type": prop,
             "first_time_homebuyer": fthb,
+            "property_state": state,
             "borrower_race": race,
         }
     )
@@ -126,7 +132,17 @@ def _origination(cfg: Config, rng: np.random.Generator) -> pd.DataFrame:
 def _default_probability(df: pd.DataFrame, cfg: Config) -> np.ndarray:
     """Latent 12-month PD as a logit of the real risk drivers."""
     rng = np.random.default_rng(int(cfg.run.seed) + 7)  # independent noise stream
-    z = (
+    # Macro conditions known at origination (the same point-in-time values the
+    # model will see): weaker local jobs markets and falling house prices raise risk.
+    table = macro.macro_table(macro.load_series(cfg), int(cfg.macro.lag_months))
+    mac = macro.lookup_macro(df, table)
+    effect = dict(cfg.generator.macro_effect)
+    z_macro = (
+        effect["unemp_rate"] * (mac["unemp_rate"].to_numpy() - 5.0)
+        + effect["unemp_chg_12m"] * mac["unemp_chg_12m"].to_numpy()
+        + effect["hpi_chg_12m"] * (mac["hpi_chg_12m"].to_numpy() - 5.0)
+    )
+    z = z_macro + (
         -0.013 * (df["fico"].to_numpy() - 735)
         + 0.035 * (df["dti"].to_numpy() - 34)
         + 0.030 * (df["ltv"].to_numpy() - 76)
@@ -255,6 +271,10 @@ def generate(cfg: Config | None = None) -> dict[str, Path]:
     set_global_seed()
     rng = np.random.default_rng(cfg.run.seed)
 
+    # Macro series first: the default process depends on them. With real
+    # BLS/FHFA files in data/macro (source: files) they are used as they are.
+    if str(cfg.macro.source) == "synthetic":
+        macro.generate_series(cfg)
     orig = _origination(cfg, rng)
     perf = _performance(orig, cfg, rng)
     # A real data drop ends at a reporting month: nothing after the cutoff

@@ -28,6 +28,11 @@ REASON_TEMPLATES = {
     "first_time_homebuyer": "First-time-homebuyer status increases risk",
 }
 
+# Economic conditions (5.1) move the PD but say nothing about the applicant:
+# an adverse-action notice must give the applicant's own principal reasons
+# (Reg B), so these are never cited.
+NOT_ADVERSE_ACTION_REASONS = {"unemp_rate", "unemp_chg_12m", "hpi_chg_12m"}
+
 # Friendly category decodes for the templates
 _DECODE = {
     "occupancy_status": {"P": "primary residence", "I": "investment", "S": "second home"},
@@ -39,7 +44,8 @@ _DECODE = {
 
 def reason_codes(local_attr: pd.DataFrame, top_n: int = 4) -> list[dict]:
     """Top-N risk-INCREASING reasons (positive SHAP) for a decline, ranked."""
-    increasing = local_attr[local_attr["shap"] > 0].head(top_n)
+    applicant_specific = ~local_attr["feature"].isin(NOT_ADVERSE_ACTION_REASONS)
+    increasing = local_attr[(local_attr["shap"] > 0) & applicant_specific].head(top_n)
     out = []
     for rank, row in enumerate(increasing.itertuples(index=False), start=1):
         feat, val = row.feature, row.value

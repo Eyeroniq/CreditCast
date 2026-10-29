@@ -16,6 +16,7 @@ const SUMMARY = [
   ["loan_purpose", (v) => CATEGORY_LABELS.loan_purpose[v] ?? v],
   ["property_type", (v) => CATEGORY_LABELS.property_type[v] ?? v],
   ["first_time_homebuyer", (v) => CATEGORY_LABELS.first_time_homebuyer[v] ?? v],
+  ["property_state", (v) => CATEGORY_LABELS.property_state[v ?? ""] ?? v],
 ];
 
 export default function DecisionLetter({ res, form, whatif }) {

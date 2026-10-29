@@ -47,3 +47,20 @@ def test_scorecard_points_lost_are_non_negative_and_match_score(risky_row):
     table = sc.table(style="detailed")
     best = table.groupby("Variable")["Points"].max().sum()
     assert best - local["shap"].sum() == pytest.approx(float(sc.score(risky_row)[0]), abs=0.5)
+
+
+def test_economic_conditions_are_never_adverse_action_reasons():
+    """Reg B: a decline must cite the applicant's own factors, not the economy."""
+    import pandas as pd
+
+    attr = pd.DataFrame(
+        [
+            {"feature": "unemp_rate", "value": 9.1, "shap": 0.9},
+            {"feature": "fico", "value": 640, "shap": 0.5},
+            {"feature": "hpi_chg_12m", "value": -8.0, "shap": 0.4},
+            {"feature": "dti", "value": 47.0, "shap": 0.3},
+        ]
+    )
+    got = reason_codes.reason_codes(attr)
+    assert [r["feature"] for r in got] == ["fico", "dti"]
+    assert [r["rank"] for r in got] == [1, 2]

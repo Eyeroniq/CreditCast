@@ -182,6 +182,9 @@ class Applicant(BaseModel):
     vintage: str | None = Field(
         default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$", examples=["2021-06"]
     )
+    # Only used to look up local economic conditions (5.1), never as a model
+    # input. Unknown or missing -> national figures.
+    property_state: str | None = Field(default=None, pattern=r"^[A-Z]{2}$", examples=["TX"])
 
 
 @router.get("/health")
