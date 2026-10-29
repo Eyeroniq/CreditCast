@@ -11,9 +11,9 @@ import DecisionLetter from "@/components/DecisionLetter";
 import Compare, { MAX_PINS } from "@/components/Compare";
 
 const PRESETS = {
-  "Prime borrower": { fico: 790, dti: 22, ltv: 60, orig_interest_rate: 3.1, orig_upb: 250000, orig_loan_term: 360, occupancy_status: "P", loan_purpose: "P", property_type: "SF", first_time_homebuyer: "N", vintage: "2021-06" },
-  "Marginal borrower": { fico: 690, dti: 38, ltv: 82, orig_interest_rate: 4.3, orig_upb: 300000, orig_loan_term: 360, occupancy_status: "P", loan_purpose: "N", property_type: "CO", first_time_homebuyer: "Y", vintage: "2021-06" },
-  "High-risk borrower": { fico: 645, dti: 47, ltv: 94, orig_interest_rate: 5.6, orig_upb: 360000, orig_loan_term: 360, occupancy_status: "I", loan_purpose: "C", property_type: "MH", first_time_homebuyer: "Y", vintage: "2021-06" },
+  "Prime borrower": { fico: 790, dti: 22, ltv: 60, orig_interest_rate: 3.1, orig_upb: 250000, orig_loan_term: 360, occupancy_status: "P", loan_purpose: "P", property_type: "SF", first_time_homebuyer: "N", property_state: "CA", vintage: "2021-06" },
+  "Marginal borrower": { fico: 690, dti: 38, ltv: 82, orig_interest_rate: 4.3, orig_upb: 300000, orig_loan_term: 360, occupancy_status: "P", loan_purpose: "N", property_type: "CO", first_time_homebuyer: "Y", property_state: "TX", vintage: "2021-06" },
+  "High-risk borrower": { fico: 645, dti: 47, ltv: 94, orig_interest_rate: 5.6, orig_upb: 360000, orig_loan_term: 360, occupancy_status: "I", loan_purpose: "C", property_type: "MH", first_time_homebuyer: "Y", property_state: "MI", vintage: "2021-06" },
 };
 
 // Typical mortgage risk ranges, used only to colour the slider tracks.
@@ -33,7 +33,7 @@ const SLIDERS = [
     hint: "Original loan amount." },
 ];
 
-const SELECTS = ["occupancy_status", "loan_purpose", "property_type", "first_time_homebuyer"];
+const SELECTS = ["occupancy_status", "loan_purpose", "property_type", "first_time_homebuyer", "property_state"];
 const INTEGER_FIELDS = ["fico", "ltv", "orig_upb", "orig_loan_term"];
 const GRADES = ["AAA", "AA", "A", "BBB", "BB", "B"];
 // "Combined leverage (LTV × DTI)" -> "combined leverage (LTV × DTI)"
@@ -81,6 +81,7 @@ export default function ScorePage() {
       try {
         const payload = { ...form };
         INTEGER_FIELDS.forEach((k) => (payload[k] = Math.round(Number(payload[k]))));
+        if (!payload.property_state) delete payload.property_state;   // national figures
         const r = await api.score(payload, { signal: ctrl.signal });
         setRes(r);
         setScored(payload);

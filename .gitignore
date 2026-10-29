@@ -11,6 +11,7 @@ coverage.xml
 creditcast/data/bronze/*
 creditcast/data/silver/*
 creditcast/data/gold/*
+creditcast/data/macro/*
 !creditcast/data/**/.gitkeep
 
 # Model + validation artifacts (regenerable)

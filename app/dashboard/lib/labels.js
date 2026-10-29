@@ -6,6 +6,11 @@ export const CATEGORY_LABELS = {
   loan_purpose: { P: "Purchase", C: "Cash-out refinance", N: "Rate/term refinance" },
   property_type: { SF: "Single-family house", CO: "Condo", PU: "Planned community (PUD)", MH: "Manufactured home" },
   first_time_homebuyer: { Y: "Yes", N: "No" },
+  // Used only to look up local economic conditions; "" = national average.
+  property_state: {
+    "": "Not specified (national)", CA: "California", TX: "Texas", FL: "Florida", NY: "New York",
+    IL: "Illinois", PA: "Pennsylvania", OH: "Ohio", GA: "Georgia", NC: "North Carolina", MI: "Michigan",
+  },
 };
 
 export const FEATURE_LABELS = {
@@ -22,6 +27,10 @@ export const FEATURE_LABELS = {
   ltv_dti: "Combined leverage (LTV × DTI)",
   rate_spread: "Rate vs market",
   high_ltv: "Loan-to-value above 80%",
+  property_state: "Property state",
+  unemp_rate: "Local unemployment rate",
+  unemp_chg_12m: "Change in local unemployment (12 mo)",
+  hpi_chg_12m: "Local house-price growth (12 mo)",
   vintage: "Origination month",
 };
 

@@ -31,7 +31,7 @@ def _digest(path):
 def tiny(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("lifecycle")
     raw = yaml.safe_load(DEFAULT_CONFIG_PATH.read_text(encoding="utf-8"))
-    dirs = ("bronze", "silver", "gold", "artifacts", "reports")
+    dirs = ("bronze", "silver", "gold", "macro", "artifacts", "reports")
     raw["paths"] = {**{d: str(tmp / d) for d in dirs}, "model_card": str(tmp / "model_card.md")}
     raw["generator"]["n_loans"] = N_LOANS
     raw["tracking"] = {"enabled": False}

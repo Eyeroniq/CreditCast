@@ -74,6 +74,7 @@ def test_build_gold_reloads_the_manifest(tmp_path, monkeypatch):
             "loan_purpose": "P",
             "property_type": "SF",
             "first_time_homebuyer": "N",
+            "property_state": "TX",
             "borrower_race": "White",
             "ead": 190_000.0,
             "net_loss": 50_000.0,

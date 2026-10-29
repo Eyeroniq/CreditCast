@@ -53,12 +53,17 @@ def build_report(cfg: Config | None = None) -> dict:
     score_psi = stab.psi_by_vintage(scored, "credit_score", bins=int(v.psi_bins))
     split = make_split(cfg=cfg)
     feats = numeric_columns() + categorical_columns()
-    feat_csi = stab.csi_by_feature(split.train, split.test, feats, bins=int(v.psi_bins))
+    all_csi = stab.csi_by_feature(split.train, split.test, feats, bins=int(v.psi_bins))
+    # Macro inputs (5.1) are meant to move with the economy, so their shift is
+    # reported but not gated; the CSI gate guards the borrower population.
+    is_macro = all_csi["feature"].isin(list(cfg.macro.features))
+    feat_csi, macro_csi = all_csi[~is_macro], all_csi[is_macro]
     stability = {
         "score_psi_by_vintage": score_psi.to_dict(orient="records"),
         "max_score_psi": float(score_psi["psi"].max()),
         "feature_csi": feat_csi.to_dict(orient="records"),
         "max_feature_csi": float(feat_csi["csi"].max()),
+        "macro_csi": macro_csi.to_dict(orient="records"),
     }
 
     report = {

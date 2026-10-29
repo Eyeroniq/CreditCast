@@ -88,7 +88,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 4.2 | Data-quality report | [ ] | | |
 | 4.3 | Re-tune thresholds on real data | [ ] | | |
 | 4.4 | Synthetic vs real comparison in model card | [ ] | | |
-| 5.1 | Macro-economic features | [ ] | | |
+| 5.1 | Macro-economic features | [x] | 2026-10-30 | Synthetic state series (real-file drop-in); 3 lagged features; not gated, not adverse-action reasons |
 | 5.2 | Stress testing | [ ] | | |
 | 5.3 | Lifetime PD (IFRS 9 / CECL) | [ ] | | |
 | 5.4 | Reject inference | [ ] | | |
@@ -782,6 +782,54 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   `pipeline/macro.py`. Use only values known **at** origination (lag ≥ 1
   month) to keep the leakage rule.
 - **Done when:** macro features appear in IV table; leakage tests cover them.
+- **Result (2026-10-30):** data version `synthetic-v3`.
+  - **Series:** `creditcast/pipeline/macro.py` writes seeded synthetic monthly
+    state unemployment and house-price index for 10 states to
+    `data/macro/unemployment.csv` and `hpi.csv` (state, month, value: the
+    shape of the BLS/FHFA files, so real ones drop in with
+    `macro.source: files`). The path follows 2013–2022: slow fall in
+    unemployment, a 2020 shock (largest in MI, smallest in TX), fast 2021
+    house-price growth. Real public series weren't used: tied to synthetic
+    loans they would only show relationships the generator invented. The
+    30-year mortgage-rate series was left out because `rate_spread` already
+    compares each loan's rate with the prior months' market rate.
+  - **Generator:** each loan gets a `property_state` (Freddie's field), and
+    the latent default logit now includes the origination-time macro values
+    (`generator.macro_effect`). The full effect made the calm-years-trained
+    model miss calibration in 2020–21 (4.1% vs the 3% gate), so the effect is
+    half that (2.7%, passes); with no effect it was 2.3%.
+  - **Features:** `unemp_rate`, `unemp_chg_12m`, `hpi_chg_12m`, looked up by
+    (state, month) from series lagged `macro.lag_months` = 1 (a lag below 1
+    is refused). Unknown state → national average; missing or future month
+    → latest available. `engineer()` adds them for both Gold and serving
+    (table persisted as `gold/macro_features.parquet`, registered with the
+    model). State itself is never a model input (geography can proxy for
+    race).
+  - **IV / use:** they appear in the IV table at IV ≈ 0.01 (below the 0.02
+    cut, so the scorecard drops them: the training years barely varied). The
+    LightGBM champion uses the unemployment pair modestly (SHAP rank 9–10).
+    Beyond the training range (2020 unemployment) tree PDs flatten, so the
+    same applicant scores the same in TX and MI in July 2020. 5.2 therefore
+    needs a separate macro sensitivity rather than re-scoring alone.
+  - **Drift:** macro inputs are meant to move, so they're reported as
+    "Economic conditions since training" on Stability and in the reports
+    (`macro_csi`), and excluded from the CSI gate and drift alerts, which
+    still guard every borrower input.
+  - **Compliance:** macro features are never cited as adverse-action reasons
+    (Reg B requires the applicant's own reasons); test added.
+  - **Also fixed:** `shap_global.json` was only computed when missing, so the
+    governance report and dashboard had been showing feature importances from
+    an older model; it's now recomputed every run.
+  - **Gates:** all pass (Gini 0.434, calibration 2.7%, borrower CSI 0.001);
+    fairness min ratio 0.802 on this data (was 0.799 on v2, a data change,
+    not a fix).
+  - **UI / API:** optional `property_state` on `/api/score` (2 capital
+    letters); state picker on Score (presets CA / TX / MI); state on the
+    decision letter; glossary entry; plain labels for the three features.
+  - **Tests:** `tests/test_macro.py` (value from the month before
+    origination, changing that month or later never changes the feature,
+    lag ≥ 1 enforced, fallbacks, single-row = batch), plus the reason-code
+    exclusion test.
 
 ### 5.2 Stress testing
 

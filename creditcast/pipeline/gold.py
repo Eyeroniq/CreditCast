@@ -17,6 +17,7 @@ import pandas as pd
 from creditcast import dataset
 from creditcast.config import Config, load_config
 from creditcast.features import engineer, rate_benchmark
+from creditcast.pipeline import macro
 
 
 def build_gold(cfg: Config | None = None) -> Path:
@@ -29,7 +30,12 @@ def build_gold(cfg: Config | None = None) -> Path:
     # Point-in-time rate benchmark, persisted so serving uses the same table
     benchmark = rate_benchmark(df)
     benchmark.to_parquet(gold / "rate_benchmark.parquet", index=False)
-    df = engineer(df, benchmark)
+    # Point-in-time macro table (5.1), persisted for serving like the benchmark
+    macro_cols = list(cfg.macro.features)
+    table = macro.macro_table(macro.load_series(cfg), int(cfg.macro.lag_months))
+    table = table[["state", "vintage", *macro_cols]]
+    table.to_parquet(gold / "macro_features.parquet", index=False)
+    df = engineer(df, benchmark, table)
 
     # Derived LGD on *resolved* defaults only (final loss known): bounded [0, 1].
     # Unresolved defaults stay NaN — never a fake 0% loss.
@@ -39,11 +45,11 @@ def build_gold(cfg: Config | None = None) -> Path:
         np.nan,
     )
 
-    numeric = list(cfg.features.numeric) + ["ltv_dti", "rate_spread", "high_ltv"]
+    numeric = list(cfg.features.numeric) + ["ltv_dti", "rate_spread", "high_ltv"] + macro_cols
     categorical = list(cfg.features.categorical)
     protected = list(cfg.features.protected)
     keep = (
-        ["loan_id", "vintage", "default_12m"]
+        ["loan_id", "vintage", "property_state", "default_12m"]
         + numeric
         + categorical
         + protected

@@ -36,6 +36,7 @@ REQUIRED_ARTIFACTS = [
     ("artifacts", "test_scored.parquet"),
     ("gold", "feature_manifest.json"),
     ("gold", "rate_benchmark.parquet"),
+    ("gold", "macro_features.parquet"),
 ]
 # "Which model made this decision" = registry.fingerprint() over the model files.
 
@@ -67,6 +68,7 @@ class ModelBundle:
             "explainer",
             "threshold",
             "rate_benchmark",
+            "macro",
             "model_version",
         ):
             getattr(self, prop)
@@ -118,12 +120,18 @@ class ModelBundle:
         """Point-in-time rate benchmark table persisted by the Gold build."""
         return pd.read_parquet(self.cfg.path("gold") / "rate_benchmark.parquet")
 
+    @cached_property
+    def macro(self) -> pd.DataFrame:
+        """Point-in-time macro table (state x month) persisted by the Gold build."""
+        return pd.read_parquet(self.cfg.path("gold") / "macro_features.parquet")
+
     # ---- feature engineering: the SAME function the Gold pipeline uses --------
     def _build_features(self, raw: dict | list[dict]) -> pd.DataFrame:
         rows = [dict(r) for r in (raw if isinstance(raw, list) else [raw])]
         for r in rows:
             r.setdefault("vintage", None)
-        df = engineer(pd.DataFrame(rows), self.rate_benchmark)
+            r.setdefault("property_state", None)
+        df = engineer(pd.DataFrame(rows), self.rate_benchmark, self.macro)
         df = df[feature_columns()].copy()
         for c in categorical_columns():
             df[c] = df[c].astype("category")

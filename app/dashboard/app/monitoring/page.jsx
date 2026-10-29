@@ -23,6 +23,7 @@ export default function MonitoringPage() {
     vintage: r.vintage, psi: r.psi, status: r.status,
   }));
   const csi = v.data.stability.feature_csi.map((r) => ({ feature: r.feature, csi: r.csi, status: r.status }));
+  const macroCsi = v.data.stability.macro_csi || [];   // 5.1: reported, never gated
   const mon = m.data;
 
   return (
@@ -76,9 +77,33 @@ export default function MonitoringPage() {
         </ResponsiveContainer>
       </div>
 
+      {macroCsi.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <CardTitle info="macro">Economic conditions since training</CardTitle>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            The economy is expected to move, so these shifts are reported, not alerted on. A large shift
+            means the model is scoring loans in conditions it saw little of during training.
+          </p>
+          <TableWrap>
+          <table>
+            <thead><tr><th>Input</th><th className="num">CSI</th><th>Shift</th></tr></thead>
+            <tbody>
+              {macroCsi.map((r) => (
+                <tr key={r.feature}>
+                  <td className="small">{featureLabel(r.feature)}</td>
+                  <td className="num">{r.csi.toFixed(4)}</td>
+                  <td><Pill status="neutral">{r.status === "stable" ? "small" : r.status === "watch" ? "moderate" : "large"}</Pill></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </TableWrap>
+        </div>
+      )}
+
       <div className="grid cols-2">
         <div className="card">
-          <CardTitle info="csi">Which inputs shifted since training</CardTitle>
+          <CardTitle info="csi">Which borrower inputs shifted since training</CardTitle>
           <TableWrap>
           <table>
             <thead><tr><th>Feature</th><th className="num">CSI</th><th>Status</th></tr></thead>
