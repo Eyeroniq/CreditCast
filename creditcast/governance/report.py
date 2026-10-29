@@ -16,6 +16,7 @@ import pandas as pd
 from creditcast.config import Config, load_config, run_stamp
 from creditcast.dataset import feature_columns
 from creditcast.governance import decision, explain, fairness, reason_codes, shap_explain
+from creditcast.models import capital
 from creditcast.pipeline.split import make_split
 
 CHAMPION_PD = "pd_champion"  # the configured champion's calibrated PD (train.py)
@@ -82,6 +83,8 @@ def build_governance(cfg: Config | None = None) -> dict:
         "fairness": fair,
         "shap_global": shap_global,
         "adverse_action_example": example,
+        # Basel IRB (5.5): capital for unexpected loss on the OOT book
+        "capital": capital.irb(scored[CHAMPION_PD], scored["lgd_hat"], scored["ead"], cfg)["total"],
     }
     (art / "governance_report.json").write_text(json.dumps(report, indent=2, default=float))
 
@@ -151,6 +154,12 @@ def _write_model_card(gov: dict, tm: dict, val: dict, cfg: Config) -> None:
 - **Top global drivers (SHAP):** {top_drivers}.
 - **Portfolio:** EL ≈ {el["portfolio_el"]:,.0f} on EAD {el["total_ead"]:,.0f}
   (≈ {el["el_rate_bps"]:.0f} bps); mean PD {el["mean_pd"]:.2%}, mean LGD {el["mean_lgd_hat"]:.2%}.
+- **Regulatory capital (Basel IRB, residential mortgages, R = {cfg.capital.correlation},
+  99.9%):** {gov["capital"]["capital"]:,.0f} for unexpected loss (RWA
+  {gov["capital"]["rwa"]:,.0f}, average risk weight {gov["capital"]["risk_weight"]:.0%}).
+  EL covers the average loss; capital covers a 1-in-1,000-year year on top. The
+  synthetic book defaults far more often than a real prime book, so its risk
+  weight is high.
 
 ## 5. Fairness
 - Disparate-impact (4/5ths) at the decision threshold: min ratio **{di:.3f}**

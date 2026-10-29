@@ -49,6 +49,7 @@ from slowapi.util import get_remote_address
 from app.api import audit
 from creditcast.config import load_config
 from creditcast.governance import decision
+from creditcast.models import capital
 from creditcast.serving import ModelBundle
 
 decision_log = audit.setup_logging()
@@ -339,6 +340,8 @@ def portfolio(request: Request, n: int = Query(500, ge=1, le=int(API_CFG.portfol
     scored = scored.assign(
         risk_band=bands, decision=decision.decide(scored["pd_champion"].to_numpy(), thr)
     )
+    cap = capital.irb(scored["pd_champion"], scored["lgd_hat"], scored["ead"], cfg)
+    scored = scored.assign(capital=cap["capital"])
     band_order = [b["name"] for b in cfg.decision.bands]
     band_dist = (
         scored["risk_band"].value_counts().reindex(band_order).fillna(0).astype(int).to_dict()
@@ -360,6 +363,7 @@ def portfolio(request: Request, n: int = Query(500, ge=1, le=int(API_CFG.portfol
         "lgd_hat",
         "ead",
         "expected_loss",
+        "capital",
         "decision",
         "default_12m",
     ]
@@ -372,6 +376,16 @@ def portfolio(request: Request, n: int = Query(500, ge=1, le=int(API_CFG.portfol
         "approval_rate": float((scored["decision"] == "approve").mean()),
         "band_distribution": band_dist,
         "el_by_band": el_by_band,
+        # Basel IRB (5.5): capital for unexpected loss, next to EL
+        "capital": cap["total"]["capital"],
+        "rwa": cap["total"]["rwa"],
+        "risk_weight": cap["total"]["risk_weight"],
+        "capital_by_band": scored.groupby("risk_band")["capital"]
+        .sum()
+        .reindex(band_order)
+        .fillna(0)
+        .round(2)
+        .to_dict(),
         "pd_histogram": _histogram(scored["pd_champion"], 25),
         "sample": scored.sort_values("expected_loss", ascending=False)
         .head(n)[sample_cols]

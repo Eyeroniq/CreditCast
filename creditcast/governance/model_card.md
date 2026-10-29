@@ -40,6 +40,12 @@
 - **Top global drivers (SHAP):** ltv_dti, fico, ltv, occupancy_status, orig_interest_rate.
 - **Portfolio:** EL ≈ 40,636,906 on EAD 3,050,441,699
   (≈ 133 bps); mean PD 4.50%, mean LGD 28.52%.
+- **Regulatory capital (Basel IRB, residential mortgages, R = 0.15,
+  99.9%):** 198,256,145 for unexpected loss (RWA
+  2,478,201,814, average risk weight 81%).
+  EL covers the average loss; capital covers a 1-in-1,000-year year on top. The
+  synthetic book defaults far more often than a real prime book, so its risk
+  weight is high.
 
 ## 5. Fairness
 - Disparate-impact (4/5ths) at the decision threshold: min ratio **0.802**

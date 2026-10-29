@@ -116,6 +116,10 @@ export default function StressPage() {
                 sub={`baseline ${base.el_bps.toFixed(0)} bps of the amount lent`} />
               <Stat label="Average default risk" info="pd" value={pct(cur.mean_pd)}
                 sub={`baseline ${pct(base.mean_pd)}`} />
+              <Stat label="Loss if default" info="lgd" value={pct(cur.mean_lgd, 1)}
+                sub={`baseline ${pct(base.mean_lgd, 1)} · falls in house prices raise it`} />
+              <Stat label="Capital required (Basel)" info="capital" value={moneyShort(cur.capital)}
+                sub={`${delta(cur.capital, base.capital)} · ${pct(cur.risk_weight, 0)} risk weight`} />
               <Stat label="Would be approved" info="threshold" value={pct(cur.approval_rate, 0)}
                 tone={cur.approval_rate < base.approval_rate - 0.2 ? "bad" : cur.approval_rate < base.approval_rate ? "warn" : "ok"}
                 sub={`baseline ${pct(base.approval_rate, 0)} at the same limit`} />
