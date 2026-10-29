@@ -17,6 +17,7 @@ def _cfg_with_gold(tmp_path) -> Config:
         **cfg["paths"],
         "gold": str(tmp_path / "gold"),
         "silver": str(tmp_path / "silver"),
+        "macro": str(tmp_path / "macro"),
     }
     return cfg
 
@@ -53,9 +54,11 @@ def test_reload_drops_cached_manifest(tmp_path, monkeypatch):
 
 
 def test_build_gold_reloads_the_manifest(tmp_path, monkeypatch):
+    from creditcast.pipeline import macro
     from creditcast.pipeline.gold import build_gold
 
     cfg = _cfg_with_gold(tmp_path)
+    macro.generate_series(cfg)  # no pipeline has run in this job
     (tmp_path / "silver").mkdir()
     rng = np.random.default_rng(0)
     n = 40
