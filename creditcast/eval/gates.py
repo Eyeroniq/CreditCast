@@ -55,6 +55,15 @@ def run_gates(cfg: Config | None = None, champion: str | None = None) -> tuple[b
             "<=",
         ),
     ]
+    # Stress (5.2): expected loss must rise with every step up in severity.
+    # Value = the smallest EL ratio between consecutive scenarios (> 1 passes).
+    stress_path = art / "stress_report.json"
+    if stress_path.exists():
+        sc = json.loads(stress_path.read_text())["scenarios"].values()
+        ordered = sorted(sc, key=lambda s: (s["unemployment_pts"], -s["hpi_change_pct"]))
+        els = [s["expected_loss"] for s in ordered]
+        step = min(b / a for a, b in zip(els, els[1:], strict=False)) if len(els) > 1 else 1.0
+        checks.append(("Stress EL rises with severity", step, 1.0, step > 1.0, ">"))
     results = [
         {
             "check": name,

@@ -271,6 +271,47 @@ def governance():
     return _artifact("governance_report.json")
 
 
+# ---- Stress testing (5.2) ---------------------------------------------------
+_STRESS_LIMITS = load_config().stress.limits
+
+
+class StressShock(BaseModel):
+    """A custom macro scenario on top of each loan's actual conditions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    unemployment_pts: float = Field(
+        ge=_STRESS_LIMITS.unemployment_pts[0],
+        le=_STRESS_LIMITS.unemployment_pts[1],
+        allow_inf_nan=False,
+        examples=[4.0],
+    )
+    hpi_change_pct: float = Field(
+        ge=_STRESS_LIMITS.hpi_change_pct[0],
+        le=_STRESS_LIMITS.hpi_change_pct[1],
+        allow_inf_nan=False,
+        examples=[-15.0],
+    )
+
+
+@router.get("/stress")
+def stress_scenarios():
+    """Baseline / adverse / severely adverse results, precomputed by the pipeline."""
+    return _artifact("stress_report.json")
+
+
+@router.post("/stress", dependencies=[Depends(require_api_key)])
+@limiter.limit(LIMITS.stress)
+def stress_custom(request: Request, shock: StressShock):
+    """Re-run the stress test for a custom shock."""
+    from creditcast.stress import engine
+
+    try:
+        return engine().run(shock.unemployment_pts, shock.hpi_change_pct)
+    except Exception as e:
+        raise _internal_error(request, "running the stress test") from e
+
+
 @router.get("/threshold-curve")
 def threshold_curve():
     """Approval rate / expected loss / fairness at every candidate cut-off."""

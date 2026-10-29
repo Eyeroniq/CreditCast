@@ -334,3 +334,27 @@ def test_stream_failure_mid_answer_is_an_error_event_with_request_id(client, mon
 
 def test_stream_question_length_is_bounded(client):
     assert client.post("/api/agent/chat/stream", json={"question": ""}).status_code == 422
+
+
+# ---- 5.2 stress testing -----------------------------------------------------------
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"unemployment_pts": 99, "hpi_change_pct": 0},
+        {"unemployment_pts": 3, "hpi_change_pct": -80},
+        {"unemployment_pts": 3},
+        {"unemployment_pts": 3, "hpi_change_pct": -10, "rates": 2},
+    ],
+)
+def test_stress_shock_is_validated(client, body):
+    assert client.post("/api/stress", json=body).status_code == 422
+
+
+@needs_artifacts
+def test_stress_custom_scenario_runs(client):
+    r = client.post("/api/stress", json={"unemployment_pts": 4, "hpi_change_pct": -15})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["unemployment_pts"] == 4 and body["el_bps"] > 0
+    base = client.get("/api/stress").json()["scenarios"]["baseline"]
+    assert body["expected_loss"] > base["expected_loss"]

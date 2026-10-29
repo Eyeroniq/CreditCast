@@ -89,6 +89,19 @@ def monitor():
 
 
 @app.command()
+def stress():
+    """Macro stress test: EL, PD by band and approval rate per scenario."""
+    from creditcast.stress import stress_report
+
+    report = json.loads(stress_report().read_text())
+    for name, sc in report["scenarios"].items():
+        typer.echo(
+            f"[stress] {name:<17} PD {sc['mean_pd']:.2%}  EL {sc['el_bps']:.0f} bps "
+            f"({sc['el_vs_baseline_pct']:+.0f}% vs baseline)  approve {sc['approval_rate']:.0%}"
+        )
+
+
+@app.command()
 def gates():
     """Run CI performance gates; non-zero exit on failure."""
     from creditcast.eval.gates import main as gate_main
@@ -98,13 +111,15 @@ def gates():
 
 @app.command(name="all")
 def run_all():
-    """End-to-end: generate -> pipeline -> train -> validate -> governance -> monitor -> gates."""
+    """End-to-end: generate -> pipeline -> train -> validate -> governance -> monitor
+    -> stress -> gates."""
     generate()
     pipeline()
     train()
     validate()
     governance()
     monitor()
+    stress()
     from creditcast.eval.gates import main as gate_main
 
     code = gate_main()

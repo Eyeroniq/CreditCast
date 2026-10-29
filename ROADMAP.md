@@ -89,7 +89,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 4.3 | Re-tune thresholds on real data | [ ] | | |
 | 4.4 | Synthetic vs real comparison in model card | [ ] | | |
 | 5.1 | Macro-economic features | [x] | 2026-10-30 | Synthetic state series (real-file drop-in); 3 lagged features; not gated, not adverse-action reasons |
-| 5.2 | Stress testing | [ ] | | |
+| 5.2 | Stress testing | [x] | 2026-10-30 | Re-scoring + satellite macro sensitivity; EL +70% adverse, +193% severe; CI gate |
 | 5.3 | Lifetime PD (IFRS 9 / CECL) | [ ] | | |
 | 5.4 | Reject inference | [ ] | | |
 | 5.5 | Basel IRB regulatory capital | [ ] | | |
@@ -839,6 +839,42 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   by band, approval rate per scenario. API `POST /api/stress` with custom
   shocks. Feeds UI task 6.2.7.
 - **Done when:** severe scenario increases EL monotonically vs baseline.
+- **Result (2026-10-30):** `creditcast/stress.py`, `cli stress` (part of
+  `cli all`), `artifacts/stress_report.json`, `GET /api/stress` (configured
+  scenarios) and `POST /api/stress` (custom shock, bounded by
+  `stress.limits`, rate-limited).
+  - **Scenarios** (`stress.scenarios`, shifts on each loan's actual
+    origination conditions): adverse = unemployment +3 pts, house prices
+    −10%; severely adverse = +6 pts, −25%.
+  - **Why two PD channels:** re-scoring alone barely moves, because the
+    champion was trained on calm 2015–2019 conditions and trees are flat
+    beyond them (see 5.1). So PD = champion on the shocked features, plus a
+    **satellite** logit shift: a logistic model of default on the macro
+    features with the champion's logit as an offset, fitted on every
+    labelled vintage (2015–2021, including the 2020 shock). It measures
+    macro sensitivity the champion doesn't already carry, the usual top-down
+    bank stress design. Fitted: +0.033 per point of unemployment, +0.043 per
+    point of 12-month rise, −0.024 per % of house-price growth (all with the
+    expected sign; a wrong-sign coefficient would be set to 0 so stress can
+    never lower risk).
+  - **LGD:** a house-price fall re-marks LTV to LTV / (1 + fall) and the LGD
+    model is re-run. PD doesn't get the re-marked LTV: its house-price
+    channel is the HPI feature plus the satellite, and both would count the
+    fall twice (the first draft did: severe PD 18%, approval 6%).
+  - **Results (12,780 OOT loans):** baseline PD 4.50%, EL 133 bps, approval
+    82%; adverse PD 6.95%, EL 227 bps (+70%), approval 62%; severely adverse
+    PD 11.54%, EL 390 bps (+193%), approval 27%. Mean PD within every risk
+    band rises too (B band 16.8% → 24.3% → 35.9%). Bands come from scorecard
+    points, which ignore macro inputs, so loans keep their band and the
+    report shows PD by band.
+  - **Gate:** "Stress EL rises with severity" (smallest EL ratio between
+    consecutive scenarios > 1; currently 1.70) added to the CI gates.
+  - **Tests:** `tests/test_stress.py`: the satellite recovers known
+    coefficients on simulated data; wrong-sign coefficients are dropped;
+    shocks move the right columns and re-mark LTV only for LGD; the baseline
+    reproduces the scored portfolio's PD and EL within 1%; EL rises across
+    four increasing shocks; report completeness. API tests for validation
+    (422s) and a custom run.
 
 ### 5.3 Lifetime PD (IFRS 9 / CECL)
 

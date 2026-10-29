@@ -54,6 +54,17 @@ macro:
   source: synthetic             # synthetic: the generator writes seeded series; files: use real CSVs in data/macro
   features: [unemp_rate, unemp_chg_12m, hpi_chg_12m]
 
+# ---- Stress testing (ROADMAP 5.2) ----------------------------------------------
+# Shocks on top of each loan's actual origination conditions: unemployment up by
+# N points (level and 12-month change), house prices moved by N percent.
+stress:
+  scenarios:
+    baseline:         {label: "Baseline",         unemployment_pts: 0, hpi_change_pct: 0}
+    adverse:          {label: "Adverse",          unemployment_pts: 3, hpi_change_pct: -10}
+    severely_adverse: {label: "Severely adverse", unemployment_pts: 6, hpi_change_pct: -25}
+  # Bounds for custom shocks through the API
+  limits: {unemployment_pts: [-5, 15], hpi_change_pct: [-50, 30]}
+
 # ---- Target definition (leakage discipline) ---------------------------------
 target:
   observation_horizon_months: 12   # forward-looking default window
@@ -191,6 +202,7 @@ api:
     score: "60/minute"
     whatif: "30/minute"
     portfolio: "30/minute"
+    stress: "20/minute"               # each custom scenario re-scores the OOT book
     agent_chat: "10/minute;100/day"   # protects the free Groq quota
   max_question_chars: 500
   portfolio_max_rows: 1000

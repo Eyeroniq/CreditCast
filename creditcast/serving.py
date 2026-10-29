@@ -142,7 +142,14 @@ class ModelBundle:
     def pd_batch(self, rows: list[dict]) -> np.ndarray:
         """Champion calibrated PDs for many applicants at once (no SHAP) —
         the fast path used by the what-if search."""
-        X = self._build_features(rows)
+        return self.pd_from_features(self._build_features(rows))
+
+    def pd_from_features(self, X: pd.DataFrame) -> np.ndarray:
+        """Champion calibrated PDs for an already-engineered feature matrix
+        (Gold rows, or stress-shocked copies of them)."""
+        X = X[feature_columns()].copy()
+        for c in categorical_columns():
+            X[c] = X[c].astype("category")
         if str(self.cfg.decision.champion) == "scorecard":
             raw = self.scorecard.predict_proba(X)[:, 1]
             return self.cal_sc.transform(raw)
