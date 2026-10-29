@@ -1,7 +1,7 @@
 // Page verdicts (6.1.3): limits come from the report, and the tone follows them.
 import { describe, expect, it } from "vitest";
 import {
-  copilotVerdict, governanceVerdict, monitoringVerdict, portfolioVerdict, validationVerdict,
+  copilotVerdict, governanceVerdict, monitoringVerdict, portfolioVerdict, stressVerdict, validationVerdict,
 } from "@/lib/verdicts";
 
 const THRESHOLDS = { gini_min: 0.35, ks_min: 0.25, calibration_max_band_error: 0.03, psi_watch: 0.1, psi_unstable: 0.25 };
@@ -70,5 +70,18 @@ describe("portfolio and copilot verdicts", () => {
     expect(copilotVerdict(null)).toBeNull();
     expect(copilotVerdict(true).tone).toBe("ok");
     expect(copilotVerdict(false).tone).toBe("warn");
+  });
+});
+
+describe("stressVerdict", () => {
+  it("describes the worst configured scenario against baseline", () => {
+    const sc = (label, u, h, bps, appr, el) => ({ label, unemployment_pts: u, hpi_change_pct: h, el_bps: bps, approval_rate: appr, expected_loss: el });
+    const v = stressVerdict({ scenarios: {
+      baseline: sc("Baseline", 0, 0, 133, 0.82, 40), adverse: sc("Adverse", 3, -10, 227, 0.62, 69),
+      severely_adverse: sc("Severely adverse", 6, -25, 390, 0.27, 119),
+    } });
+    expect(v.tone).toBe("info");
+    expect(v.text).toBe("In the severely adverse scenario (unemployment +6 pts, house prices -25%), expected loss "
+      + "rises from 133 to 390 bps of the amount lent and approvals fall from 82% to 27%.");
   });
 });

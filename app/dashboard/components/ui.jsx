@@ -115,6 +115,7 @@ export function SliderField({ id, label, info, value, onChange, min, max, step =
 const EYEBROWS = {
   "Score an applicant": "Live decisioning",
   "Portfolio risk": "Out-of-time book",
+  "Stress test": "Scenario analysis",
   "Model quality": "Validation",
   "Stability & drift": "Monitoring",
   "Fairness & explanations": "Governance",
