@@ -27,6 +27,12 @@ export const GLOSSARY = {
     long: "Combines the chance of default, the share lost and the amount owed into one money figure. Summed over the portfolio it is what a bank provisions for.",
     good: "Shown in money and in bps (basis points) of exposure: 100 bps = 1%.",
   },
+  capital: {
+    term: "Regulatory capital (Basel IRB)", group: "Loss maths",
+    short: "Money a bank must hold for unexpected loss: how much worse than expected a bad year could be.",
+    long: "Expected loss is the average, covered by pricing and provisions. Capital covers the rest, up to a 1-in-1,000-year loss, using the Basel formula for residential mortgages (asset correlation 0.15). Risk weight = capital × 12.5 ÷ amount owed.",
+    good: "Real prime mortgage books often carry roughly 15–35% risk weights; this synthetic book defaults far more often (about 4.5% a year), so its risk weight is higher.",
+  },
   bps: {
     term: "bps — basis points", group: "Loss maths",
     short: "Hundredths of a percent: 100 bps = 1%.",

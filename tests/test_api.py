@@ -358,3 +358,15 @@ def test_stress_custom_scenario_runs(client):
     assert body["unemployment_pts"] == 4 and body["el_bps"] > 0
     base = client.get("/api/stress").json()["scenarios"]["baseline"]
     assert body["expected_loss"] > base["expected_loss"]
+
+
+# ---- 5.5 regulatory capital ----------------------------------------------------------
+@needs_artifacts
+def test_capital_is_reported_next_to_expected_loss(client):
+    s = client.post("/api/score", json=GOOD).json()
+    assert s["capital"] > 0 and 0 < s["risk_weight"] < 12.5
+    p = client.get("/api/portfolio?n=5").json()
+    assert p["capital"] > p["portfolio_el"] > 0  # unexpected loss dwarfs the average
+    assert p["rwa"] == pytest.approx(12.5 * p["capital"])
+    assert sum(p["capital_by_band"].values()) == pytest.approx(p["capital"], rel=1e-6)
+    assert all("capital" in row for row in p["sample"])

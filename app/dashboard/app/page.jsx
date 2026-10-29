@@ -227,7 +227,7 @@ function Result({ res, busy, whatif, pinState, onPin, onApply }) {
         <Stat label="Credit score" info="credit_score" value={Math.round(res.credit_score)}
           sub={`grade ${res.risk_band}`} />
         <Stat label="Expected loss" info="el" value={money(res.expected_loss)}
-          sub={`${pct(res.lgd, 0)} loss if default · ${money(res.ead)} owed`} />
+          sub={`${pct(res.lgd, 0)} loss if default · ${money(res.ead)} owed · capital ${money(res.capital)}`} />
       </div>
 
       <div className="card">

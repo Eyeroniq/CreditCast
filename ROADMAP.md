@@ -92,7 +92,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 5.2 | Stress testing | [x] | 2026-10-30 | Re-scoring + satellite macro sensitivity; EL +70% adverse, +193% severe; CI gate |
 | 5.3 | Lifetime PD (IFRS 9 / CECL) | [ ] | | |
 | 5.4 | Reject inference | [ ] | | |
-| 5.5 | Basel IRB regulatory capital | [ ] | | |
+| 5.5 | Basel IRB regulatory capital | [x] | 2026-10-30 | Matches Basel II Annex 5 table (38 values); capital on Portfolio, Score, Stress |
 | 5.6 | Fairness mitigation analysis | [ ] | | |
 | 5.7 | Copilot evaluation suite | [ ] | | |
 | 6.0 | UI foundation (Tailwind/shadcn, tokens, layout) | [~] | 2026-10-08 | Shared components + responsive shell done on the existing CSS; Tailwind/shadcn migration deferred (see 6.0 result) |
@@ -899,6 +899,26 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   Show capital next to EL ("EL covers expected loss; capital covers
   unexpected loss").
 - **Done when:** unit test matches a published worked example.
+- **Result (2026-10-30):** `creditcast/models/capital.py`:
+  K = LGD · N[(G(PD) + √R · G(0.999)) / √(1 − R)] − PD · LGD, RWA = 12.5 · K ·
+  EAD, with R = 0.15 and no maturity adjustment (residential mortgages).
+  Basel III floors applied to our estimates first: PD 0.05%, LGD 5%
+  (`capital` in config).
+  - **Worked example:** `tests/test_capital.py` reproduces the Basel II
+    framework's illustrative risk-weight table for residential mortgages
+    (Annex 5): 19 PDs × LGD 45% and 25%, all 38 values to 0.01 pts (e.g. PD
+    1%, LGD 45% → 56.40%).
+  - **Where it shows:** `/api/portfolio` (capital, RWA, average risk weight,
+    capital by grade, per-loan capital), `/api/score` (applicant capital and
+    risk weight), each stress scenario, the governance report and the model
+    card. Dashboard: "Capital required (Basel)" on Portfolio (next to EL),
+    in the Score page's EL card, and on Stress (with change vs baseline),
+    plus a glossary entry explaining expected vs unexpected loss.
+  - **Numbers (OOT book):** capital $198M (RWA $2.48B, risk weight 81%)
+    against EL $40.6M; under stress 112% (adverse) and 148% (severely
+    adverse). 81% is far above real prime mortgage books (roughly 15–35%)
+    because the synthetic book defaults about 4.5% a year; this is stated in
+    the model card and glossary.
 
 ### 5.6 Fairness mitigation analysis
 

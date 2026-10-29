@@ -54,6 +54,13 @@ macro:
   source: synthetic             # synthetic: the generator writes seeded series; files: use real CSVs in data/macro
   features: [unemp_rate, unemp_chg_12m, hpi_chg_12m]
 
+# ---- Regulatory capital: Basel IRB, retail residential mortgages (ROADMAP 5.5) ----
+capital:
+  correlation: 0.15             # Basel asset correlation for residential mortgages
+  confidence: 0.999             # one-year 99.9% loss quantile
+  pd_floor: 0.0005              # Basel III: 0.05% for residential mortgages
+  lgd_floor: 0.05               # Basel III: 5% for residential mortgages
+
 # ---- Stress testing (ROADMAP 5.2) ----------------------------------------------
 # Shocks on top of each loan's actual origination conditions: unemployment up by
 # N points (level and 12-month change), house prices moved by N percent.

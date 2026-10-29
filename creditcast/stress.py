@@ -145,6 +145,9 @@ class StressEngine:
         lgd_s = np.clip(self.bundle.lgd.predict(Xl), 0, 1)
         el = pd_s * lgd_s * self.ead
         ead_total = float(self.ead.sum())
+        from creditcast.models import capital
+
+        cap = capital.irb(pd_s, lgd_s, self.ead, self.cfg)["total"]
         by_band = (
             pd.DataFrame({"band": self.band, "pd": pd_s}).groupby("band", sort=False)["pd"].mean()
         )
@@ -159,6 +162,8 @@ class StressEngine:
             "expected_loss": float(el.sum()),
             "el_bps": float(el.sum() / ead_total * 1e4),
             "approval_rate": float((pd_s <= self.threshold).mean()),
+            "capital": cap["capital"],
+            "risk_weight": cap["risk_weight"],
             "pd_by_band": [{"band": b, "mean_pd": float(by_band[b])} for b in bands],
             "satellite_logit_shift": float(extra),
         }

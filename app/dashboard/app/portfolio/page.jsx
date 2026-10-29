@@ -37,9 +37,10 @@ export default function PortfolioPage() {
       <VerdictBanner verdict={portfolioVerdict(data)} />
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Loans in the test book" info="oot" value={num(data.n_loans)} />
+        <Stat label="Capital required (Basel)" info="capital" value={moneyShort(data.capital)}
+          sub={`for unexpected loss · ${pct(data.risk_weight, 0)} risk weight`} />
         <Stat label="Expected loss" info="el" value={moneyShort(data.portfolio_el)}
-          sub={`${data.el_rate_bps.toFixed(0)} bps of the amount owed`} tone="warn" />
-        <Stat label="Amount owed (EAD)" info="ead" value={moneyShort(data.total_ead)} />
+          sub={`${data.el_rate_bps.toFixed(0)} bps of the ${moneyShort(data.total_ead)} owed`} tone="warn" />
         <Stat label="Approval rate" info="threshold" value={pct(data.approval_rate, 1)}
           sub={`average default risk ${pct(data.mean_pd)}`} />
       </div>

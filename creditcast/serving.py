@@ -21,6 +21,7 @@ from creditcast.dataset import categorical_columns, feature_columns, numeric_col
 from creditcast.features import engineer
 from creditcast.governance import decision, explain, reason_codes, shap_explain
 from creditcast.models import calibration, challenger, scorecard
+from creditcast.models import capital as capital_mod
 from creditcast.models import ead as ead_mod
 from creditcast.models import el as el_mod
 from creditcast.models import lgd as lgd_mod
@@ -179,6 +180,7 @@ class ModelBundle:
             explainer=self.explainer if champion == "challenger" else None,
         )
         codes = reason_codes.reason_codes(local, top_n=4)
+        cap = capital_mod.irb(pd_champ, lgd_hat, ead, self.cfg)
 
         return {
             "pd_scorecard": pd_sc,
@@ -190,6 +192,9 @@ class ModelBundle:
             "lgd": round(lgd_hat, 4),
             "ead": round(ead, 2),
             "expected_loss": round(el, 2),
+            # Basel IRB (5.5): capital covers unexpected loss, on top of EL
+            "capital": round(cap["total"]["capital"], 2),
+            "risk_weight": round(cap["total"]["risk_weight"], 4),
             "decision": dec,
             "threshold": self.threshold,
             "reason_codes": codes if dec == "decline" else [],

@@ -155,6 +155,6 @@ test("stress playground: presets and sliders re-run the scenario against baselin
   await expect(approved).toContainText(/82%.*baseline 82%/);
   const unemployment = page.getByLabel("Unemployment change value");
   await unemployment.fill("8");                                        // custom shock
-  await expect(page.locator(".stat", { hasText: "Expected loss" })).toContainText(/\+\d+% vs baseline/);
+  await expect(page.locator(".stat", { hasText: /^Expected loss/ })).toContainText(/\+\d+% vs baseline/);
   await expect(page.getByRole("button", { name: "Baseline", exact: true })).toHaveAttribute("aria-pressed", "false");
 });
