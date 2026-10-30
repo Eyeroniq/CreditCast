@@ -21,6 +21,16 @@ EL = PD × LGD × EAD
 > real GSE files in, a **seeded synthetic generator** produces the same schema so
 > the whole stack runs offline and reproducibly.
 
+## Run the demo (Windows)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\demo.ps1
+```
+
+Then open http://localhost:8000. See [DEMO.md](DEMO.md) for a 10-minute walkthrough
+and troubleshooting. The AI Copilot is hidden from the menu until the server has
+a `GROQ_API_KEY` and the dashboard is built with `NEXT_PUBLIC_SHOW_COPILOT=1`.
+
 ## Quickstart
 
 ```bash

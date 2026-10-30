@@ -70,6 +70,16 @@ ifrs9:
   sicr_relative: 2.0
   sicr_absolute: 0.005
 
+# ---- Reject inference study (ROADMAP 5.4) -------------------------------------
+reject_inference:
+  # The old rule-based policy that decided which applicants were booked (and so
+  # have known outcomes) in the training years.
+  policy: {min_fico: 660, max_dti: 45, max_ltv: 95}
+  inflation: 1.5                # rejects are assumed riskier than the booked-loan model predicts
+  # Underwriters also declined part of the future defaulters (and a few good
+  # loans) on information outside the model: the case reject inference is for.
+  judgment: {catch_bad: 0.35, false_alarm: 0.05}
+
 # ---- Stress testing (ROADMAP 5.2) ----------------------------------------------
 # Shocks on top of each loan's actual origination conditions: unemployment up by
 # N points (level and 12-month change), house prices moved by N percent.
@@ -229,3 +239,6 @@ fairness:
   privileged_group: "White"
   # Acceptable disparate-impact ratio band (4/5ths rule -> 0.8)
   di_ratio_min: 0.80
+  # Less-discriminatory-alternative search (5.6): a variant may lose at most this
+  # much Gini against the baseline to be chosen.
+  lda_gini_tolerance: 0.01

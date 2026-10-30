@@ -85,7 +85,7 @@ test("the tour starts on a first visit and closes with Esc", async ({ page }) =>
   await page.addInitScript(() => localStorage.removeItem("cc-tour-done"));   // runs after beforeEach's
   await page.goto("/");
   const card = page.getByRole("dialog");
-  await expect(card).toContainText("Step 1 of 8");
+  await expect(card).toContainText(/Step 1 of [78]/);   // 7 while the Copilot is hidden
   await page.getByRole("button", { name: "Next ›" }).click();
   await expect(card).toContainText("Score an applicant live");
   await page.keyboard.press("Escape");

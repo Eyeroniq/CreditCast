@@ -301,6 +301,18 @@ def lifetime_report():
     return _artifact("lifetime_report.json")
 
 
+@router.get("/lda")
+def lda_report():
+    """Less-discriminatory-alternative search: Gini vs approval-rate ratio."""
+    return _artifact("lda_report.json")
+
+
+@router.get("/reject-inference")
+def reject_inference_report():
+    """Reject inference study: ignore vs parceling vs fuzzy augmentation."""
+    return _artifact("reject_inference.json")
+
+
 @router.get("/stress")
 def stress_scenarios():
     """Baseline / adverse / severely adverse results, precomputed by the pipeline."""

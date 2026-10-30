@@ -1,17 +1,19 @@
 "use client";
-// Guided tour (ROADMAP 6.1.4): eight short steps across the cockpit. Starts by
+// Guided tour (ROADMAP 6.1.4): short steps across the cockpit (seven while the
+// Copilot is hidden, eight with it). Starts by
 // itself on a first visit to the start page; "Take the tour" in the sidebar
 // replays it. Built in-house (no library): steps span several pages, and the
 // spotlight and card use the theme tokens. Targets are `[data-tour="…"]`.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { SHOW_COPILOT } from "@/lib/features";
 
 const DONE_KEY = "cc-tour-done";
 export const START_TOUR_EVENT = "cc-start-tour";
 
-const STEPS = [
+const ALL_STEPS = [
   { path: "/", target: "nav", title: "Welcome to CreditCast",
-    text: "A mortgage credit-risk cockpit. These seven screens take you from scoring one applicant to checking the whole model. This tour takes under a minute." },
+    text: "A mortgage credit-risk cockpit. These screens take you from scoring one applicant to checking the whole model. This tour takes under a minute." },
   { path: "/", target: "sliders", title: "Score an applicant live",
     text: "Drag any slider: the decision updates instantly. The coloured tracks show which values are safe (green), borderline (amber) or risky (red)." },
   { path: "/", target: "decision", title: "The decision, explained",
@@ -27,6 +29,8 @@ const STEPS = [
   { path: "/glossary/", target: "glossary", title: "Jargon, explained",
     text: "Tap any ⓘ for a one-line explanation, or browse every term here. You can replay this tour from the menu anytime." },
 ];
+// Without an LLM key the Copilot is hidden, so its step is skipped too.
+const STEPS = ALL_STEPS.filter((s) => SHOW_COPILOT || s.path !== "/copilot/");
 
 const PAD = 8;
 

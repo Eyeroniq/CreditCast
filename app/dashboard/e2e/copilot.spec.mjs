@@ -29,6 +29,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("a suggested question streams an answer with a tool trace, kept after reload", async ({ page }) => {
+  test.slow();   // stream + axe scan + reload; can pass 45 s under a full parallel run
   await page.route("**/api/agent/chat/stream", (r) =>
     r.fulfill({ status: 200, contentType: "text/event-stream", body: sse(ANSWER) }));
   await page.goto("/copilot/");

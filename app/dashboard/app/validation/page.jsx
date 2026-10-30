@@ -4,6 +4,7 @@ import {
   Tooltip, ReferenceLine, Legend, CartesianGrid,
 } from "recharts";
 import { api, pct } from "@/lib/api";
+import RejectInference from "@/components/RejectInference";
 import { PageHead, Stat, Pill, VerdictBanner, useFetch, PageSkeleton, ErrorState, CardTitle, TableWrap, InfoTip, ChartFrame } from "@/components/ui";
 import { validationVerdict } from "@/lib/verdicts";
 import { PrintButton, PrintHeader } from "@/components/Print";
@@ -123,6 +124,7 @@ export default function ValidationPage() {
           </ChartFrame>
         </div>
       </div>
+      <RejectInference />
     </>
   );
 }
