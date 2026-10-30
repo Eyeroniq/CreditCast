@@ -89,6 +89,20 @@ def monitor():
 
 
 @app.command()
+def lifetime():
+    """Lifetime PD (survival model) and IFRS 9 staging of the out-of-time book."""
+    from creditcast.lifetime import build_lifetime
+
+    r = json.loads(build_lifetime().read_text())
+    st = {s["stage"]: s for s in r["staging"]["stages"]}
+    typer.echo(
+        f"[lifetime] mean PD 12m {r['lifetime_pd']['mean_12m']:.2%} -> lifetime "
+        f"{r['lifetime_pd']['mean_lifetime']:.2%} | stages 1/2/3: "
+        f"{st[1]['loans']}/{st[2]['loans']}/{st[3]['loans']} | ECL {r['staging']['total_ecl']:,.0f}"
+    )
+
+
+@app.command()
 def stress():
     """Macro stress test: EL, PD by band and approval rate per scenario."""
     from creditcast.stress import stress_report
@@ -112,13 +126,14 @@ def gates():
 @app.command(name="all")
 def run_all():
     """End-to-end: generate -> pipeline -> train -> validate -> governance -> monitor
-    -> stress -> gates."""
+    -> lifetime -> stress -> gates."""
     generate()
     pipeline()
     train()
     validate()
     governance()
     monitor()
+    lifetime()
     stress()
     from creditcast.eval.gates import main as gate_main
 

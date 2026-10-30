@@ -55,6 +55,11 @@ def run_gates(cfg: Config | None = None, champion: str | None = None) -> tuple[b
             "<=",
         ),
     ]
+    # Lifetime PD (5.3) can never be below the 12-month PD for any loan.
+    life_path = art / "lifetime_report.json"
+    if life_path.exists():
+        gap = json.loads(life_path.read_text())["lifetime_pd"]["min_gap"]
+        checks.append(("Lifetime PD ≥ 12-month PD", gap, 0.0, gap >= 0, ">="))
     # Stress (5.2): expected loss must rise with every step up in severity.
     # Value = the smallest EL ratio between consecutive scenarios (> 1 passes).
     stress_path = art / "stress_report.json"

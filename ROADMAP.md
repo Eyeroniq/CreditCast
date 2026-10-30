@@ -90,7 +90,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 4.4 | Synthetic vs real comparison in model card | [ ] | | |
 | 5.1 | Macro-economic features | [x] | 2026-10-30 | Synthetic state series (real-file drop-in); 3 lagged features; not gated, not adverse-action reasons |
 | 5.2 | Stress testing | [x] | 2026-10-30 | Re-scoring + satellite macro sensitivity; EL +70% adverse, +193% severe; CI gate |
-| 5.3 | Lifetime PD (IFRS 9 / CECL) | [ ] | | |
+| 5.3 | Lifetime PD (IFRS 9 / CECL) | [x] | 2026-10-31 | Logistic hazard on loan-months; lifetime ≥ 12m gate; IFRS 9 staging card on Portfolio |
 | 5.4 | Reject inference | [ ] | | |
 | 5.5 | Basel IRB regulatory capital | [x] | 2026-10-30 | Matches Basel II Annex 5 table (38 values); capital on Portfolio, Score, Stress |
 | 5.6 | Fairness mitigation analysis | [ ] | | |
@@ -884,6 +884,48 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   increase in credit risk → lifetime EL), Stage 3 (defaulted).
 - **Done when:** lifetime PD ≥ 12m PD for every loan; staging summary in
   Portfolio screen.
+- **Result (2026-10-31):** `creditcast/lifetime.py`, `cli lifetime` (part of
+  `cli all`), `artifacts/lifetime_report.json` + `lifetime_scored.parquet`,
+  `GET /api/lifetime`; data version `synthetic-v4`.
+  - **Generator:** defaults used to happen only in months 1–12, which would
+    give every loan zero risk after year one. Loans that survive year one can
+    now default in months 13–24 (`generator.late_default_ratio` = 0.8 × the
+    12-month PD), from a separate random stream; the main stream is consumed
+    exactly as for a healthy loan. Result: silver and gold are bit-for-bit
+    identical to v3 (checked), so the 12-month models, gates and Gini don't
+    move. A test proves every loan's first 12 months are unchanged.
+  - **Survival model:** logit h(t) = a[age bucket] + b · logit(PD₁₂), on
+    912k training-vintage loan-months (2,951 first defaults); 8 three-month
+    buckets show the seasoning hump (peak in months 4–9). b = 1.03.
+    Prepayment is a competing exit (0.91%/month observed).
+  - **Lifetime PD** = PD₁₂ + Σ₁₃..T S(t−1)·h(t), so year one is the
+    champion's figure and lifetime ≥ 12-month for every loan (new CI gate,
+    smallest gap +7.7 pts). Mean 4.50% → 22.0%. Beyond month 24 the hazard is
+    held at the months 19–24 level, which errs high (real mortgage hazards
+    ease with age); stated in the glossary.
+  - **Back-test (cumulative first default by month 24):** training vintages
+    6.7% predicted vs 6.9% observed; 2020 H1 vintages 6.8% vs 8.3%. The gap
+    is the 2020 shock the champion's 12-month PD already under-reads (see
+    5.1), not the curve. My first back-test showed 15% observed: it counted
+    every defaulted loan but only fully-observed survivors; now it uses whole
+    vintages old enough to be seen for 24 months.
+  - **IFRS 9 at 2022-06** (out-of-time loans still open: 10,106; 2,674
+    already repaid or written off): Stage 3 = 90+ DPD; Stage 2 = 30+ DPD
+    backstop, or 12-month PD now ≥ 2× origination and +0.5 pts (re-scored
+    with the reporting-date economy); Stage 1 otherwise. Allowance: Stage 1
+    12-month ECL, Stage 2 lifetime ECL (amortising balance, discounted at the
+    note rate), Stage 3 LGD × balance. Result: 9,842 / 148 / 116 loans,
+    coverage 1.2% / 4.5% / 29.9%, total $36.5M. The 2022 economy is benign,
+    so Stage 2 comes from the DPD backstop.
+  - **Dashboard:** IFRS 9 staging card on Portfolio (loans, owed, allowance,
+    coverage per stage, plus "How lifetime risk is estimated" with the
+    back-tests); "Lifetime risk" and "IFRS 9 stage" columns in the loan
+    table ("Off book" for loans already closed); glossary entries.
+  - **Tests:** `tests/test_lifetime.py`: the fitted hazard is the likelihood
+    maximum (zero gradient) and recovers a known curve; lifetime ≥ 12-month
+    across terms and equal with one year left; amortisation runs to zero;
+    lifetime ECL > 12-month ECL ≈ PD × LGD × balance; the generator test; and
+    staging consistency on the real report. Plus an API test.
 
 ### 5.4 Reject inference
 

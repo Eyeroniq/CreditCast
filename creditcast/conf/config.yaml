@@ -6,7 +6,7 @@
 
 run:
   seed: 42                      # global determinism
-  data_version: "synthetic-v3"  # bump when the generator schema changes (v2: cures + data cutoff; v3: property state + macro series)
+  data_version: "synthetic-v4"  # bump when the generator schema changes (v2: cures + data cutoff; v3: property state + macro series; v4: defaults after month 12)
   code_version: "0.1.0"
 
 paths:
@@ -38,6 +38,7 @@ generator:
   base_default_rate: 0.045      # portfolio-level 12m default rate (realistic mortgage)
   recovery_mean: 0.65           # for LGD: mean recovery fraction on defaults
   cure_rate: 0.25               # share of defaults that cure (back to current, 0 loss)
+  late_default_ratio: 0.8       # chance of defaulting in months 13-24, as a multiple of the 12m PD (5.3)
   data_cutoff: "2022-06"        # last reporting month in the panel (like a real data drop);
                                 # recent vintages are right-censored by it
   # Property state mix (Freddie's property_state). Used only to look up macro
@@ -60,6 +61,14 @@ capital:
   confidence: 0.999             # one-year 99.9% loss quantile
   pd_floor: 0.0005              # Basel III: 0.05% for residential mortgages
   lgd_floor: 0.05               # Basel III: 5% for residential mortgages
+
+# ---- Lifetime PD and IFRS 9 staging (ROADMAP 5.3) ------------------------------
+ifrs9:
+  # Significant increase in credit risk (Stage 2): 30+ DPD (backstop), or the
+  # 12-month PD at the reporting date is at least `sicr_relative` x its value at
+  # origination AND at least `sicr_absolute` higher.
+  sicr_relative: 2.0
+  sicr_absolute: 0.005
 
 # ---- Stress testing (ROADMAP 5.2) ----------------------------------------------
 # Shocks on top of each loan's actual origination conditions: unemployment up by

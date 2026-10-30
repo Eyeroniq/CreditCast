@@ -1,6 +1,6 @@
 # Model Card — CreditCast PD/LGD/EAD Expected-Loss Model
 
-> Auto-generated. data_version=`synthetic-v3` · code_version=`0.1.0` · seed=`42`
+> Auto-generated. data_version=`synthetic-v4` · code_version=`0.1.0` · seed=`42`
 
 ## 1. Model details
 - **Purpose:** Estimate 12-month Probability of Default (PD), Loss Given Default

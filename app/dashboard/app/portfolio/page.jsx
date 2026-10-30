@@ -7,6 +7,7 @@ import { api, pct, money, moneyShort, num } from "@/lib/api";
 import { PageHead, Stat, VerdictBanner, useFetch, PageSkeleton, ErrorState, CardTitle } from "@/components/ui";
 import { portfolioVerdict } from "@/lib/verdicts";
 import LoanTable, { EMPTY_FILTERS } from "@/components/LoanTable";
+import Ifrs9Staging from "@/components/Ifrs9Staging";
 
 const BAND_COLOR = { AAA: "var(--green)", AA: "var(--green)", A: "var(--green)", BBB: "var(--series)", BB: "var(--amber)", B: "var(--red)" };
 const SAMPLE = 1000;   // API cap (config api.portfolio_max_rows)
@@ -103,6 +104,8 @@ export default function PortfolioPage() {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      <Ifrs9Staging />
 
       <div className="card" id="loan-table" data-tour="loan-table">
         <CardTitle info="el">Loans with the highest expected loss</CardTitle>

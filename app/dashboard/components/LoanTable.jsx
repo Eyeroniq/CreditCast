@@ -14,6 +14,8 @@ const COLUMNS = [
   { key: "loan_id", label: "Loan", num: false, fmt: (v) => v },
   { key: "vintage", label: "Originated", num: false, fmt: (v) => v },
   { key: "pd_champion", label: "Default risk", info: "pd", num: true, fmt: (v) => pct(v) },
+  { key: "pd_lifetime", label: "Lifetime risk", info: "lifetime_pd", num: true,
+    fmt: (v) => (v == null ? "—" : pct(v, 1)), sortValue: (v) => (v == null ? -1 : v) },
   { key: "credit_score", label: "Score", info: "credit_score", num: true, fmt: (v) => v.toFixed(0) },
   { key: "risk_band", label: "Grade", info: "risk_band", num: false,
     fmt: (v) => <Band grade={v} />, sortValue: (v) => GRADES.indexOf(v) },
@@ -22,6 +24,9 @@ const COLUMNS = [
   { key: "expected_loss", label: "Expected loss", info: "el", num: true, fmt: (v) => money(v) },
   { key: "decision", label: "Decision", num: false,
     fmt: (v) => <span className={v === "approve" ? "ok" : "bad"}>{v === "approve" ? "✓ " : "✗ "}{DECISION_LABELS[v] || v}</span> },
+  { key: "ifrs9_stage", label: "IFRS 9 stage", info: "ifrs9", num: false,
+    fmt: (v) => (v == null ? <span className="muted">Off book</span> : <span className={v === 3 ? "bad" : v === 2 ? "warn" : ""}>Stage {v}</span>),
+    sortValue: (v) => (v == null ? 0 : v) },
   { key: "default_12m", label: "Actually defaulted?", num: false,
     fmt: (v) => (v ? <span className="bad">Yes</span> : <span className="muted">No</span>) },
 ];
