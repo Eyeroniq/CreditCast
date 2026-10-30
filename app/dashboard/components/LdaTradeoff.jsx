@@ -8,6 +8,21 @@ import {
 import { api } from "@/lib/api";
 import { CardTitle, ChartFrame, TableWrap, useFetch } from "@/components/ui";
 
+// Where each point's label sits, so the close-together ones don't overlap.
+const LABEL_AT = {
+  baseline: { dx: -8, dy: 4, anchor: "end" }, cap_fico: { dx: 0, dy: 16, anchor: "middle" },
+  reweighing: { dx: 8, dy: -6, anchor: "start" }, drop_dti: { dx: 0, dy: -10, anchor: "middle" },
+  fairlearn_dp: { dx: 0, dy: -10, anchor: "middle" },
+};
+
+function PointLabel({ x, y, index, points }) {
+  const p = points[index];
+  const at = LABEL_AT[p.key] || { dx: 0, dy: -10, anchor: "middle" };
+  return (
+    <text x={x + at.dx} y={y + at.dy} textAnchor={at.anchor} fill="var(--muted)" fontSize={11}>{p.name}</text>
+  );
+}
+
 const SHORT = {
   baseline: "Baseline", drop_dti: "No DTI", cap_fico: "Score cap",
   reweighing: "Reweighing", fairlearn_dp: "fairlearn",
@@ -34,9 +49,9 @@ export default function LdaTradeoff() {
           <ScatterChart margin={{ left: 8, right: 24, top: 16, bottom: 8 }}>
             <CartesianGrid stroke="var(--border)" />
             <XAxis type="number" dataKey="ratio" name="Lowest approval ratio" stroke="var(--muted-2)"
-              domain={[0.78, 0.9]} tickFormatter={(v) => v.toFixed(2)} />
+              domain={[0.78, 0.9]} ticks={[0.78, 0.8, 0.82, 0.84, 0.86, 0.88, 0.9]} tickFormatter={(v) => v.toFixed(2)} />
             <YAxis type="number" dataKey="gini" name="Gini" stroke="var(--muted-2)"
-              domain={[0.2, 0.5]} tickFormatter={(v) => v.toFixed(2)} />
+              domain={[0.2, 0.5]} ticks={[0.2, 0.3, 0.4, 0.5]} tickFormatter={(v) => v.toFixed(1)} />
             <Tooltip formatter={(v) => v.toFixed(3)} labelFormatter={() => ""}
               content={({ payload }) => payload?.[0] ? (
                 <div className="card" style={{ padding: "8px 12px" }}>
@@ -49,7 +64,7 @@ export default function LdaTradeoff() {
               {points.map((p) => (
                 <Cell key={p.key} fill={p.key === data.chosen ? "var(--green)" : "var(--series)"} />
               ))}
-              <LabelList dataKey="name" position="top" fill="var(--muted)" fontSize={11} />
+              <LabelList dataKey="name" content={(props) => <PointLabel {...props} points={points} />} />
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
