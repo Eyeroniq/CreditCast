@@ -295,6 +295,12 @@ class StressShock(BaseModel):
     )
 
 
+@router.get("/lifetime")
+def lifetime_report():
+    """Lifetime PD hazard, back-tests and IFRS 9 staging of the out-of-time book."""
+    return _artifact("lifetime_report.json")
+
+
 @router.get("/stress")
 def stress_scenarios():
     """Baseline / adverse / severely adverse results, precomputed by the pipeline."""
@@ -342,6 +348,15 @@ def portfolio(request: Request, n: int = Query(500, ge=1, le=int(API_CFG.portfol
     )
     cap = capital.irb(scored["pd_champion"], scored["lgd_hat"], scored["ead"], cfg)
     scored = scored.assign(capital=cap["capital"])
+    # Lifetime PD and IFRS 9 stage per loan (5.3), when the step has run
+    life_path = cfg.path("artifacts") / "lifetime_scored.parquet"
+    if life_path.exists():
+        life = pd.read_parquet(life_path)[["loan_id", "pd_lifetime", "ifrs9_stage"]]
+        scored = scored.merge(life, on="loan_id", how="left")
+        # loans already repaid or written off have no stage: null, not NaN
+        stage = scored["ifrs9_stage"]
+        scored["ifrs9_stage"] = stage.astype(object).where(stage.notna(), None)
+        scored.loc[stage.notna(), "ifrs9_stage"] = stage[stage.notna()].astype(int)
     band_order = [b["name"] for b in cfg.decision.bands]
     band_dist = (
         scored["risk_band"].value_counts().reindex(band_order).fillna(0).astype(int).to_dict()
@@ -367,6 +382,7 @@ def portfolio(request: Request, n: int = Query(500, ge=1, le=int(API_CFG.portfol
         "decision",
         "default_12m",
     ]
+    sample_cols += [c for c in ("pd_lifetime", "ifrs9_stage") if c in scored]
     return {
         "n_loans": int(len(scored)),
         "portfolio_el": float(scored["expected_loss"].sum()),

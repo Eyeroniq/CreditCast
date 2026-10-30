@@ -68,6 +68,7 @@ export const api = {
   monitoring: () => get("/monitoring"),
   thresholdCurve: () => get("/threshold-curve"),
   stressScenarios: () => get("/stress"),
+  lifetime: () => get("/lifetime"),
   // Custom macro shock (5.2 / 6.2.7); `signal` cancels a superseded request.
   stressRun: async (shock, { signal } = {}) => {
     const r = await request(`${API}/stress`, {

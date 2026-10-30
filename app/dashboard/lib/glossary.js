@@ -33,6 +33,18 @@ export const GLOSSARY = {
     long: "Expected loss is the average, covered by pricing and provisions. Capital covers the rest, up to a 1-in-1,000-year loss, using the Basel formula for residential mortgages (asset correlation 0.15). Risk weight = capital × 12.5 ÷ amount owed.",
     good: "Real prime mortgage books often carry roughly 15–35% risk weights; this synthetic book defaults far more often (about 4.5% a year), so its risk weight is higher.",
   },
+  lifetime_pd: {
+    term: "Lifetime default risk", group: "Loss maths",
+    short: "Chance the loan defaults at any point before it is repaid, not just in the next 12 months.",
+    long: "Year one is the model's 12-month risk; after that a survival model continues month by month along a seasoning curve fitted on past loans, with early repayment as the other way a loan can end. Always at least the 12-month risk.",
+    good: "Assumes the risk after month 24 stays at the month 19–24 level (real mortgages usually get safer with age), so it errs on the high side.",
+  },
+  ifrs9: {
+    term: "IFRS 9 stages", group: "Loss maths",
+    short: "Accounting buckets that decide how much loss a bank must set aside for each loan.",
+    long: "Stage 1: performing, set aside 12 months of expected loss. Stage 2: credit risk has risen a lot since the loan was made (30+ days late, or default risk at least doubled), set aside the full lifetime expected loss. Stage 3: in default (90+ days late), set aside the loss on default itself.",
+    good: "Most of a healthy book sits in Stage 1.",
+  },
   bps: {
     term: "bps — basis points", group: "Loss maths",
     short: "Hundredths of a percent: 100 bps = 1%.",

@@ -198,6 +198,15 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
         0,
     )
 
+    # Later defaults (months 13+, 5.3): loans that got through year one can still
+    # default afterwards, at a rate tied to their risk. Drawn from their OWN
+    # stream, and the main stream below is consumed exactly as for a healthy
+    # loan, so everything the 12-month models see is bit-for-bit unchanged.
+    late_rng = np.random.default_rng(int(cfg.run.seed) + 13)
+    late_p = np.clip(pd_12 * float(cfg.generator.late_default_ratio), 0, 0.9)
+    late = ~defaults & (late_rng.random(n) < late_p)
+    late_month = np.where(late, late_rng.integers(obs_window + 1, horizon + 1, n), 0)
+
     # LGD severity: higher LTV -> thinner equity cushion -> larger loss
     base_recovery = float(cfg.generator.recovery_mean)
     recovery = np.clip(
@@ -222,7 +231,11 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
         pmt = bal * r / (1 - (1 + r) ** (-T)) if r > 0 else bal / T
         dm = default_month[i]
         cures = bool(cured[i])
+        dm_late = late_month[i]
+        shadow_gone = False  # main-stream draws a healthy loan would have stopped making
+        late_started = False
         disposed = False
+        last_age = 0  # last month written for this loan
         for age in range(1, horizon + 1):
             if disposed:
                 break
@@ -239,6 +252,14 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
                     zb = ZB_REO
                     net_loss = round(bal * lgd[i], 2)
                     disposed = True
+            elif dm_late and age >= dm_late:
+                late_started = True
+                dpd_status = str(min(age - dm_late + 3, 6))
+                if age >= dm_late + 4:
+                    zb = ZB_REO
+                    net_loss = round(bal * lgd[i], 2)
+                    disposed = True
+                shadow_gone = shadow_gone or _shadow_healthy_draws(rng, age)
             else:
                 # healthy loan: usually current, rare transient 30dpd that cures
                 if rng.random() < 0.015:
@@ -261,8 +282,23 @@ def _performance(df: pd.DataFrame, cfg: Config, rng: np.random.Generator) -> pd.
                     net_loss,
                 )
             )
+            last_age = age
+
+        # A late default left the panel early: finish the draws its healthy
+        # twin would have made, so later loans see the same random numbers.
+        if late_started and not shadow_gone:
+            for a in range(last_age + 1, horizon + 1):
+                if _shadow_healthy_draws(rng, a):
+                    break
 
     return pd.DataFrame(rows, columns=PERF_SCHEMA)
+
+
+def _shadow_healthy_draws(rng: np.random.Generator, age: int) -> bool:
+    """Consume the main-stream draws of one healthy month (transient 30 DPD,
+    then prepayment from month 6). True if that healthy loan would prepay."""
+    rng.random()
+    return age >= 6 and rng.random() < 0.012
 
 
 def generate(cfg: Config | None = None) -> dict[str, Path]:

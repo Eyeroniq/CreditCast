@@ -370,3 +370,13 @@ def test_capital_is_reported_next_to_expected_loss(client):
     assert p["rwa"] == pytest.approx(12.5 * p["capital"])
     assert sum(p["capital_by_band"].values()) == pytest.approx(p["capital"], rel=1e-6)
     assert all("capital" in row for row in p["sample"])
+
+
+# ---- 5.3 lifetime PD and IFRS 9 -------------------------------------------------------
+@needs_artifacts
+def test_lifetime_and_stages_reach_the_portfolio(client):
+    r = client.get("/api/lifetime").json()
+    assert {s["stage"] for s in r["staging"]["stages"]} == {1, 2, 3}
+    rows = client.get("/api/portfolio?n=200").json()["sample"]
+    assert all(row["pd_lifetime"] >= row["pd_champion"] - 1e-9 for row in rows)
+    assert {row["ifrs9_stage"] for row in rows} <= {1, 2, 3, None}
