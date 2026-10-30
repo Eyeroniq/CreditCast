@@ -45,6 +45,12 @@ export const GLOSSARY = {
     long: "Stage 1: performing, set aside 12 months of expected loss. Stage 2: credit risk has risen a lot since the loan was made (30+ days late, or default risk at least doubled), set aside the full lifetime expected loss. Stage 3: in default (90+ days late), set aside the loss on default itself.",
     good: "Most of a healthy book sits in Stage 1.",
   },
+  reject_inference: {
+    term: "Reject inference", group: "Model quality",
+    short: "Correcting for the fact that a lender never learns how the applicants it turned down would have paid.",
+    long: "A model built only on approved loans may misjudge the kind of applicant it used to reject. Parceling and fuzzy augmentation estimate those missing outcomes and add them back before training.",
+    good: "Needed when old decisions used information the model doesn't have (like an underwriter's judgment); unnecessary when they used only the model's own inputs.",
+  },
   bps: {
     term: "bps — basis points", group: "Loss maths",
     short: "Hundredths of a percent: 100 bps = 1%.",

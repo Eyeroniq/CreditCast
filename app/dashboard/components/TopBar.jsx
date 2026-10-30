@@ -6,9 +6,10 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import ThemeToggle from "@/components/ThemeToggle";
+import { SHOW_COPILOT } from "@/lib/features";
 import { START_TOUR_EVENT } from "@/components/Tour";
 
-const NAV = [
+const ALL_NAV = [
   { href: "/", label: "Score", full: "Score an applicant" },
   { href: "/portfolio", label: "Portfolio", full: "Portfolio risk" },
   { href: "/stress", label: "Stress", full: "Stress test" },
@@ -18,6 +19,7 @@ const NAV = [
   { href: "/copilot", label: "Copilot", full: "Risk Copilot", ai: true },
   { href: "/glossary", label: "Glossary", full: "Glossary" },
 ];
+const NAV = ALL_NAV.filter((n) => SHOW_COPILOT || n.href !== "/copilot");
 
 const startTour = () => window.dispatchEvent(new Event(START_TOUR_EVENT));
 

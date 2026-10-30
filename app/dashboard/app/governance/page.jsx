@@ -8,6 +8,7 @@ import { governanceVerdict } from "@/lib/verdicts";
 import { PrintButton, PrintHeader } from "@/components/Print";
 import { featureLabel } from "@/lib/labels";
 import ThresholdExplorer from "@/components/ThresholdExplorer";
+import LdaTradeoff from "@/components/LdaTradeoff";
 
 export default function GovernancePage() {
   const { data, error, loading, retry } = useFetch(() => api.governance(), []);
@@ -45,6 +46,7 @@ export default function GovernancePage() {
       </div>
 
       <ThresholdExplorer />
+      <LdaTradeoff />
 
       <div className="grid cols-2" style={{ marginBottom: 16 }}>
         <div className="card">

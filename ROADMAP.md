@@ -91,10 +91,10 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 5.1 | Macro-economic features | [x] | 2026-10-30 | Synthetic state series (real-file drop-in); 3 lagged features; not gated, not adverse-action reasons |
 | 5.2 | Stress testing | [x] | 2026-10-30 | Re-scoring + satellite macro sensitivity; EL +70% adverse, +193% severe; CI gate |
 | 5.3 | Lifetime PD (IFRS 9 / CECL) | [x] | 2026-10-31 | Logistic hazard on loan-months; lifetime ≥ 12m gate; IFRS 9 staging card on Portfolio |
-| 5.4 | Reject inference | [ ] | | |
+| 5.4 | Reject inference | [x] | 2026-10-31 | Two policy scenarios; parceling chosen when underwriters used outside information |
 | 5.5 | Basel IRB regulatory capital | [x] | 2026-10-30 | Matches Basel II Annex 5 table (38 values); capital on Portfolio, Score, Stress |
-| 5.6 | Fairness mitigation analysis | [ ] | | |
-| 5.7 | Copilot evaluation suite | [ ] | | |
+| 5.6 | Fairness mitigation analysis | [x] | 2026-10-31 | 5 variants at the same approval rate; reweighing chosen; chart on Fairness + model card |
+| 5.7 | Copilot evaluation suite | [x] | 2026-10-31 | 20 questions, fact + no-invented-number checks; nightly when GROQ_API_KEY is set |
 | 6.0 | UI foundation (Tailwind/shadcn, tokens, layout) | [~] | 2026-10-08 | Shared components + responsive shell done on the existing CSS; Tailwind/shadcn migration deferred (see 6.0 result) |
 | 6.1.1 | Plain-language labels | [x] | 2026-10-08 | |
 | 6.1.2 | Tooltips + Glossary page | [x] | 2026-10-08 | 25 terms |
@@ -933,6 +933,26 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   in the generator, then compare: (a) ignore rejects, (b) parceling,
   (c) fuzzy augmentation. Report Gini on the full through-the-door population.
 - **Done when:** a short report shows the bias and the chosen method.
+- **Result (2026-10-31):** `creditcast/reject_inference.py`, `cli
+  reject-inference` (in `cli all`), `artifacts/reject_inference.json`,
+  `GET /api/reject-inference`, card at the bottom of the Quality page.
+  Instead of changing the generator, an old policy is applied to the training
+  years (credit score ≥ 660, DTI ≤ 45%, LTV ≤ 95%: 24% rejected), hiding the
+  rejects' outcomes; the synthetic data still knows them, so the bias is
+  measured directly on the out-of-time applicants that policy would reject
+  (actual default rate 9.5%). Same logistic model for every method.
+  - **Rules only** (selection on the model's own inputs, "missing at
+    random"): ignoring rejects misses their default rate by only +0.5 pts;
+    parceling (+2.1) and fuzzy augmentation (+3.6) over-correct.
+  - **Rules + underwriter judgment** (underwriters also declined 35% of the
+    eventual defaulters and 5% of good loans, on information the model never
+    sees): ignoring rejects now under-states their default rate by −3.7 pts;
+    **parceling** (inflation 1.5) cuts that to −1.1 (the oracle trained on
+    every outcome: −1.2) and lifts Gini 0.440 → 0.444. Chosen: parceling.
+  - Lesson: reject inference is needed when past decisions used information
+    the model lacks, and harmful when they didn't. Study only: the live model
+    trains on every loan because the synthetic book knows every outcome.
+  - Tests: policy cut-offs, judgment rates, and the two findings above.
 
 ### 5.5 Regulatory capital (Basel IRB)
 
@@ -969,6 +989,28 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   training via `fairlearn.reductions`) and plot Gini vs DI ratio. **Never** use
   group-specific thresholds (illegal in lending). Document chosen trade-off.
 - **Done when:** trade-off chart in Governance screen and model card.
+- **Result (2026-10-31):** `creditcast/governance/lda.py`, `cli lda` (in
+  `cli all`), `artifacts/lda_report.json`, `GET /api/lda`, chart + table on
+  the Fairness page, table in the model card. One logistic base model, five
+  variants, each judged on the out-of-time book approving the same 82% of
+  applicants (one cut-off for everyone), so only fairness and accuracy differ:
+
+  | Variant | Gini | Lowest approval ratio |
+  |---|---|---|
+  | Baseline | 0.451 | 0.825 |
+  | Without debt-to-income | 0.416 | 0.850 |
+  | Credit score capped at 720 | 0.438 | 0.831 |
+  | **Reweighing (chosen)** | 0.449 | 0.833 |
+  | fairlearn exponentiated gradient | 0.243 | 0.867 |
+
+  Chosen = fairest within 0.01 Gini of the baseline (`fairness.lda_gini_tolerance`).
+  fairlearn needed care: its reduction constrains yes/no predictions at 50%,
+  which almost no loan reaches, so unweighted it changed nothing; defaults
+  are weighted (1 − t)/t to put that line at the policy's PD limit. It then
+  gets the most even approvals but loses most of the ranking power and uses
+  race in training, so it's reported, never auto-chosen. Group-specific
+  thresholds are never considered. Tests: reweighing makes group and outcome
+  independent; one cut-off for all; the chosen variant's guarantees.
 
 ### 5.7 Copilot evaluation suite
 
@@ -978,6 +1020,18 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
   tool outputs (no hallucinated figures). Runs nightly when `GROQ_API_KEY` is
   present (skipped otherwise).
 - **Done when:** ≥ 90% pass rate tracked over time.
+- **Result (2026-10-31):** `tests/eval/copilot_questions.yaml` (20 questions;
+  expected values read live from the artifacts, so nothing goes stale),
+  `creditcast/eval/copilot_eval.py` (wraps every tool call to capture its
+  output; an answer passes if it states each expected figure in any common
+  form, e.g. 0.434 / 43.4% / $40.6M, and every other number traces to a tool
+  output), history appended to `reports/copilot_eval_history.jsonl`, and a
+  nightly workflow (`.github/workflows/copilot-eval.yml`) that runs when the
+  `GROQ_API_KEY` secret exists and fails below 90%. Not run yet: no key.
+  Checking logic is unit-tested on fixed text without a key.
+  - **Copilot hidden for the demo:** without a key the Copilot can't answer,
+    so `NEXT_PUBLIC_SHOW_COPILOT` (off by default) keeps it out of the menu
+    and the tour; the page and its tests stay.
 
 ---
 

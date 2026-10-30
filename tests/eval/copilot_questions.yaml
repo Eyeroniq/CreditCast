@@ -1,0 +1,87 @@
+# Risk Copilot evaluation set (ROADMAP 5.7). Each question lists the facts a
+# correct answer must state. `path` is <artifact file>:<dotted key>; values are
+# read from the current artifacts when the suite runs, so nothing here goes
+# stale when the models are retrained. {champion} is the configured champion.
+# `tol` is the allowed absolute difference (in the value's own units).
+# Run: python -m creditcast.eval.copilot_eval   (needs GROQ_API_KEY)
+questions:
+  - id: champion_gini
+    question: "What is the out-of-time Gini of the champion model?"
+    expect:
+      - {path: "validation_report.json:models.{champion}.discrimination.gini", tol: 0.005}
+  - id: champion_ks
+    question: "What is the KS statistic of the champion model on unseen loans?"
+    expect:
+      - {path: "validation_report.json:models.{champion}.discrimination.ks", tol: 0.005}
+  - id: calibration_band
+    question: "What is the champion's worst calibration band error, and is it within the limit?"
+    expect:
+      - {path: "validation_report.json:models.{champion}.calibration.max_band_error", tol: 0.001}
+  - id: ece
+    question: "What is the expected calibration error (ECE) of the champion?"
+    expect:
+      - {path: "validation_report.json:models.{champion}.calibration.ece", tol: 0.0005}
+  - id: both_ginis
+    question: "Compare the Gini of the scorecard and the challenger."
+    expect:
+      - {path: "validation_report.json:benchmark.scorecard_gini", tol: 0.005}
+      - {path: "validation_report.json:benchmark.challenger_gini", tol: 0.005}
+  - id: gini_gap
+    question: "How big is the Gini gap between the challenger and the scorecard?"
+    expect:
+      - {path: "validation_report.json:benchmark.gini_gap", tol: 0.002}
+  - id: oot_default_rate
+    question: "What is the default rate in the out-of-time test set?"
+    expect:
+      - {path: "validation_report.json:oot_default_rate", tol: 0.0005}
+  - id: n_oot
+    question: "How many loans are in the out-of-time test set?"
+    expect:
+      - {path: "validation_report.json:n_oot", tol: 0}
+  - id: max_psi
+    question: "What is the largest score PSI across vintages, and is the model stable?"
+    expect:
+      - {path: "validation_report.json:stability.max_score_psi", tol: 0.002}
+  - id: portfolio_el
+    question: "What is the total expected loss of the portfolio?"
+    expect:
+      - {path: "train_metrics.json:expected_loss.portfolio_el", rel_tol: 0.01}
+  - id: el_bps
+    question: "What is the portfolio's expected loss rate in basis points?"
+    expect:
+      - {path: "train_metrics.json:expected_loss.el_rate_bps", tol: 1}
+  - id: mean_pd
+    question: "What is the average probability of default across the portfolio?"
+    expect:
+      - {path: "train_metrics.json:expected_loss.mean_pd", tol: 0.0005}
+  - id: mean_lgd
+    question: "What is the average loss given default in the portfolio?"
+    expect:
+      - {path: "train_metrics.json:expected_loss.mean_lgd_hat", tol: 0.0005}
+  - id: total_ead
+    question: "What is the total exposure at default of the book?"
+    expect:
+      - {path: "train_metrics.json:expected_loss.total_ead", rel_tol: 0.01}
+  - id: threshold
+    question: "What PD cut-off decides approve versus decline?"
+    expect:
+      - {path: "governance_report.json:decision.threshold", tol: 0.0005}
+  - id: approval_rate
+    question: "What share of applicants does the policy approve?"
+    expect:
+      - {path: "governance_report.json:decision.approval_rate", tol: 0.001}
+  - id: approved_default_rate
+    question: "What is the default rate among approved loans?"
+    expect:
+      - {path: "governance_report.json:decision.approved_default_rate", tol: 0.0005}
+  - id: di_ratio
+    question: "Is the model fair? What is the lowest disparate-impact ratio?"
+    expect:
+      - {path: "governance_report.json:fairness.di_ratio_min_observed", tol: 0.005}
+  - id: eo_diff
+    question: "What is the largest equal-opportunity difference between groups?"
+    expect:
+      - {path: "governance_report.json:fairness.max_equal_opportunity_diff", tol: 0.005}
+  - id: score_borrower
+    question: "Score a borrower: FICO 650, DTI 46, LTV 93, investment property, cash-out refinance. Approve or decline?"
+    expect: []   # no fixed number to check; it must still not invent figures

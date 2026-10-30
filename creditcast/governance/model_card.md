@@ -58,6 +58,21 @@
   lending). Surfacing and tracking this is a regulatory expectation (EU AI Act
   high-risk credit scoring).
 
+- **Less-discriminatory-alternative search** (logistic base model, all at the
+  policy's 82% approval rate; Gini tolerance 0.01):
+
+| Variant | Gini | Lowest approval ratio |
+|---|---|---|
+| Baseline (all features) | 0.451 | 0.825 (Black) |
+| Without debt-to-income | 0.416 | 0.850 (Black) |
+| Credit score capped at 720 | 0.438 | 0.831 (Black) |
+| Reweighing (group-balanced training) | 0.449 | 0.833 (Black) |
+| Fairness-constrained training (fairlearn) | 0.243 | 0.867 (Black) |
+
+  Chosen trade-off: **Reweighing (group-balanced training)** (best fairness within the Gini tolerance).
+  The fairlearn reduction reaches the most even approvals but gives up most of
+  the ranking power, and uses race in training, so it isn't chosen.
+
 ## 6. Limitations
 - Synthetic data calibrated to plausible mortgage behaviour, not a specific
   institution's book.

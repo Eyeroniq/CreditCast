@@ -103,6 +103,33 @@ def lifetime():
 
 
 @app.command()
+def lda():
+    """Fairness trade-off: search for a less discriminatory alternative model."""
+    from creditcast.governance.lda import build_report
+
+    r = json.loads(build_report().read_text())
+    for name, v in r["variants"].items():
+        mark = "  <- chosen" if name == r["chosen"] else ""
+        typer.echo(
+            f"[lda] {name:<13} Gini {v['gini']:.3f}  lowest approval ratio {v['min_ratio']:.3f}{mark}"
+        )
+
+
+@app.command(name="reject-inference")
+def reject_inference():
+    """Reject inference study: how booked-loan-only data biases the model."""
+    from creditcast.reject_inference import build_report
+
+    r = json.loads(build_report().read_text())
+    for name, sc in r["scenarios"].items():
+        miss = sc["methods"]["ignore"]["miss_old_rejects_pts"]
+        typer.echo(
+            f"[reject-inference] {name:<19} ignoring rejects misses their default rate by "
+            f"{miss:+.1f} pts -> best: {sc['chosen']}"
+        )
+
+
+@app.command()
 def stress():
     """Macro stress test: EL, PD by band and approval rate per scenario."""
     from creditcast.stress import stress_report
@@ -126,7 +153,7 @@ def gates():
 @app.command(name="all")
 def run_all():
     """End-to-end: generate -> pipeline -> train -> validate -> governance -> monitor
-    -> lifetime -> stress -> gates."""
+    -> lifetime -> reject-inference -> lda -> stress -> gates."""
     generate()
     pipeline()
     train()
@@ -134,6 +161,8 @@ def run_all():
     governance()
     monitor()
     lifetime()
+    reject_inference()
+    lda()
     stress()
     from creditcast.eval.gates import main as gate_main
 

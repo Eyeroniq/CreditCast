@@ -101,6 +101,44 @@ def build_governance(cfg: Config | None = None) -> dict:
     return report
 
 
+def refresh_model_card(cfg: Config | None = None) -> None:
+    """Rewrite the model card from the saved reports (after later steps such as
+    the fairness trade-off search have added theirs)."""
+    cfg = cfg or load_config()
+    art = cfg.path("artifacts")
+    load = lambda name: json.loads((art / name).read_text())  # noqa: E731
+    _write_model_card(
+        load("governance_report.json"),
+        load("train_metrics.json"),
+        load("validation_report.json"),
+        cfg,
+    )
+
+
+def _lda_section(cfg: Config) -> str:
+    path = cfg.path("artifacts") / "lda_report.json"
+    if not path.exists():
+        return ""
+    r = json.loads(path.read_text())
+    rows = "\n".join(
+        f"| {v['label']} | {v['gini']:.3f} | {v['min_ratio']:.3f} ({v['lowest_group']}) |"
+        for v in r["variants"].values()
+    )
+    c = r["variants"][r["chosen"]]
+    return f"""
+- **Less-discriminatory-alternative search** (logistic base model, all at the
+  policy's {r["approval_share"]:.0%} approval rate; Gini tolerance {r["gini_tolerance"]}):
+
+| Variant | Gini | Lowest approval ratio |
+|---|---|---|
+{rows}
+
+  Chosen trade-off: **{c["label"]}** (best fairness within the Gini tolerance).
+  The fairlearn reduction reaches the most even approvals but gives up most of
+  the ranking power, and uses race in training, so it isn't chosen.
+"""
+
+
 def _write_model_card(gov: dict, tm: dict, val: dict, cfg: Config) -> None:
     b = val["benchmark"]
     el = tm["expected_loss"]
@@ -171,7 +209,7 @@ def _write_model_card(gov: dict, tm: dict, val: dict, cfg: Config) -> None:
   (fairlearn), and monitoring — *not* group-specific thresholds (illegal in
   lending). Surfacing and tracking this is a regulatory expectation (EU AI Act
   high-risk credit scoring).
-
+{_lda_section(cfg)}
 ## 6. Limitations
 - Synthetic data calibrated to plausible mortgage behaviour, not a specific
   institution's book.
