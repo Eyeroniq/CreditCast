@@ -1,7 +1,8 @@
 """CreditCast CLI — the reproducible lifecycle as one command surface.
 
 python -m creditcast.cli generate     # synthetic GSE panels -> Bronze
-python -m creditcast.cli pipeline      # Bronze -> Silver -> Gold
+python -m creditcast.cli pipeline      # Bronze -> Silver -> Gold (--engine duckdb|spark)
+python -m creditcast.cli parity        # run both engines, check they write the same Gold
 python -m creditcast.cli split         # show the out-of-time split
 python -m creditcast.cli train         # fit + calibrate PD/LGD, score OOT
 python -m creditcast.cli validate      # Gini/KS/calibration/PSI -> report
@@ -17,12 +18,34 @@ python -m creditcast.cli models use v0002   # roll back / forward to a version
 from __future__ import annotations
 
 import json
+from enum import StrEnum
 
 import typer
 
 app = typer.Typer(add_completion=False, help="CreditCast lifecycle CLI")
 models_app = typer.Typer(add_completion=False, help="Registered model versions")
 app.add_typer(models_app, name="models")
+
+
+class Engine(StrEnum):
+    """Which engine builds Silver and Gold. Both write the same Gold files."""
+
+    duckdb = "duckdb"  # DuckDB SQL + pandas, one machine (the default)
+    spark = "spark"  # PySpark, local or on a cluster (needs Java 17+)
+
+
+ENGINE_OPTION = typer.Option(Engine.duckdb, "--engine", help="Pipeline engine: duckdb or spark")
+
+
+def _spark_or_exit():
+    """A SparkSession, or a clear message + exit code 2 if Spark can't run."""
+    from creditcast.pipeline.spark.session import SparkUnavailableError, get_spark
+
+    try:
+        return get_spark()
+    except SparkUnavailableError as exc:
+        typer.echo(f"[spark] {exc}", err=True)
+        raise typer.Exit(code=2) from exc
 
 
 @app.command()
@@ -34,13 +57,35 @@ def generate():
 
 
 @app.command()
-def pipeline():
+def pipeline(engine: Engine = ENGINE_OPTION):
     """Build Silver (point-in-time target) then Gold (feature matrix)."""
+    if engine is Engine.spark:
+        spark = _spark_or_exit()  # check first: the Spark modules import pyspark
+        from creditcast.pipeline.spark.run import run_pipeline
+
+        run_pipeline(spark=spark)
+        return
     from creditcast.pipeline.gold import build_gold
     from creditcast.pipeline.silver import build_silver
 
     build_silver()
     build_gold()
+
+
+@app.command()
+def parity():
+    """Run the DuckDB and Spark pipelines on the current Bronze data and check
+    they write the same Gold (exit 1 if not)."""
+    spark = _spark_or_exit()  # check first: the Spark modules import pyspark
+    from creditcast.config import load_config
+    from creditcast.pipeline.spark.parity import compare
+    from creditcast.pipeline.spark.run import run_pipeline
+
+    pipeline(engine=Engine.duckdb)
+    run_pipeline(spark=spark, publish_gold=False)  # keep DuckDB's Gold to compare against
+    report = compare(spark, load_config())
+    typer.echo(json.dumps(report, indent=2))
+    raise typer.Exit(code=0 if report["ok"] else 1)
 
 
 @app.command()
@@ -151,11 +196,11 @@ def gates():
 
 
 @app.command(name="all")
-def run_all():
+def run_all(engine: Engine = ENGINE_OPTION):
     """End-to-end: generate -> pipeline -> train -> validate -> governance -> monitor
     -> lifetime -> reject-inference -> lda -> stress -> gates."""
     generate()
-    pipeline()
+    pipeline(engine=engine)
     train()
     validate()
     governance()
