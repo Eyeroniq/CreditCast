@@ -14,6 +14,7 @@ paths:
   silver: "creditcast/data/silver"
   gold:   "creditcast/data/gold"
   macro:  "creditcast/data/macro"   # monthly state unemployment + house-price index (5.1)
+  spark:  "creditcast/data/spark"   # PySpark medallion outputs: bronze/, silver/, gold/ (5.8)
   artifacts: "creditcast/artifacts"
   reports:   "creditcast/reports"
   model_card: "creditcast/governance/model_card.md"   # committed; copied into the image
@@ -26,6 +27,15 @@ serving:
   # Roll back by pinning a registered version (e.g. "v0003"): the API restores
   # it from artifacts/registry when it starts. null = serve the latest run.
   pinned_version: null
+
+# ---- PySpark medallion pipeline (ROADMAP 5.8) --------------------------------
+# A Spark version of Bronze -> Silver -> Gold for books too big for one machine.
+# Reads the generator's files (paths.bronze) as its landing zone and writes to
+# paths.spark; `cli spark-parity` checks it matches the pandas/DuckDB pipeline.
+spark:
+  master: "local[*]"            # e.g. "spark://host:7077" or "yarn" on a cluster
+  shuffle_partitions: 8         # Spark's default of 200 is tuned for clusters, not a laptop
+  driver_memory: "2g"
 
 # ---- Synthetic GSE-schema generator -----------------------------------------
 # Mimics Freddie Mac Single-Family loan-level + monthly performance schema so
