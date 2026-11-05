@@ -19,6 +19,8 @@ creditcast/data/silver
 creditcast/data/gold
 creditcast/artifacts
 creditcast/reports/*.html
+creditcast/data/spark
+.worktrees
 
 # docs/CI not needed in the image
 .github

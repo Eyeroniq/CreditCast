@@ -1,0 +1,16 @@
+# Spark engine (ROADMAP 7.0): the PySpark pipeline, its tests and the engine
+# benchmark, without the training stack (no LightGBM, MLflow, ...).
+# Locked with --constraint requirements.txt, so the libraries it shares with
+# the DuckDB pipeline (pandas, numpy, pyarrow, duckdb) are the same versions.
+# PySpark also needs a Java 17+ runtime, which pip can't install: see
+# docs/pyspark.md (or use Dockerfile.spark, which has both).
+pyspark>=3.5,<4.3    # 4.3.0 is days old; move up once it has a patch release
+numpy
+pandas
+pyarrow
+pyyaml
+duckdb
+typer
+pytest
+pytest-cov
+psutil               # peak-memory sampling in scripts/benchmark_engines.py

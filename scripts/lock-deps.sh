@@ -3,9 +3,11 @@
 #
 #   requirements.in        -> requirements.txt        (training + CI)
 #   requirements-serve.in  -> requirements-serve.txt  (runtime image)
+#   requirements-spark.in  -> requirements-spark.txt  (Spark engine, ROADMAP 7.0)
 #
 # The serve lock is constrained by the training lock, so the Docker runtime
-# unpickles models with exactly the library versions that trained them.
+# unpickles models with exactly the library versions that trained them. The
+# Spark lock is too, so both pipeline engines run on the same pandas/pyarrow.
 # Targets Python 3.11 (Docker + CI); `--universal` adds markers for others.
 #
 #   sh scripts/lock-deps.sh              # keep current pins, add/remove only
@@ -22,4 +24,5 @@ $UV pip compile requirements.in --universal --python-version 3.11 \
 $UV pip compile requirements-serve.in --universal --python-version 3.11 \
     --generate-hashes --quiet $EXTRA --constraint requirements.txt \
     -o requirements-serve.txt
-echo "lock files updated: requirements.txt, requirements-serve.txt"
+$UV pip compile requirements-spark.in --universal --python-version 3.11     --generate-hashes --quiet $EXTRA --constraint requirements.txt     -o requirements-spark.txt
+echo "lock files updated: requirements.txt, requirements-serve.txt, requirements-spark.txt"
