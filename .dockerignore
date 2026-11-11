@@ -17,6 +17,7 @@ app/dashboard/out
 creditcast/data/bronze
 creditcast/data/silver
 creditcast/data/gold
+creditcast/data/macro
 creditcast/artifacts
 creditcast/reports/*.html
 
