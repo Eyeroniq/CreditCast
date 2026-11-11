@@ -16,10 +16,10 @@ on mortgage-performance data.
 EL = PD × LGD × EAD
 ```
 
-> Methodology is jurisdiction-agnostic (Basel/IRB). The pipeline reads the
-> **Freddie Mac Single-Family** loan + monthly-performance schema; until you drop
-> real GSE files in, a **seeded synthetic generator** produces the same schema so
-> the whole stack runs offline and reproducibly.
+> Methodology is jurisdiction-agnostic (Basel/IRB). The data comes from a
+> **seeded synthetic generator** that follows the **Freddie Mac Single-Family**
+> loan + monthly-performance schema, so the whole stack runs offline and
+> reproducibly.
 
 ## Run the demo (Windows)
 
