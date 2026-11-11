@@ -1,0 +1,75 @@
+{
+  "machine": {
+    "cpus": 12,
+    "memory_gb": 7.6,
+    "os": "Linux 6.18.33.2-microsoft-standard-WSL2",
+    "python": "3.11.18",
+    "duckdb": "1.5.6",
+    "pyspark": "4.2.1",
+    "java": "openjdk version \"17.0.21\" 2026-10-20",
+    "spark_master": "local[*]",
+    "spark_driver_memory": "4g"
+  },
+  "results": [
+    {
+      "target_rows": 200000,
+      "loans": 10050,
+      "perf_rows": 200545,
+      "generate_s": 2.2,
+      "duckdb": {
+        "seconds": 1.2,
+        "peak_mb": 223
+      },
+      "spark": {
+        "seconds": 26.5,
+        "peak_mb": 2365,
+        "stages": {
+          "bronze": 8.19,
+          "silver": 8.94,
+          "gold": 2.36,
+          "publish": 1.2
+        }
+      }
+    },
+    {
+      "target_rows": 1000000,
+      "loans": 50251,
+      "perf_rows": 1001630,
+      "generate_s": 7.1,
+      "duckdb": {
+        "seconds": 1.4,
+        "peak_mb": 380
+      },
+      "spark": {
+        "seconds": 26.7,
+        "peak_mb": 2089,
+        "stages": {
+          "bronze": 8.65,
+          "silver": 9.37,
+          "gold": 2.37,
+          "publish": 1.4
+        }
+      }
+    },
+    {
+      "target_rows": 10000000,
+      "loans": 502513,
+      "perf_rows": 10028583,
+      "generate_s": 66.6,
+      "duckdb": {
+        "seconds": 5.6,
+        "peak_mb": 1916
+      },
+      "spark": {
+        "seconds": 51.1,
+        "peak_mb": 4851,
+        "stages": {
+          "bronze": 20.81,
+          "silver": 16.4,
+          "gold": 4.42,
+          "publish": 2.91
+        }
+      }
+    }
+  ]
+}

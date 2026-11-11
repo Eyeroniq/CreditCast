@@ -110,6 +110,12 @@ def main() -> None:
             "perf_rows": actual,
             "generate_s": gen["seconds"],
         }
+        if not results:
+            # One unmeasured run of each engine first: the first JVM start in a
+            # fresh container also loads PySpark's jars from disk, which made a
+            # 200k-row run take 94 s instead of ~30 s. Measure warm runs only.
+            for engine in ("duckdb", "spark"):
+                run_measured([*cli, "pipeline", "--engine", engine], env, workdir / "warmup.log")
         for engine in ("duckdb", "spark"):
             print(f"   {engine} ...", flush=True)
             r = run_measured([*cli, "pipeline", "--engine", engine], env, workdir / f"{engine}.log")
