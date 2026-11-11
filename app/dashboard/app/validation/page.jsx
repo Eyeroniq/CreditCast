@@ -42,7 +42,7 @@ export default function ValidationPage() {
       <Head />
       <VerdictBanner verdict={validationVerdict(data)} />
       <div className="page-actions"><PrintButton label="⤓ Download report (PDF)" filename="CreditCast model quality report" /></div>
-      <div className="grid cols-4" style={{ marginBottom: 16 }}>
+      <div className="grid cols-4 mb-16">
         <Stat label="Gini (on unseen loans)" info="gini" value={ch.discrimination.gini.toFixed(4)}
           tone={ch.discrimination.gini >= t.gini_min ? "ok" : "bad"} sub={`min ${t.gini_min}`} />
         <Stat label="KS statistic" info="ks" value={ch.discrimination.ks.toFixed(4)}
@@ -52,18 +52,18 @@ export default function ValidationPage() {
           sub={`default rate ${pct(data.oot_default_rate)}`} />
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card mb-16">
         <CardTitle info="scorecard_vs_challenger">Simple scorecard vs machine-learning challenger</CardTitle>
-        <div className="grid cols-3" style={{ gap: 12, marginBottom: 6 }}>
+        <div className="grid cols-3 gap-12 mb-6">
           <Stat label="Scorecard Gini" value={b.scorecard_gini.toFixed(4)} />
           <Stat label="Challenger Gini" value={b.challenger_gini.toFixed(4)} />
           <Stat label="Gini gap" value={`${b.gini_gap >= 0 ? "+" : ""}${b.gini_gap.toFixed(4)}`}
             sub={`${b.gini_gap_pct >= 0 ? "+" : ""}${b.gini_gap_pct.toFixed(1)}%`} />
         </div>
-        <p className="small muted" style={{ marginTop: 4 }}>{b.verdict}</p>
+        <p className="small muted mt-4">{b.verdict}</p>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card mb-16">
         <CardTitle info="oot">Accuracy and calibration on unseen loans</CardTitle>
         <TableWrap>
         <table>
@@ -82,7 +82,7 @@ export default function ValidationPage() {
           </tbody>
         </table>
         </TableWrap>
-        <p className="small muted" style={{ marginTop: 8 }}>
+        <p className="small muted mt-8">
           Calibration is gated on the economically meaningful max band error / ECE; with ~{(data.n_oot/1000).toFixed(0)}k
           loans the Hosmer–Lemeshow test over-rejects on trivially small miscalibration, so it is shown as informational.
         </p>

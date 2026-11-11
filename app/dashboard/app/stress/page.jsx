@@ -75,16 +75,16 @@ export default function StressPage() {
       <Head />
       <VerdictBanner verdict={stressVerdict(data)} />
 
-      <div className="grid cols-2" style={{ alignItems: "start" }}>
+      <div className="grid cols-2 items-start">
         <div className="card">
           <h3>Scenario</h3>
-          <div className="chips" role="group" aria-label="Preset scenarios" style={{ marginBottom: 16 }}>
+          <div className="chips mb-16" role="group" aria-label="Preset scenarios">
             {Object.entries(scenarios).map(([name, s]) => (
               <button key={name} type="button" className={`chip ${preset === name ? "active" : ""}`}
                 aria-pressed={preset === name} onClick={() => choosePreset(name)}>{s.label}</button>
             ))}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="stack">
             {SLIDERS.map((s) => (
               <SliderField key={s.key} id={`s-${s.key}`} label={s.label} value={shock[s.key]}
                 onChange={(v) => set(s.key, v)} min={s.min} max={s.max} step={s.step}
@@ -104,8 +104,8 @@ export default function StressPage() {
           </details>
         </div>
 
-        <div aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {err && <div className="card" role="alert"><p className="small warn" style={{ margin: 0 }}>{err}</p></div>}
+        <div className="stack" aria-live="polite">
+          {err && <div className="card" role="alert"><p className="small warn m-0">{err}</p></div>}
           <div className="small muted">{busy ? <span className="updating">Updating…</span> : " "}</div>
           {cur && (
             <div className="grid cols-2">
@@ -128,7 +128,7 @@ export default function StressPage() {
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
+      <div className="card mt-16">
         <CardTitle info="risk_band">Default risk by risk grade: baseline vs scenario</CardTitle>
         <ChartFrame summary={`Average default risk per grade. In the riskiest grade (${worst.band}) it moves from `
           + `${pct(worst.baseline)} at baseline to ${worst.scenario == null ? "…" : pct(worst.scenario)} in this scenario.`}>
@@ -143,7 +143,7 @@ export default function StressPage() {
             </BarChart>
           </ResponsiveContainer>
         </ChartFrame>
-        <p className="small muted" style={{ marginBottom: 0 }}>
+        <p className="small muted mb-0">
           Grades come from the scorecard, which doesn&apos;t use economic inputs, so loans keep their grade; the
           scenario changes how likely each grade is to default.
         </p>

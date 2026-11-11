@@ -26,8 +26,8 @@ export default function AgentChart({ spec }) {
   const vf = spec.valueFormat || "num";
 
   const Frame = ({ children, height = 240 }) => (
-    <div className="card" style={{ marginTop: 10, background: "var(--panel-2)" }}>
-      <h3 style={{ marginBottom: 10 }}>{spec.title}</h3>
+    <div className="card agent-chart mt-10 inset">
+      <h3>{spec.title}</h3>
       <ResponsiveContainer width="100%" height={height}>{children}</ResponsiveContainer>
     </div>
   );

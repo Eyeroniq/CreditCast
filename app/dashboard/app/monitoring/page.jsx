@@ -30,7 +30,7 @@ export default function MonitoringPage() {
     <>
       <Head />
       <VerdictBanner verdict={monitoringVerdict(mon, v.data)} />
-      <div className="grid cols-4" style={{ marginBottom: 16 }}>
+      <div className="grid cols-4 mb-16">
         <Stat label="Largest score shift (PSI)" info="psi" value={v.data.stability.max_score_psi.toFixed(4)}
           tone={v.data.stability.max_score_psi <= t.psi_watch ? "ok" : v.data.stability.max_score_psi <= t.psi_unstable ? "warn" : "bad"}
           sub={`watch ${t.psi_watch} · unstable ${t.psi_unstable}`} />
@@ -41,14 +41,14 @@ export default function MonitoringPage() {
           sub={`vs training baseline`} />
         <div className="card stat">
           <div className="label">Drift monitor<InfoTip k="drift" /></div>
-          <div style={{ marginTop: 10 }}>
+          <div className="mt-10">
             <Pill status={mon.healthy}>{mon.healthy ? "healthy" : `${mon.alerts.length} alert(s)`}</Pill>
           </div>
           <div className="sub">{mon.n_batch.toLocaleString()} loans monitored</div>
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card mb-16">
         <div className="card-head">
           <CardTitle info="psi">Score shift by origination month</CardTitle>
           <span className="small muted no-print">
@@ -78,9 +78,9 @@ export default function MonitoringPage() {
       </div>
 
       {macroCsi.length > 0 && (
-        <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card mb-16">
           <CardTitle info="macro">Economic conditions since training</CardTitle>
-          <p className="small muted" style={{ marginTop: 0 }}>
+          <p className="small muted mt-0">
             The economy is expected to move, so these shifts are reported, not alerted on. A large shift
             means the model is scoring loans in conditions it saw little of during training.
           </p>
@@ -134,7 +134,7 @@ export default function MonitoringPage() {
               </tbody>
             </table>
           )}
-          <p className="small muted" style={{ marginTop: 12 }}>
+          <p className="small muted mt-12">
             PSI/CSI re-computed against the training-time baseline. Thresholds: &lt; {t.psi_watch} stable,
             {t.psi_watch}–{t.psi_unstable} watch, &gt; {t.psi_unstable} unstable. Runs on a schedule (GitHub Actions cron).
           </p>

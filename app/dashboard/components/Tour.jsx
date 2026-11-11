@@ -129,15 +129,15 @@ export default function Tour() {
     const below = rect.bottom + PAD + 12;
     const top = below + 190 < vh ? below : Math.max(16, rect.top - PAD - 12 - 190);
     const left = Math.min(Math.max(16, rect.left), vw - w - 16);
-    cardStyle = { top, left, width: w };
+    cardStyle = { "--top": `${top}px`, "--left": `${left}px`, "--width": `${w}px` };
   }
 
   return (
     <div className="tour" aria-live="polite">
       {centred ? <div className="tour-dim" onClick={close} /> : (
         <div className="tour-spot" onClick={close} style={{
-          top: rect.top - PAD, left: rect.left - PAD,
-          width: rect.width + PAD * 2, height: rect.height + PAD * 2,
+          "--y": `${rect.top - PAD}px`, "--x": `${rect.left - PAD}px`,
+          "--w": `${rect.width + PAD * 2}px`, "--h": `${rect.height + PAD * 2}px`,
         }} />
       )}
       <div ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true"
@@ -147,7 +147,7 @@ export default function Tour() {
         <p>{s.text}</p>
         <div className="tour-actions">
           <button type="button" className="chip" onClick={close}>Skip tour</button>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="row gap-8">
             {step > 0 && <button type="button" className="chip" onClick={() => setStep(step - 1)}>‹ Back</button>}
             <button type="button" className="primary" onClick={() => (last ? close() : setStep(step + 1))}>
               {last ? "Finish" : "Next ›"}

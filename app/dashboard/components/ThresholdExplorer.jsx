@@ -23,11 +23,11 @@ export default function ThresholdExplorer() {
   })), [data]);
 
   if (loading) return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <Skeleton width="40%" height={11} /><Skeleton height={180} style={{ marginTop: 16 }} />
+    <div className="card mb-16">
+      <Skeleton width="40%" height={11} /><Skeleton height={180} className="mt-16" />
     </div>);
   // The rest of the page still works without the explorer.
-  if (error) return <div style={{ marginBottom: 16 }}><ErrorState error={error} onRetry={retry} /></div>;
+  if (error) return <div className="mb-16"><ErrorState error={error} onRetry={retry} /></div>;
 
   const pts = data.points;
   const policyIdx = nearest(pts, data.policy_threshold);
@@ -41,22 +41,22 @@ export default function ThresholdExplorer() {
   };
 
   return (
-    <div className="card" style={{ marginBottom: 16 }} data-tour="threshold">
+    <div className="card mb-16" data-tour="threshold">
       <CardTitle info="threshold">Try a different approval limit</CardTitle>
-      <p className="small muted" style={{ marginTop: -6 }}>
+      <p className="small muted mt-n6">
         Approve every application whose default risk is at or below the limit. A higher limit
         approves more people — and takes on more expected loss. See how fairness moves too.
       </p>
 
-      <div className="slider-field" style={{ margin: "14px 0 18px" }}>
+      <div className="slider-field m-0 mt-14 mb-18">
         <div className="slider-head">
           <label htmlFor="thr-slider">Approval limit (maximum default risk)</label>
-          <span className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{pct(cur.threshold)}</span>
+          <span className="mono big-num">{pct(cur.threshold)}</span>
         </div>
         <input id="thr-slider" type="range" min={0} max={pts.length - 1} step={1} value={i}
           aria-valuetext={`${pct(cur.threshold)} approval limit`}
           onChange={(e) => setIdx(Number(e.target.value))} />
-        <div className="slider-hint" style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <div className="slider-hint spread gap-8 wrap">
           <span>{pct(pts[0].threshold, 1)} — strict</span>
           <button type="button" className="chip" onClick={() => setIdx(null)} disabled={i === policyIdx}>
             Reset to policy ({pct(data.policy_threshold)})
@@ -65,7 +65,7 @@ export default function ThresholdExplorer() {
         </div>
       </div>
 
-      <div className="grid cols-4" style={{ gap: 12 }}>
+      <div className="grid cols-4 gap-12">
         <Readout label="Approval rate" value={pct(cur.approval_rate, 1)}
           sub={delta(cur.approval_rate, policy.approval_rate, (v) => `${(v * 100).toFixed(1)} pts`)} />
         <Readout label="Defaults among approved" info="pd" value={pct(cur.approved_default_rate, 2)}
@@ -77,7 +77,7 @@ export default function ThresholdExplorer() {
           sub={<Pill status={fair ? "PASS" : "REVIEW"}>{fair ? "✓ meets 4/5ths" : "✗ below 0.80"}</Pill>} />
       </div>
 
-      <div style={{ marginTop: 16 }}>
+      <div className="mt-16">
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={chart} margin={{ left: 0, right: 12, top: 8 }}>
             <XAxis dataKey="thr" type="number" domain={["dataMin", "dataMax"]} stroke="var(--muted-2)"
@@ -94,7 +94,7 @@ export default function ThresholdExplorer() {
             <Line type="monotone" dataKey="fairness" stroke="var(--green)" dot={false} strokeWidth={2} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
-        <p className="small muted" style={{ margin: "6px 0 0" }}>
+        <p className="small muted m-0 mt-6">
           The policy limit ({pct(data.policy_threshold)}) comes from the cost ratio, not from these results;
           the dashed red line is the 0.80 fairness floor. Remediating fairness with different limits per group is
           illegal in lending — this view is for understanding the trade-off.
@@ -106,9 +106,9 @@ export default function ThresholdExplorer() {
 
 function Readout({ label, info, value, sub }) {
   return (
-    <div className="card stat" style={{ background: "var(--panel-2)" }}>
+    <div className="card stat inset">
       <div className="label">{label}{info && <InfoTip k={info} />}</div>
-      <div className="value" style={{ fontSize: 22 }}>{value}</div>
+      <div className="value value-sm">{value}</div>
       <div className="sub">{sub}</div>
     </div>
   );

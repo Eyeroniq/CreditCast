@@ -21,9 +21,9 @@ export default function RejectInference() {
   if (!data) return null;
   const first = Object.values(data.scenarios)[0];
   return (
-    <div className="card" style={{ marginTop: 16 }}>
+    <div className="card mt-16">
       <CardTitle info="reject_inference">Reject inference: what booked-loan data hides</CardTitle>
-      <p className="small muted" style={{ marginTop: -6 }}>
+      <p className="small muted mt-n6">
         A lender only sees outcomes for loans it approved. Here an old policy turns away applicants below a credit
         score of {first.policy.min_fico}, above {first.policy.max_dti}% debt-to-income or above {first.policy.max_ltv}%
         loan-to-value, and each method is judged on the {num(first.test.old_rejects)} later applicants that policy
@@ -32,7 +32,7 @@ export default function RejectInference() {
       <div className="grid cols-2">
         {Object.entries(data.scenarios).map(([key, sc]) => (
           <div key={key}>
-            <h4 className="small" style={{ margin: "0 0 8px" }}>
+            <h4 className="small m-0 mb-8">
               {SCENARIOS[key]} · {pct(sc.train.reject_rate, 0)} rejected
             </h4>
             <TableWrap>
@@ -56,7 +56,7 @@ export default function RejectInference() {
           </div>
         ))}
       </div>
-      <p className="small muted" style={{ marginBottom: 0 }}>
+      <p className="small muted mb-0">
         &quot;Miss&quot; is predicted minus actual default rate among those applicants; negative means the model thinks
         they&apos;re safer than they are. When the old decisions used only what the model sees, ignoring rejects is
         fine and filling them in over-corrects. When underwriters also turned people down on information the model
