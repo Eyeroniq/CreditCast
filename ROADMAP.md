@@ -95,7 +95,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 5.5 | Basel IRB regulatory capital | [x] | 2026-10-30 | Matches Basel II Annex 5 table (38 values); capital on Portfolio, Score, Stress |
 | 5.6 | Fairness mitigation analysis | [x] | 2026-10-31 | 5 variants at the same approval rate; reweighing chosen; chart on Fairness + model card |
 | 5.7 | Copilot evaluation suite | [x] | 2026-10-31 | 20 questions, fact + no-invented-number checks; nightly when GROQ_API_KEY is set |
-| 6.0 | UI foundation (Tailwind/shadcn, tokens, layout) | [~] | 2026-10-08 | Shared components + responsive shell done on the existing CSS; Tailwind/shadcn migration deferred (see 6.0 result) |
+| 6.0 | UI foundation (Tailwind/shadcn, tokens, layout) | [x] | 2026-11-05 | Done on the existing token CSS; Tailwind/shadcn dropped (not needed, see 6.0 result) |
 | 6.1.1 | Plain-language labels | [x] | 2026-10-08 | |
 | 6.1.2 | Tooltips + Glossary page | [x] | 2026-10-08 | 25 terms |
 | 6.1.3 | Page verdict summaries | [x] | 2026-10-23 | 5 report pages; limits read from the API, never hardcoded |
@@ -113,7 +113,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.3.2 | Light / dark theme toggle | [x] | 2026-10-09 | System/Light/Dark; all text ≥ 4.5:1; fixed a dark-theme contrast failure |
 | 6.3.3 | Loading, empty & error states | [x] | 2026-10-09 | Skeletons, typed friendly errors, Retry |
 | 6.3.4 | Accessibility (WCAG AA) | [x] | 2026-10-23 | axe (Lighthouse's engine) gate in CI: 0 WCAG A/AA violations, 7 pages × 2 themes × 2 sizes; keyboard walkthrough test |
-| 6.3.5 | Component library migration | [ ] | | Part of 6.0 |
+| 6.3.5 | Component library migration | [x] | 2026-11-05 | Inline style properties 182 → 0 (CSS variables only); test guard; pixel-identical pages |
 | 6.3.6 | PDF downloads | [x] | 2026-10-22 | Decision letter (1 page), two reports (2 pages each); real PDFs checked |
 | 6.3.7 | Frontend tests (Vitest + Playwright) | [x] | 2026-10-22 | 21 component + 24 e2e tests (desktop + phone); new CI job |
 | 6.4 | Glass visual refresh | [x] | 2026-10-22 | Graphite + frosted glass + mint accent, top pill nav, motion; user request |
@@ -1079,6 +1079,10 @@ API client `lib/api.js`.
   `SliderField` in `components/ui.jsx`; a responsive shell with a mobile menu.
   Remaining: decide on Tailwind/shadcn when 6.3.2 (light theme) / 6.3.5 need
   it, and remove the remaining inline styles.
+- **Result (2026-11-05, done):** Tailwind/shadcn **dropped**. Neither 6.3.2 nor
+  6.3.5 needed it: the light/dark themes, accessible tooltips/sliders/dialog and
+  the axe gate all run on the existing token CSS, and a migration would restyle
+  every page for no user-visible gain. The inline styles are gone (6.3.5).
 
 ### 6.1 Make it understandable
 
@@ -1480,6 +1484,23 @@ API client `lib/api.js`.
 - Part of 6.0; finish by removing all inline `style={{...}}` blocks from
   `app/**/page.jsx` and consolidating `components/ui.jsx` into the new kit.
 - **Done when:** `grep -r "style={{" app/dashboard/app` returns nothing.
+- **Result (2026-11-05):** inline style properties **182 → 0** across 17 files.
+  - Static styles became classes in `globals.css` ("layout helpers"): spacing
+    (`mt-*`, `mb-*`, `m-0`), `row`/`stack`/`spread`, and a few named ones
+    (`letter-box`, `risk-track`, `band.current/dim`, `border-ok/warn/bad`…).
+    `global-error.jsx` gets its own `global-error.css`, since it renders when
+    the root layout (and so `globals.css`) has failed.
+  - What remains is data-driven and passes **CSS variables only**: the PD
+    meter's marker position (`--at`), tour spotlight coordinates, skeleton
+    sizes, slider track colour. So the literal grep still finds 5 `style={{`,
+    each setting only `--` properties; the stylesheet does the styling.
+  - Guard: `__tests__/no-inline-styles.test.js` fails on any inline style key
+    that isn't a CSS variable (it flags all 182 on the old code).
+  - Parity: 60 Playwright screenshots (8 pages + score states, skeleton,
+    error, empty table, tour; dark + light; desktop + phone) taken before and
+    after. Every full-page shot is pixel-identical; the only differences were
+    in 3 viewport shots of the glass nav, which differ the same way when the
+    old build is re-shot. Vitest 40/40, ESLint clean, e2e smoke + axe 78/78.
 
 #### 6.3.6 PDF downloads
 - "Download PDF" on Score (decision + reasons letter — uses existing

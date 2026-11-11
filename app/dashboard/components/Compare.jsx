@@ -47,7 +47,7 @@ export default function Compare({ pins, onRemove, onLoad, onClear }) {
         <button type="button" className="chip" onClick={onClear}>Clear all</button>
       </div>
       {pins.length < 2 && (
-        <p className="small muted" style={{ marginTop: 0 }}>
+        <p className="small muted mt-0">
           Change the applicant and pin again to see them side by side (up to {MAX_PINS}).
         </p>
       )}

@@ -108,10 +108,10 @@ export default function ScorePage() {
       <PageHead title="Score an applicant"
         subtitle="Move the sliders and the decision updates instantly — probability of default, expected loss, and the reasons behind it." />
 
-      <div className="grid cols-2" style={{ alignItems: "start" }}>
+      <div className="grid cols-2 items-start">
         <div className="card">
           <h3>Applicant</h3>
-          <div className="chips" style={{ marginBottom: 16 }} role="group" aria-label="Example applicants">
+          <div className="chips mb-16" role="group" aria-label="Example applicants">
             {Object.keys(PRESETS).map((p) => (
               <button key={p} type="button" className={`chip ${preset === p ? "active" : ""}`}
                 aria-pressed={preset === p}
@@ -119,7 +119,7 @@ export default function ScorePage() {
             ))}
           </div>
 
-          <div data-tour="sliders" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div data-tour="sliders" className="stack">
             {SLIDERS.map((s) => (
               <SliderField key={s.key} id={`f-${s.key}`} label={s.label || featureLabel(s.key)}
                 value={form[s.key]} onChange={(v) => set(s.key, v)}
@@ -128,7 +128,7 @@ export default function ScorePage() {
             ))}
           </div>
 
-          <div className="form-grid" style={{ marginTop: 18 }}>
+          <div className="form-grid mt-18">
             <label className="field">
               {featureLabel("orig_loan_term")}
               <select value={form.orig_loan_term} onChange={(e) => set("orig_loan_term", Number(e.target.value))}>
@@ -147,14 +147,14 @@ export default function ScorePage() {
             ))}
           </div>
           {!isComplete(form) && (
-            <p className="small warn" style={{ marginTop: 12 }}>Fill in every number within its range to score.</p>
+            <p className="small warn mt-12">Fill in every number within its range to score.</p>
           )}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }} aria-live="polite">
+        <div className="stack" aria-live="polite">
           {err && (
-            <div className="card" style={{ borderColor: "var(--amber)" }} role="alert">
-              <p className="small warn" style={{ margin: 0 }}>{err}</p>
+            <div className="card border-warn" role="alert">
+              <p className="small warn m-0">{err}</p>
             </div>
           )}
           {!res ? (
@@ -195,10 +195,10 @@ function Result({ res, busy, whatif, pinState, onPin, onApply }) {
 
   return (
     <>
-      <div data-tour="decision" className="card" style={{ borderColor: approved ? "var(--green)" : "var(--red)" }}>
+      <div data-tour="decision" className={`card ${approved ? "border-ok" : "border-bad"}`}>
         <div className="decision">
           <div>
-            <div className="small muted" style={{ textTransform: "uppercase", letterSpacing: ".6px" }}>
+            <div className="small muted caps">
               Decision {busy && <span className="updating">· updating…</span>}
             </div>
             <div className={`verdict ${approved ? "ok" : "bad"}`}>
@@ -209,7 +209,7 @@ function Result({ res, busy, whatif, pinState, onPin, onApply }) {
           <GradeScale grade={res.risk_band} />
         </div>
         <RiskMeter pd={res.pd} threshold={res.threshold} />
-        <div className="chips" style={{ marginTop: 14 }}>
+        <div className="chips mt-14">
           <button type="button" className="chip" onClick={onPin} disabled={pinState !== "ready"}
             title={pinState === "full" ? "Unpin an applicant to add another" : undefined}>
             {PIN_LABELS[pinState]}
@@ -235,7 +235,7 @@ function Result({ res, busy, whatif, pinState, onPin, onApply }) {
         {reasons.length > 0 ? (
           <ul className="reasons">{reasons.map((c) => <li key={c.rank}>{c.reason}</li>)}</ul>
         ) : (
-          <p className="small muted" style={{ margin: 0 }}>
+          <p className="small muted m-0">
             No adverse factors to report — the application was approved.
           </p>
         )}
@@ -266,14 +266,14 @@ function WhatIf({ data, onApply }) {
     <div className="card whatif">
       <h3>How this applicant could be approved</h3>
       {!data ? (
-        <p className="small muted" style={{ margin: 0 }}>Looking for changes…</p>
+        <p className="small muted m-0">Looking for changes…</p>
       ) : data.error ? (
-        <p className="small warn" style={{ margin: 0 }}>{data.error}</p>
+        <p className="small warn m-0">{data.error}</p>
       ) : data.options.length === 0 ? (
-        <p className="small muted" style={{ margin: 0 }}>{data.message}</p>
+        <p className="small muted m-0">{data.message}</p>
       ) : (
         <>
-          <p className="small muted" style={{ marginTop: 0 }}>
+          <p className="small muted mt-0">
             Any <b>one</b> of these changes alone would bring default risk under the {pct(data.threshold)} limit:
           </p>
           <ul className="whatif-list">
@@ -300,16 +300,12 @@ function RiskMeter({ pd, threshold }) {
   const scale = 0.2;
   const at = (v) => `${Math.min(100, (v / scale) * 100)}%`;
   return (
-    <div style={{ marginTop: 16 }} aria-label={`Default risk ${pct(pd)}, approval limit ${pct(threshold)}`}>
-      <div style={{ position: "relative", height: 10, borderRadius: 999,
-        background: "linear-gradient(90deg, var(--green), var(--amber) 45%, var(--red))", opacity: .85 }}>
-        <div title="approval limit" style={{ position: "absolute", left: at(threshold), top: -4, bottom: -4,
-          width: 2, background: "var(--text)" }} />
-        <div style={{ position: "absolute", left: at(pd), top: "50%", width: 16, height: 16,
-          transform: "translate(-50%, -50%)", borderRadius: "50%", background: "var(--text)",
-          border: "3px solid var(--bg)" }} />
+    <div className="mt-16" aria-label={`Default risk ${pct(pd)}, approval limit ${pct(threshold)}`}>
+      <div className="risk-track">
+        <div title="approval limit" className="risk-limit" style={{ "--at": at(threshold) }} />
+        <div className="risk-dot" style={{ "--at": at(pd) }} />
       </div>
-      <div className="small muted" style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+      <div className="small muted spread mt-6">
         <span>0%</span><span>approval limit {pct(threshold)}</span><span>20%+</span>
       </div>
     </div>
@@ -319,14 +315,12 @@ function RiskMeter({ pd, threshold }) {
 function GradeScale({ grade }) {
   return (
     <div aria-label={`Risk grade ${grade}`}>
-      <div className="small muted" style={{ marginBottom: 6, textAlign: "right" }}>
+      <div className="small muted mb-6 text-right">
         Risk grade<InfoTip k="risk_band" />
       </div>
-      <div style={{ display: "flex", gap: 4 }}>
+      <div className="row gap-4">
         {GRADES.map((g) => (
-          <span key={g} className={g === grade ? `band ${g}` : "band"}
-            style={g === grade ? { outline: "1px solid currentColor" }
-              : { color: "var(--muted-2)", background: "var(--panel-2)" }}>{g}</span>
+          <span key={g} className={g === grade ? `band ${g} current` : "band dim"}>{g}</span>
         ))}
       </div>
     </div>

@@ -37,9 +37,9 @@ export default function LdaTradeoff() {
   const chosen = data.variants[data.chosen];
   const base = data.variants.baseline;
   return (
-    <div className="card" style={{ marginTop: 16 }}>
+    <div className="card mt-16">
       <CardTitle info="disparate_impact">Fairness vs accuracy: searching for a less discriminatory model</CardTitle>
-      <p className="small muted" style={{ marginTop: -6 }}>
+      <p className="small muted mt-n6">
         Each point is a version of the model, all approving the same {Math.round(data.approval_share * 100)}% of applicants.
         Right is fairer (the lowest group&apos;s approval rate relative to White applicants), up is more accurate.
       </p>
@@ -54,7 +54,7 @@ export default function LdaTradeoff() {
               domain={[0.2, 0.5]} ticks={[0.2, 0.3, 0.4, 0.5]} tickFormatter={(v) => v.toFixed(1)} />
             <Tooltip formatter={(v) => v.toFixed(3)} labelFormatter={() => ""}
               content={({ payload }) => payload?.[0] ? (
-                <div className="card" style={{ padding: "8px 12px" }}>
+                <div className="card tip-card">
                   <b>{payload[0].payload.label}</b>
                   <div className="small">Gini {payload[0].payload.gini.toFixed(3)} · ratio {payload[0].payload.ratio.toFixed(3)}</div>
                 </div>) : null} />
@@ -83,7 +83,7 @@ export default function LdaTradeoff() {
           </tbody>
         </table>
       </TableWrap>
-      <p className="small muted" style={{ marginBottom: 0 }}>
+      <p className="small muted mb-0">
         Chosen: the fairest version that loses at most {data.gini_tolerance} Gini. fairlearn&apos;s constrained training
         gets approvals closest to equal but loses most of its ability to rank risk, and it needs race during training,
         so it isn&apos;t chosen. Separate approval limits per group are never considered: they&apos;re illegal in lending.

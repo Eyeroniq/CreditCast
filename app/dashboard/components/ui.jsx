@@ -153,28 +153,30 @@ export function useFetch(fn, deps = []) {
 }
 
 /** Grey placeholder blocks shaped like the page that is loading. */
-export function Skeleton({ height = 14, width = "100%", style }) {
-  return <div className="skeleton" style={{ height, width, ...style }} aria-hidden="true" />;
+export function Skeleton({ height = 14, width = "100%", className = "" }) {
+  const size = (v) => (typeof v === "number" ? `${v}px` : v);
+  return <div className={`skeleton ${className}`.trim()} style={{ "--h": size(height), "--w": size(width) }}
+    aria-hidden="true" />;
 }
 
 export function PageSkeleton({ stats = 4, charts = 2, table = false, label = "Loading" }) {
   return (
     <div role="status" aria-live="polite" aria-label={label}>
       <span className="sr-only">{label}…</span>
-      <div className={`grid cols-${Math.min(stats, 4)}`} style={{ marginBottom: 16 }}>
+      <div className={`grid cols-${Math.min(stats, 4)} mb-16`}>
         {Array.from({ length: stats }, (_, i) => (
           <div key={i} className="card">
             <Skeleton width="55%" height={11} />
-            <Skeleton width="40%" height={26} style={{ marginTop: 12 }} />
+            <Skeleton width="40%" height={26} className="mt-12" />
           </div>
         ))}
       </div>
       {charts > 0 && (
-        <div className={`grid cols-${Math.min(charts, 2)}`} style={{ marginBottom: 16 }}>
+        <div className={`grid cols-${Math.min(charts, 2)} mb-16`}>
           {Array.from({ length: charts }, (_, i) => (
             <div key={i} className="card">
               <Skeleton width="45%" height={11} />
-              <Skeleton height={200} style={{ marginTop: 16 }} />
+              <Skeleton height={200} className="mt-16" />
             </div>
           ))}
         </div>
@@ -182,7 +184,7 @@ export function PageSkeleton({ stats = 4, charts = 2, table = false, label = "Lo
       {table && (
         <div className="card">
           <Skeleton width="35%" height={11} />
-          {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} height={18} style={{ marginTop: 12 }} />)}
+          {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} height={18} className="mt-12" />)}
         </div>
       )}
     </div>
@@ -216,20 +218,20 @@ export function ErrorState({ error, onRetry }) {
       <h3 className={kind === "busy" || kind === "missing" ? "warn" : "bad"}>
         {ERROR_TITLES[kind] || "Couldn't load this page"}
       </h3>
-      <p style={{ margin: "0 0 12px" }}>{message || "Something went wrong."}</p>
+      <p className="m-0 mb-12">{message || "Something went wrong."}</p>
       {kind === "missing" && (
-        <p className="small muted" style={{ marginTop: -4 }}>
+        <p className="small muted mt-n4">
           The model reports are produced by the training pipeline; once it has run, this page fills in.
         </p>
       )}
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="row items-center wrap">
         {onRetry && <button type="button" className="primary" onClick={onRetry}>Try again</button>}
         <a href="/" className="small muted">Go to the start page</a>
       </div>
       {tech.length > 0 && (
         <details className="more">
           <summary>Technical details</summary>
-          <p className="small mono muted" style={{ whiteSpace: "pre-wrap" }}>{tech.join(" · ")}</p>
+          <p className="small mono muted pre-wrap">{tech.join(" · ")}</p>
         </details>
       )}
     </div>

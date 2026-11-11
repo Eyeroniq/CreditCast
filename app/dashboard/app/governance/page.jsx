@@ -26,7 +26,7 @@ export default function GovernancePage() {
       <Head />
       <VerdictBanner verdict={governanceVerdict(data)} />
       <div className="page-actions"><PrintButton label="⤓ Download report (PDF)" filename="CreditCast fairness and explanations report" /></div>
-      <div className="grid cols-4" style={{ marginBottom: 16 }}>
+      <div className="grid cols-4 mb-16">
         <Stat label="Champion model"
           value={(data.champion_model || "challenger").split(" ")[0].replace(/^./, (c) => c.toUpperCase())}
           sub={(data.champion_model || "").replace(/^\S+\s*\(?|\)$/g, "") || "LightGBM · calibrated"} />
@@ -36,7 +36,7 @@ export default function GovernancePage() {
           tone={f.passes_four_fifths ? "ok" : "bad"} sub={`4/5ths floor ${f.di_ratio_floor}`} />
         <div className="card stat">
           <div className="label">Fairness (4/5ths rule)<InfoTip k="disparate_impact" /></div>
-          <div style={{ marginTop: 10 }}>
+          <div className="mt-10">
             <Pill status={f.passes_four_fifths ? "PASS" : "REVIEW"}>
               {f.passes_four_fifths ? "pass" : "review"}
             </Pill>
@@ -48,7 +48,7 @@ export default function GovernancePage() {
       <ThresholdExplorer />
       <LdaTradeoff />
 
-      <div className="grid cols-2" style={{ marginBottom: 16 }}>
+      <div className="grid cols-2 mb-16">
         <div className="card">
           <CardTitle info="shap">What drives risk most, across all loans</CardTitle>
           <ResponsiveContainer width="100%" height={260}>
@@ -79,7 +79,7 @@ export default function GovernancePage() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card mb-16">
         <CardTitle info="equal_opportunity">Fairness by group</CardTitle>
         <TableWrap>
         <table>
@@ -102,7 +102,7 @@ export default function GovernancePage() {
           </tbody>
         </table>
         </TableWrap>
-        <p className="small muted" style={{ marginTop: 10 }}>
+        <p className="small muted mt-10">
           The model excludes race, yet neutral features (credit score, DTI) proxy historical disparity, producing
           disparate impact. Mitigation: feature review, fairness-constrained training, monitoring — not group-specific
           thresholds (illegal in lending). Surfacing this is an EU AI Act high-risk expectation.
@@ -112,14 +112,14 @@ export default function GovernancePage() {
       {ex && (
         <div className="card">
           <CardTitle info="reason_codes">Example letter to a declined applicant</CardTitle>
-          <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+          <div className="row gap-16 items-center mb-12 wrap">
             <span className="mono small muted">loan {ex.loan_id}</span>
             <span>PD <b className="mono">{pct(ex.pd)}</b></span>
             <span>score <b className="mono">{ex.credit_score.toFixed(0)}</b></span>
             <Band grade={ex.band} />
             <Pill status={false}>decline</Pill>
           </div>
-          <pre className="mono small" style={{ whiteSpace: "pre-wrap", background: "var(--panel-2)", padding: 14, borderRadius: 8, border: "1px solid var(--border)" }}>{ex.letter}</pre>
+          <pre className="mono small letter-box">{ex.letter}</pre>
         </div>
       )}
     </>

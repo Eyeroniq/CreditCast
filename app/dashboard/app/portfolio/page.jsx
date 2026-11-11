@@ -36,7 +36,7 @@ export default function PortfolioPage() {
     <>
       <Head />
       <VerdictBanner verdict={portfolioVerdict(data)} />
-      <div className="grid cols-4" style={{ marginBottom: 16 }}>
+      <div className="grid cols-4 mb-16">
         <Stat label="Loans in the test book" info="oot" value={num(data.n_loans)} />
         <Stat label="Capital required (Basel)" info="capital" value={moneyShort(data.capital)}
           sub={`for unexpected loss · ${pct(data.risk_weight, 0)} risk weight`} />
@@ -46,10 +46,10 @@ export default function PortfolioPage() {
           sub={`average default risk ${pct(data.mean_pd)}`} />
       </div>
 
-      <p className="small muted" style={{ margin: "0 0 10px" }}>
+      <p className="small muted m-0 mb-10">
         Tip: click a bar to filter the loan table below; click it again to clear.
       </p>
-      <div className="grid cols-2" style={{ marginBottom: 16 }} data-tour="charts">
+      <div className="grid cols-2 mb-16" data-tour="charts">
         <div className="card">
           <CardTitle info="risk_band">Loans per risk grade</CardTitle>
           <ResponsiveContainer width="100%" height={230}>
@@ -86,7 +86,7 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card mb-16">
         <CardTitle info="pd">How default risk is spread across the book</CardTitle>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={hist} margin={{ left: 4, right: 8 }}>
@@ -109,7 +109,7 @@ export default function PortfolioPage() {
 
       <div className="card" id="loan-table" data-tour="loan-table">
         <CardTitle info="el">Loans with the highest expected loss</CardTitle>
-        <p className="small muted" style={{ marginTop: -6 }}>
+        <p className="small muted mt-n6">
           The {num(data.sample.length)} loans with the largest expected loss in the book of {num(data.n_loans)}.
           Search, sort any column, filter, and export what you see.
         </p>

@@ -18,9 +18,9 @@ export default function Ifrs9Staging() {
   const life = data.lifetime_pd;
   const bt = data.backtest;
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
+    <div className="card mb-16">
       <CardTitle info="ifrs9">IFRS 9 staging at {data.reporting_date}</CardTitle>
-      <p className="small muted" style={{ marginTop: -6 }}>
+      <p className="small muted mt-n6">
         {num(st.on_book)} test-book loans still open at the reporting date ({num(st.off_book)} already repaid or
         written off). Average default risk is {pct(life.mean_12m)} over 12 months and{" "}
         {pct(life.mean_lifetime, 1)} over the loan&apos;s whole life.

@@ -122,7 +122,7 @@ export default function LoanTable({ rows, filters, onFilters }) {
       </div>
 
       {chips.length > 0 && (
-        <div className="chips" style={{ margin: "10px 0" }} aria-label="Active filters">
+        <div className="chips m-0 mt-10 mb-10" aria-label="Active filters">
           {chips.map(([key, text]) => (
             <button key={key} type="button" className="chip active" aria-label={`Remove filter: ${text}`}
               onClick={() => set({ [key]: key === "pdRange" ? null : "" })}>{text} ✕</button>
@@ -131,7 +131,7 @@ export default function LoanTable({ rows, filters, onFilters }) {
         </div>
       )}
 
-      <p className="small muted" style={{ margin: "8px 0" }} aria-live="polite">
+      <p className="small muted m-0 mt-8 mb-8" aria-live="polite">
         Showing {shown.length ? cur * pageSize + 1 : 0}–{cur * pageSize + shown.length} of{" "}
         {sorted.length.toLocaleString()} loans{sorted.length !== rows.length ? ` (filtered from ${rows.length.toLocaleString()})` : ""}.
       </p>
@@ -163,7 +163,7 @@ export default function LoanTable({ rows, filters, onFilters }) {
               </tr>
             ))}
             {!shown.length && (
-              <tr><td colSpan={COLUMNS.length} className="muted" style={{ textAlign: "center", padding: 24 }}>
+              <tr><td colSpan={COLUMNS.length} className="muted empty-cell">
                 No loans match these filters.
               </td></tr>
             )}
@@ -177,7 +177,7 @@ export default function LoanTable({ rows, filters, onFilters }) {
             {[25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <div className="row gap-6 items-center">
           <button type="button" className="chip" onClick={() => setPage(cur - 1)} disabled={cur === 0}>‹ Prev</button>
           <span className="small muted">Page {cur + 1} of {pages}</span>
           <button type="button" className="chip" onClick={() => setPage(cur + 1)} disabled={cur >= pages - 1}>Next ›</button>
