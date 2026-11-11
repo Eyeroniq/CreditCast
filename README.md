@@ -37,7 +37,7 @@ a `GROQ_API_KEY` and the dashboard is built with `NEXT_PUBLIC_SHOW_COPILOT=1`.
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt          # macOS LightGBM: brew install libomp
 python -m creditcast.cli generate       # synthetic GSE panels -> Bronze
-python -m creditcast.cli pipeline       # Bronze -> Silver -> Gold (+ OOT split)
+python -m creditcast.cli pipeline       # Bronze -> Silver -> Gold (+ OOT split); --engine spark for PySpark
 python -m creditcast.cli train          # scorecard + challenger + calibration
 python -m creditcast.cli validate       # Gini/KS/calibration/PSI -> report
 python -m creditcast.cli all            # the whole lifecycle end-to-end
@@ -153,11 +153,29 @@ The model is ~20% of the work. The 80% that proves maturity is the scaffolding:
 calibration, Gini/KS/PSI, adverse-action reason codes, fairness, a model card,
 CI performance gates, and drift monitoring.
 
+## Spark engine (optional)
+
+The pipeline also runs on **PySpark** (`creditcast/pipeline/spark/`), for books
+too big for one machine. DuckDB stays the default; the Spark engine writes the
+same Gold files (checked value for value by `cli parity` and the tests), so
+training and serving don't change. It needs Java 17+, so the easy way is its
+container:
+
+```bash
+docker build -f Dockerfile.spark -t creditcast-spark .
+docker run --rm -v "$PWD:/app" creditcast-spark python -m creditcast.cli pipeline --engine spark
+docker run --rm -v "$PWD:/app" creditcast-spark python -m creditcast.cli parity
+```
+
+Or natively: install Java 17+, then `pip install -r requirements-spark.txt`.
+Design, benchmark and when to pick which engine: [docs/pyspark.md](docs/pyspark.md).
+
 ## Layout
 ```
 creditcast/
   conf/config.yaml      # all thresholds/scaling/cutoffs — no hardcoding
   pipeline/             # synthetic generator + Bronze/Silver/Gold + split
+    spark/              # the same pipeline on PySpark (--engine spark)
   models/               # scorecard, challenger, calibration, lgd, ead, el
   validation/           # discrimination, calibration_tests, stability, report
   governance/           # shap_explain, reason_codes, fairness, model_card

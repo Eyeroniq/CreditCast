@@ -39,3 +39,8 @@ files = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+# The Spark engine (ROADMAP 7.0) needs PySpark + Java, which the main CI job
+# doesn't install; CI's spark job runs its tests and measures its coverage.
+omit = ["creditcast/pipeline/spark/*"]

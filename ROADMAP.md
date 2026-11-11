@@ -29,6 +29,7 @@ and a dashboard that is hard to use for non-experts.
 - [Phase 4 — Real data](#phase-4--real-data-)
 - [Phase 5 — Advanced modeling & regulation](#phase-5--advanced-modeling--regulation-)
 - [Phase 6 — User-friendly, interactive UI](#phase-6--user-friendly-interactive-ui-)
+- [Phase 7 — PySpark pipeline engine](#phase-7--pyspark-pipeline-engine-)
 - [Order, dependencies & effort](#order-dependencies--effort)
 - [Glossary](#glossary)
 
@@ -117,6 +118,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.3.6 | PDF downloads | [x] | 2026-10-22 | Decision letter (1 page), two reports (2 pages each); real PDFs checked |
 | 6.3.7 | Frontend tests (Vitest + Playwright) | [x] | 2026-10-22 | 21 component + 24 e2e tests (desktop + phone); new CI job |
 | 6.4 | Glass visual refresh | [x] | 2026-10-22 | Graphite + frosted glass + mint accent, top pill nav, motion; user request |
+| 7.0 | PySpark pipeline engine | [x] | 2026-11-11 | `--engine duckdb\|spark`; Gold identical to DuckDB (exact values, dtypes, order); 10M rows: DuckDB 5.6 s, Spark 51.1 s (one machine) |
 
 ---
 
@@ -1625,6 +1627,60 @@ Glossary (new)      every term explained simply
 
 ---
 
+## Phase 7 — PySpark pipeline engine ⚡
+
+A second engine for Bronze → Silver → Gold, for books that outgrow one
+machine (the full Freddie Mac history is billions of loan-months). DuckDB stays
+the default; Spark must write the *same* Gold, so nothing downstream changes.
+
+### 7.0 PySpark Bronze → Silver → Gold (added 2026-11-05 at the user's request)
+- **Steps:**
+  1. `creditcast/pipeline/spark/`: Bronze with explicit `StructType`s (no
+     inferSchema), Parquet partitioned by origination vintage; Silver with the
+     12m label and censoring from `silver.py`; point-in-time features with
+     Window functions (`lag`, rolling aggregates, `row_number`), no lookahead;
+     Gold + the out-of-time split with `split.py`'s overlap check.
+  2. Broadcast joins for the small lookup tables, repartitioning by key,
+     config values passed as values (no formatted SQL).
+  3. `--engine duckdb|spark` on the CLI (default duckdb).
+  4. PySpark as a locked optional dependency; Java 17 documented and checked.
+  5. Tests: parity, leakage (no lookahead), OOT split; a DuckDB vs Spark
+     benchmark at ~1M and ~10M rows; `docs/pyspark.md`.
+- **Done when:** both engines write identical Gold on the same data and every
+  existing test and CI job still passes.
+- **Result (2026-11-11):**
+  - **Parity:** Spark Gold equals DuckDB Gold exactly: every feature, label
+    and LGD value (max difference 0.0), dtypes incl. categoricals, row order
+    (which `pipeline.split` depends on). The only non-zero difference anywhere
+    is 1e-15 in the rate benchmark (summation order). Exactness comes from
+    reproducing pandas' rounding (`rint` on the scaled value) instead of
+    Spark's `round`/`bround`.
+  - **Engine switch:** `--engine spark` publishes the four Gold contract files,
+    so training, serving and the Copilot are unchanged. Without PySpark or
+    Java 17+ it exits 2 with a one-line fix (a test caught it crashing with an
+    import error first).
+  - **Dependencies:** `requirements-spark.in` → hash-locked
+    `requirements-spark.txt` via `scripts/lock-deps.sh`, constrained by the
+    training lock (pyspark 4.2.1). Kept the repo's lock-file pattern rather
+    than `[project.optional-dependencies]`: the repo has no `[project]` table
+    and isn't an installable package. `Dockerfile.spark` = Python 3.11 + Java 17.
+  - **Tests:** 21 Spark tests (96% of the Spark package) in a new CI job on
+    Temurin 17; the default suite skips them cleanly. DuckDB output unchanged:
+    all four Gold files identical to main's on the 60k-loan book.
+  - **Benchmark:** one machine (12 CPUs, 7.6 GB), warm runs, whole
+    process tree: 1M rows DuckDB 1.4 s / 380 MB vs Spark 26.7 s / 2.1 GB; 10M rows
+    DuckDB 5.6 s / 1.9 GB vs Spark 51.1 s / 4.9 GB. Spark's time is mostly fixed
+    (JVM start + ~20 jobs): 200k and 1M rows both take ~26.5 s. DuckDB is the
+    right engine at this project's size; Spark earns its place once the data no
+    longer fits one machine (`docs/pyspark.md`).
+  - **Known limits:** PySpark 4.2.1 warns it doesn't fully support pandas 3
+    (the training lock's version); only `toPandas()` over Arrow is used, and
+    the parity tests check its output. Two exceptions inherited from the
+    DuckDB engine on purpose: the first month's rate benchmark is back-filled,
+    and a missing month falls back to the latest month.
+
+---
+
 ## Order, dependencies & effort
 
 ```
@@ -1647,6 +1703,7 @@ Phase 0 (done)
 | 4 Real data | 1–2 weeks | ★★★★★ | biggest credibility jump |
 | 5 Advanced | ongoing | ★★★ | depth for interviews / bank use |
 | 6 UI | ~2 weeks | ★★★★ | parallel to 1–3; quick wins in 2–3 days |
+| 7 Spark engine | done | ★★★ | scale-out path; same Gold as DuckDB |
 
 **Recommended next tasks:**
 1. **1.1** threshold leak (small, high impact)

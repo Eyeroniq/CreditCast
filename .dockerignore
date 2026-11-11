@@ -20,6 +20,8 @@ creditcast/data/gold
 creditcast/data/macro
 creditcast/artifacts
 creditcast/reports/*.html
+creditcast/data/spark
+.worktrees
 
 # docs/CI not needed in the image
 .github

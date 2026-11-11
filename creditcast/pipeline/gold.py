@@ -9,6 +9,7 @@ a model), and the LGD fields (EAD, realized loss, derived LGD on defaults).
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -45,18 +46,10 @@ def build_gold(cfg: Config | None = None) -> Path:
         np.nan,
     )
 
-    numeric = list(cfg.features.numeric) + ["ltv_dti", "rate_spread", "high_ltv"] + macro_cols
-    categorical = list(cfg.features.categorical)
-    protected = list(cfg.features.protected)
-    keep = (
-        ["loan_id", "vintage", "property_state", "default_12m"]
-        + numeric
-        + categorical
-        + protected
-        + ["ead", "net_loss", "resolved", "lgd"]
-    )
+    manifest = gold_layout(cfg)
+    numeric, categorical = manifest["numeric"], manifest["categorical"]
 
-    out_df = df[keep].copy()
+    out_df = df[gold_columns(manifest)].copy()
     # Cast categoricals so downstream (LightGBM) can use native categorical dtype
     for c in categorical:
         out_df[c] = out_df[c].astype("category")
@@ -65,14 +58,6 @@ def build_gold(cfg: Config | None = None) -> Path:
     out_df.to_parquet(out, index=False)
 
     # Persist the feature manifest so models/serving agree on inputs
-    manifest = {
-        "numeric": numeric,
-        "categorical": categorical,
-        "protected": protected,
-        "target": "default_12m",
-    }
-    import json
-
     (gold / "feature_manifest.json").write_text(json.dumps(manifest, indent=2))
     dataset.reload()  # the manifest just changed: drop the cached copy
 
@@ -82,6 +67,30 @@ def build_gold(cfg: Config | None = None) -> Path:
         f"{out_df['lgd'].notna().sum():,} loans with realized LGD"
     )
     return out
+
+
+def gold_layout(cfg: Config) -> dict:
+    """The feature manifest: model inputs, protected attribute, target.
+    Shared with the Spark Gold layer so both write the same columns."""
+    return {
+        "numeric": list(cfg.features.numeric)
+        + ["ltv_dti", "rate_spread", "high_ltv"]
+        + list(cfg.macro.features),
+        "categorical": list(cfg.features.categorical),
+        "protected": list(cfg.features.protected),
+        "target": "default_12m",
+    }
+
+
+def gold_columns(manifest: dict) -> list[str]:
+    """Feature-matrix columns, in order: keys, target, features, LGD fields."""
+    return (
+        ["loan_id", "vintage", "property_state", manifest["target"]]
+        + manifest["numeric"]
+        + manifest["categorical"]
+        + manifest["protected"]
+        + ["ead", "net_loss", "resolved", "lgd"]
+    )
 
 
 if __name__ == "__main__":

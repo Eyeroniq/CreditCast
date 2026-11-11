@@ -1,0 +1,32 @@
+# CreditCast Spark engine (ROADMAP 7.0): Python 3.11 + Java 17 + the Spark lock.
+# The environment the Spark pipeline, its tests and the engine benchmark run in
+# (CI's spark job uses the same versions). Not part of the serving image.
+#
+#   docker build -f Dockerfile.spark -t creditcast-spark .
+#   # mount the repo so code and data come from your checkout:
+#   docker run --rm -v "$PWD:/app" creditcast-spark python -m creditcast.cli parity
+#   docker run --rm -v "$PWD:/app" creditcast-spark python -m pytest -q tests/test_spark_pipeline.py
+FROM python:3.11-slim-bookworm
+
+# Spark is a JVM program: PySpark starts it with `java` (needs 17+ for Spark 4).
+# procps provides `ps`, which Spark's launch scripts call.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PYTHONUTF8=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+COPY requirements-spark.txt .
+# Hash-checked, like the other images: exactly the locked versions.
+RUN pip install --no-cache-dir --require-hashes -r requirements-spark.txt
+
+# Code is copied too, so the image also works without a mount.
+COPY creditcast ./creditcast
+COPY scripts ./scripts
+COPY tests ./tests
+COPY pyproject.toml .
+
+CMD ["python", "-m", "creditcast.cli", "parity"]
