@@ -86,4 +86,3 @@ def run_pipeline(
         timings[name] = round(time.perf_counter() - start, 2)
     print("[spark] stage seconds: " + ", ".join(f"{k} {v}" for k, v in timings.items()))
     return timings
-
