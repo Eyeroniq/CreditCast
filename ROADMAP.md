@@ -1,8 +1,8 @@
 # CreditCast · Improvement Roadmap
 
 > **Purpose of this file.** This is the single source of truth for improving
-> CreditCast. Every future work session should start by reading the
-> **Status tracker** below, pick the next open task, follow its steps, and
+> CreditCast. Start every piece of work by reading the
+> **Status tracker** below: pick the next open task, follow its steps, and
 > tick it off here when its *Done when* checks pass. Keep this file updated
 > in the same commit as the code change.
 
@@ -26,7 +26,7 @@ and a dashboard that is hard to use for non-experts.
 - [Phase 1 — Fix methodology mistakes](#phase-1--fix-methodology-mistakes-)
 - [Phase 2 — Testing, CI and reproducibility](#phase-2--testing-ci-and-reproducibility-)
 - [Phase 3 — API & production hardening](#phase-3--api--production-hardening-)
-- [Phase 4 — Real data](#phase-4--real-data-)
+- [Phase 4 — Real data (dropped)](#phase-4--real-data-dropped)
 - [Phase 5 — Advanced modeling & regulation](#phase-5--advanced-modeling--regulation-)
 - [Phase 6 — User-friendly, interactive UI](#phase-6--user-friendly-interactive-ui-)
 - [Phase 7 — PySpark pipeline engine](#phase-7--pyspark-pipeline-engine-)
@@ -85,10 +85,10 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 3.4 | Structured logs + decision audit trail | [x] | 2026-10-08 | `decisions.jsonl`, no raw inputs |
 | 3.5 | Health/readiness + Docker HEALTHCHECK | [x] | 2026-10-08 | Caddy waits for healthy app |
 | 3.6 | Fix `lru_cache` staleness | [x] | 2026-10-08 | |
-| 4.1 | Freddie Mac loader | [ ] | | |
-| 4.2 | Data-quality report | [ ] | | |
-| 4.3 | Re-tune thresholds on real data | [ ] | | |
-| 4.4 | Synthetic vs real comparison in model card | [ ] | | |
+| 4.1 | Freddie Mac loader | [-] | 2026-11-11 | Dropped: CreditCast stays on the seeded synthetic generator (Freddie Mac schema) |
+| 4.2 | Data-quality report | [-] | 2026-11-11 | Dropped: CreditCast stays on the seeded synthetic generator (Freddie Mac schema) |
+| 4.3 | Re-tune thresholds on real data | [-] | 2026-11-11 | Dropped: CreditCast stays on the seeded synthetic generator (Freddie Mac schema) |
+| 4.4 | Synthetic vs real comparison in model card | [-] | 2026-11-11 | Dropped: CreditCast stays on the seeded synthetic generator (Freddie Mac schema) |
 | 5.1 | Macro-economic features | [x] | 2026-10-30 | Synthetic state series (real-file drop-in); 3 lagged features; not gated, not adverse-action reasons |
 | 5.2 | Stress testing | [x] | 2026-10-30 | Re-scoring + satellite macro sensitivity; EL +70% adverse, +193% severe; CI gate |
 | 5.3 | Lifetime PD (IFRS 9 / CECL) | [x] | 2026-10-31 | Logistic hazard on loan-months; lifetime ≥ 12m gate; IFRS 9 staging card on Portfolio |
@@ -117,7 +117,7 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped
 | 6.3.5 | Component library migration | [x] | 2026-11-05 | Inline style properties 182 → 0 (CSS variables only); test guard; pixel-identical pages |
 | 6.3.6 | PDF downloads | [x] | 2026-10-22 | Decision letter (1 page), two reports (2 pages each); real PDFs checked |
 | 6.3.7 | Frontend tests (Vitest + Playwright) | [x] | 2026-10-22 | 21 component + 24 e2e tests (desktop + phone); new CI job |
-| 6.4 | Glass visual refresh | [x] | 2026-10-22 | Graphite + frosted glass + mint accent, top pill nav, motion; user request |
+| 6.4 | Glass visual refresh | [x] | 2026-10-22 | Graphite + frosted glass + mint accent, top pill nav, motion |
 | 7.0 | PySpark pipeline engine | [x] | 2026-11-11 | `--engine duckdb\|spark`; Gold identical to DuckDB (exact values, dtypes, order); 10M rows: DuckDB 5.6 s, Spark 51.1 s (one machine) |
 
 ---
@@ -723,7 +723,11 @@ Current: 4 test files (`test_agent_tools`, `test_el_math`, `test_leakage`,
 
 ---
 
-## Phase 4 — Real data 🟡
+## Phase 4 — Real data (dropped)
+
+> **Dropped (2026-11-11).** CreditCast stays on its seeded synthetic
+> generator, which follows the Freddie Mac Single-Family schema. The plan below
+> is kept for reference.
 
 **Goal:** metrics describe real mortgages, not the synthetic generator.
 
@@ -1569,9 +1573,9 @@ API client `lib/api.js`.
     and the lockfile was regenerated with npm 11. All new dev dependencies are
     pinned to releases at least two weeks old.
 
-### 6.4 Glass visual refresh (added 2026-10-22 at the user's request)
+### 6.4 Glass visual refresh (added 2026-10-22)
 
-Restyle to a reference design the user supplied: a graphite gradient, Apple-style
+Restyle to a reference design: a graphite gradient, Apple-style
 frosted glass, one mint accent, a floating pill navigation, a bold display
 type with spaced mono labels, and smooth loading and scrolling animations.
 
@@ -1633,7 +1637,7 @@ A second engine for Bronze → Silver → Gold, for books that outgrow one
 machine (the full Freddie Mac history is billions of loan-months). DuckDB stays
 the default; Spark must write the *same* Gold, so nothing downstream changes.
 
-### 7.0 PySpark Bronze → Silver → Gold (added 2026-11-05 at the user's request)
+### 7.0 PySpark Bronze → Silver → Gold (added 2026-11-05)
 - **Steps:**
   1. `creditcast/pipeline/spark/`: Bronze with explicit `StructType`s (no
      inferSchema), Parquet partitioned by origination vintage; Silver with the
@@ -1686,7 +1690,7 @@ the default; Spark must write the *same* Gold, so nothing downstream changes.
 ```
 Phase 0 (done)
    │
-   ├── Phase 1 methodology ──► Phase 2 tests/CI ──► Phase 4 real data ──► Phase 5 advanced
+   ├── Phase 1 methodology ──► Phase 2 tests/CI ──► Phase 4 (dropped) ──► Phase 5 advanced
    │        │                       │                                        │
    │        └──► Phase 3 API hardening                                       │
    │                                                                          │
@@ -1700,7 +1704,7 @@ Phase 0 (done)
 | 1 Methodology | ~1 week | ★★★★★ | metrics become honest |
 | 2 Tests / CI | ~1 week | ★★★★ | 2.1 can start right away |
 | 3 API hardening | 2–3 days | ★★★ | needed before sharing the demo widely |
-| 4 Real data | 1–2 weeks | ★★★★★ | biggest credibility jump |
+| 4 Real data | dropped | – | stays on synthetic data (Freddie Mac schema) |
 | 5 Advanced | ongoing | ★★★ | depth for interviews / bank use |
 | 6 UI | ~2 weeks | ★★★★ | parallel to 1–3; quick wins in 2–3 days |
 | 7 Spark engine | done | ★★★ | scale-out path; same Gold as DuckDB |

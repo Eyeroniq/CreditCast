@@ -39,7 +39,7 @@ spark:
 
 # ---- Synthetic GSE-schema generator -----------------------------------------
 # Mimics Freddie Mac Single-Family loan-level + monthly performance schema so
-# real GSE files drop into the exact same Silver/Gold pipeline later.
+# the Silver/Gold pipeline works on the same columns real GSE files carry.
 generator:
   n_loans: 60000
   vintage_start: "2015-01"      # origination cohorts, monthly
