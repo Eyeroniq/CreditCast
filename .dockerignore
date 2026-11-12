@@ -27,3 +27,6 @@ creditcast/data/spark
 .github
 *.md
 !creditcast/governance/model_card.md
+
+# README media (shown on GitHub, not needed in the image)
+docs/media

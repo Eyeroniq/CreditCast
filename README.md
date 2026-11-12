@@ -6,6 +6,12 @@
 
 **🗺️ Improvement plan: see [ROADMAP.md](ROADMAP.md)**
 
+<p align="center">
+  <img src="docs/media/creditcast-demo.gif" width="800"
+       alt="CreditCast demo: scoring an applicant live, turning a decline into an approval with the what-if panel, and filtering the portfolio from a chart">
+</p>
+<p align="center"><em>Live scoring, a decline turned into an approval by the what-if panel, and the portfolio view.</em></p>
+
 **Bank-grade credit-risk modeling & validation platform.** A calibrated PD model
 (regulatory WoE scorecard *and* an ML challenger), LGD, and EAD combined into
 Expected Loss — wrapped in a bank-grade validation suite, SHAP explainability,
