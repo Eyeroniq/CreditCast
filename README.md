@@ -2,10 +2,6 @@
 
 [![CI](https://github.com/Eyeroniq/CreditCast/actions/workflows/ci.yml/badge.svg)](https://github.com/Eyeroniq/CreditCast/actions/workflows/ci.yml)
 
-**🌐 Live: [dhyyraj.in](https://dhyyraj.in)** *(launching soon)*
-
-**🗺️ Improvement plan: see [ROADMAP.md](ROADMAP.md)**
-
 <p align="center">
   <img src="docs/media/creditcast-demo.gif" width="800"
        alt="CreditCast demo: scoring an applicant live, turning a decline into an approval with the what-if panel, and filtering the portfolio from a chart">
